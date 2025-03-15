@@ -1,0 +1,128 @@
+import_code("../kernel/toolkernel")
+
+alias_tool = Tool.New("alias", "1.0.1")
+alias_tool.short_description = "add / change / remove aliases"
+alias_tool.long_description = "add / change / remove aliases"
+
+
+// list
+
+main_func = function(a)
+    if not hasIndex(a.kernel.settings, "alias") then
+        a.kernel.settings.alias = {}
+    end if
+    
+    settings = a.kernel.settings
+
+    alias_data = []
+    for x in settings.alias
+        alias_data.push([x.key, x.value])
+    end for
+
+    alias_result = tabulate_data(alias_data, ["Alias", "Command"], a.kernel.color(["$S;", "$T2;"]), a.kernel.color(["<i>$T;"]))
+    print(alias_result.string)
+end function
+
+alias_main = alias_tool.main_command([], @main_func)
+alias_main.short_description = "List all aliases"
+alias_main.long_description = "List all aliases"
+
+
+// add
+
+add_args = [
+    Arg.New("name", "string").Info("Alias name to add"),
+    Arg.New("value", "string").Info("Command for alias"),
+    Kwarg.New("temporary", "bool").Alias("t").Info("Temporary alias")
+]
+
+add_func = function(a)
+    if a.name.indexOf(" ") != null then return KernelError.New("alias.add", "Alias name cannot have spaces")
+    if not hasIndex(a.kernel.settings, "alias") then
+        a.kernel.settings.alias = {}
+    end if
+
+    aliases = a.kernel.settings.alias
+    if hasIndex(aliases, a.name) then
+        print("$error;Alias already exists:")
+        print("$P;" + a.name + " $T;: $T2;" + aliases[a.name])
+        print(" ")
+        if not confirmation_prompt("Overwrite existing?") then return
+    end if
+
+    aliases[a.name] = a.value
+
+    print("$S;Added alias")
+    if a.temporary then return
+
+    a.kernel.raw_settings = a.kernel.raw_settings + char(10) + "alias " + a.name + " = " + a.value
+    res = a.kernel.save_settings()
+
+    if is_error(res) then return res.stack("alias.add")
+    print("$S;Saved settings")
+end function
+
+add = alias_tool.command("add", add_args, @add_func)
+add.short_description = "Add a new alias"
+add.long_description = "$P;Usage:
+$P;alias add $string;la ""ls -la""
+$P;alias add $string;home ""session use 1""
+$P;alias add $string;active ""session use $ACTIVE"""
+
+
+
+// del
+
+del_args = [
+    Arg.New("name", "string").Info("Alias name to delete"),
+    Kwarg.New("temporary", "bool").Alias("t").Info("Temporary delete")
+]
+
+del_func = function(a)
+    if a.name.indexOf(" ") != null then return KernelError.New("alias.del", "Alias name cannot have spaces")
+    if not hasIndex(a.kernel.settings, "alias") then
+        a.kernel.settings.alias = {}
+    end if
+
+    aliases = a.kernel.settings.alias
+
+    if not hasIndex(aliases, a.name) then
+        return OsError.New("alias.del", "Alias not found")
+    end if
+
+    aliases.remove(a.name)
+    print("$S;Removed alias $P;" + a.name)
+
+    if a.temporary then return
+
+    new_settings = []
+    log(["alias", a.name])
+    for t in a.kernel.raw_settings.split(char(10))
+        sep = t.split(" ")
+        new_settings.push(t)
+        if sep[0] != "alias" then continue
+        log(sep[:2])
+        if t.split(" ")[:2] == ["alias", a.name] then new_settings.pop()
+    end for
+
+    new_settings = new_settings.join(char(10))
+
+    if new_settings == a.kernel.raw_settings then return
+
+    a.kernel.raw_settings = new_settings
+    res = a.kernel.save_settings()
+
+    if is_error(res) then return res.stack("alias.add")
+    print("$S;Saved settings")
+end function
+
+del = alias_tool.command("del", del_args, @del_func)
+del.short_description = "Delete alias"
+del.long_description = "$P;Usage:
+$P;alias del $string;la
+$P;alias del $string;home
+$P;alias del $string;active"
+
+// Init alias
+
+alias_tool.init()

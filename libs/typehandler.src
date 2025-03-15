@@ -1,0 +1,16 @@
+expect_all = function(objects, type)
+    for item in objects
+        if not item isa type then return item
+    end for
+end function
+
+expect_any = function(object, types)
+    for type in types
+        if object isa type then return true
+    end for
+    return false
+end function
+
+expect = function(object, type)
+    return object isa type
+end function

@@ -1,0 +1,133 @@
+import_code("../kernel/toolkernel")
+
+cracktool = Tool.New("crack", "1.2.1")
+
+cracktool.short_description = "Crack wifi or hashes"
+cracktool.long_description = "Crack wifi or hashes"
+
+
+// hash
+main_args = [
+    Arg.New("hash", "string").Info("Hash to crack"),
+    Kwarg.New("system-hardware", "bool").Alias("s").Default(false).Info("Use crypto hardware of current session instead of home system")
+]
+
+main_func = function(a)
+    if not a.kernel.sessions[0].crypto then return ObjectError.New("crack.main", "crypto")
+    if not a.hash.is_match("(.+:)?[a-zaA-Z0-f]{32}") then return FormatError.New("crack.main", "[user:]md5_hash", uncolor_string(a.hash))
+    crypto = a.kernel.sessions[0].crypto
+
+    raw = a.hash.split(":")
+    user = null
+    hash = raw[0]
+    if raw.len > 1 then
+        user = raw[0]
+        hash = raw[1]
+    end if
+
+    wait(0.1)
+    result = crypto.decipher(hash)
+    log(uncolor_string(a.hash))
+    log(result)
+    if not result then return Error.New("crack.main", "Invalid input : " + a.hash)
+    
+    if user != null then
+        a.kernel.print("$P;" + user + " $T;:$S; " + result)
+    else
+        a.kernel.print("$S;" + result)
+    end if
+end function
+
+clearcmd = cracktool.main_command(main_args, @main_func)
+clearcmd.short_description = "Cracks a hash"
+clearcmd.long_description = "$P;Usage:
+$S;crack $string;9c3c7fb60590607b39c9d106ac5a236a
+$S;crack $string;root:9c3c7fb60590607b39c9d106ac5a236a"
+
+
+
+// wifi
+wifi_args = [
+    OptionalArg.New("essid", "string").Info("Wifi name to crack"),
+    Kwarg.New("interface", "string").Alias("i").Info("Wifi interface to use").Default("wlan0"),
+    Kwarg.New("connect", "bool").Alias("c").Info("Connnect after successful crack")
+]
+
+wifi_func = function(a)
+    if a.kernel.session.computer == null then return ObjectError.New("crack.wifi", "computer")
+    if a.kernel.session.crypto == null then return ObjectError.New("crack.wifi", "crypto")
+    comp = a.kernel.session.computer
+    crypto = a.kernel.session.crypto
+
+    if not crypto.airmon("start", a.interface) then
+        return OsError.New("crack.wifi", a.interface + " Does not allow network monitoring")
+    end if
+    // Get network
+    wifis_list = comp.wifi_networks(a.interface)
+
+    if wifis_list == null then return OsError.New("crack.wifi", "No wifi card found")
+
+    wifis = []
+    tab_data = []
+    for x in wifis_list
+        data = x.split(" ")
+        if a.essid == null or data[-1] == a.essid then
+            wifis.push(data)
+            tab_data.push([tab_data.len+1]+data)
+        end if
+    end for
+
+    wifi = null
+    if wifis.len == 0 then
+        a.kernel.print("$T;No wifi with ESSID '" + a.essid + "' not found.")
+        return
+
+    else if wifis.len == 1 then
+        wifi = wifis[0]
+
+    else if wifis.len > 1 then
+        result = tabulate_data(tab_data, ["Index", "BSSID", "Stength", "ESSID"], a.kernel.color(["$T;", "$T2;", "$S;", "$P;"]))
+        
+        a.kernel.line("Networks", result.length)
+        a.kernel.print(result.string)
+        a.kernel.line("", result.length)
+
+        selected = select_prompt("Select wifi", range(1, len(wifis)), true)
+        if selected == null then return
+        wifi = wifis[selected]
+    end if
+
+    // Start listen
+    power = wifi[1][:-1].to_int
+    acks = round(300000 / power)
+    a.kernel.print("$T2;Listening for $P;" + acks + " $T2;Acks")
+    error = crypto.aireplay(wifi[0], wifi[2], acks)
+    if error isa string then
+        return Error.New("crack.wifi", error)
+    end if
+
+    // file crack
+    file = comp.File(current_path + "/file.cap")
+    password = crypto.aircrack(file.path)
+    file.delete()
+
+    if password then
+        a.kernel.print("$T2;Password found: $P;" + password + " $T;("+ wifi[2] +", " + wifi[0] + ", " + wifi[1] + ")")
+    else
+        a.kernel.print("$T2;Failed to find password")
+        return
+    end if
+
+    if a.connect then
+        err = comp.connect_wifi(a.interface, wifi[0], wifi[2], password)
+        if is_error(err) then return err.stack("crack.wifi")
+    end if
+end function
+
+wifi = cracktool.command("wifi", wifi_args, @wifi_func)
+wifi.short_description = "Crack a wifi password based on ESSID"
+wifi.long_description = "$P;Usage:
+$S;wifi $string;essid-here
+$S;wifi $string;Neighbor-network $bool;--connect"
+
+cracktool.init()

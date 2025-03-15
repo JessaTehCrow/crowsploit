@@ -1,0 +1,33 @@
+symbol_token
+"string token"
+12.32
+12
+false
+true
+{
+}
+[
+]
+(
+)
+>
+>=
+<=
+<
+=
+-
++
+*
+/
+==
+>> test one {banana}
+//
+return
+if
+elif
+else
+or
+and
+not
+function
+a.test

@@ -1,0 +1,575 @@
+import_code("../libs/utils")
+import_code("../libs/sessionmanager")
+import_code("../libs/proxyextension")
+import_code("../libs/argparse")
+
+SETTINGS_DEFAULT = "// Format:
+// [category] [key] = [value]
+
+// Categories and keys cannot have spaces
+
+/////////////////
+//// Colors ////
+
+// primary color
+color P = <#08f>
+
+// secondary color
+color S = <#0cc>
+
+// tertiary colors
+color T = <#669>
+color T2 = <#99c>
+
+// Input color
+color input = <#bcf>
+
+// Root color
+color root = <#f60>
+
+// Error color
+color error = <#e05>
+
+//// LS data
+color lsfolder = <#08f>
+color lsbinary = <#0e8>
+color lsfile   = <#aad>
+color lsdata   = <#99c>
+color lsuser   = <#99c>
+color lscode   = <#fc1>
+color lssymlink = <#c158d6>
+
+// Argument colors
+color string = <#d63>
+color int    = <#39d>
+color float  = <#b5e>
+color bool   = <#35f>
+color ip     = <#d44>
+color rest   = <#557>
+
+// Status colors
+color status_active = <#c80>
+color status_jumped = <#7c7>
+color status_parses = <#c4c>
+color status_none   = <#669>
+color session       = <#669>
+color ip_prompt     = <#d44>
+
+// User prompt
+input prompt = <voffset=2em> </voffset><pos=0><size=85%><voffset=1.4em>$S;$type $status $session $ip</voffset><pos=0></size>$T;($pwd) $P;$usr$T;@$S;$comp $T2;$suffix$input;
+
+// Input sufixes
+// example: (pwd) user@pc > 
+// example: (pwd) user@pc : 
+// example: (pwd) user@pc - 
+
+input shell    = >
+input computer = :
+input file     = -
+
+// Aliases
+alias c = clear
+alias la = ls -la
+alias sessions = session list"
+
+Kernel = {}
+Kernel.DEBUG = false
+Kernel.nightly = false
+Kernel.version = "2.16.2"
+Kernel.keep_session = true
+
+Kernel.sessions = []
+Kernel.session_count = 1
+Kernel.session = null
+Kernel.active_sessions = []
+Kernel.active_session = null
+Kernel.env = {}
+Kernel.env.ACTIVE = 1
+Kernel.env.CURRENT = 1
+
+Kernel.tools = {}
+Kernel.commands = {}
+Kernel.raw_settings = null
+Kernel.settings = {}
+Kernel.old_stdout = []
+Kernel.stdout = []
+Kernel.last_error = null
+Kernel.raw_piped = false
+Kernel.piped = false
+Kernel.silent = false
+
+
+Kernel.new_session = function(session)
+    session.id = self.session_count
+    self.session_count = self.session_count + 1
+    self.sessions.push(session)
+end function
+
+
+Kernel.parse_command = function(text)
+    commands = []
+    pipes = [""]
+    
+    quote = null
+    last = null
+    backs = 0
+
+    for x in text
+        if backs and last != "\" then
+            backs = 0
+            pipes[-1] = pipes[-1][:-1] + "\" + pipes[-1][-1]
+        end if
+
+        if x == "\" and quote != null then
+            backs = (backs + 1) % 2
+            if not backs then
+                pipes[-1] = pipes[-1] + "\"
+            end if
+            last = "\"
+            continue
+
+        else if x == "'" or x == """" then
+            if quote == x and backs == 0 then
+                quote = null
+            else if quote == null then
+                quote = x
+            end if
+
+        else if x == "|" and quote == null and backs == 0 then
+            pipes.push("")
+            continue
+
+        else if x == "&" and quote == null then
+            if last == "&" then
+                commands.push(pipes)
+                pipes = [""]
+                last = null
+            else
+                last = "&"
+            end if
+
+            continue
+        else if x != "&" and last == "&" and quote == null then
+            pipes[-1] = pipes[-1] + last
+        end if
+
+        pipes[-1] = pipes[-1] + x
+        last = x
+    end for
+
+    if pipes[-1] == "" then
+        pipes.pop()
+    end if
+
+    if pipes[0] != "" or pipes.len > 1 then commands.push(pipes)
+    
+    has_history = false
+    for command in enumerate(commands)
+        for pipe in enumerate(command.value)
+            val = pipe.value.trim
+            temp = val.split(" ")
+            
+            // Env variable parsing
+            for t in temp
+                if t.is_match("^\$\w+$") then
+                    env_val = t[1:]
+                    if not self.env.hasIndex(env_val) then continue
+                    result = @self.env[env_val]
+
+                    if typeof(@result) == "function" then
+                        temp[__t_idx] = result()
+                    else if @result isa string then
+                        temp[__t_idx] = "'"+self.env[env_val].replace("'", "\'") + "'"
+                    else
+                        temp[__t_idx] = self.env[env_val]
+                    end if
+                    continue
+                end if
+            end for
+
+            val = temp.join(" ")
+
+            commands[command.key][pipe.key] = val
+            cmd = val.split(" ")[0]
+
+            // Check for history
+            if val.is_match("^\^\d*.*$") then
+                if self.session.history.len == 0 then continue
+
+                parts = val.matches("^\^\d*(?=(\s|$))")
+                if parts == {} then continue
+                part = parts[0]
+
+                if part == "^" then
+                    commands[command.key][pipe.key] = val.replace("\^", self.session.history[-1])
+                    has_history = true
+                    continue
+                end if
+
+                history_index = part[1:].to_int
+                if self.session.history.len <= history_index then continue
+                has_history = true
+                commands[command.key][pipe.key] = val.replace("\"+part, self.session.history[-(history_index+1)])
+            
+            // Check for aliases
+            else if self.settings.hasIndex("alias") and self.settings.alias.hasIndex(cmd) then
+                commands[command.key][pipe.key] = self.settings.alias[cmd] + " " + val.split(" ")[1:].join(" ")
+                // commands[command.key][pipe.key] = self.settings.alias[val]
+                has_history = true
+            end if
+        end for
+    end for
+
+    joined = []
+    for cmd in commands 
+        joined.push(cmd.join(" | "))
+    end for
+    joined = joined.join(" && ")
+
+    result = {}
+    result.parsed = commands
+    result.string = joined
+
+    if has_history then return self.parse_command(joined)
+
+    return result
+end function
+
+
+Kernel.run_command = function(text, add_to_history=true, silent=false)
+    commands = self.parse_command(text)
+    if (self.session.history.len > 0 and self.session.history[-1] != commands.string) or self.session.history.len == 0 then
+        if add_to_history then
+            self.session.history.push(commands.string)
+        end if
+    end if
+
+    prev_silent = self.silent
+    self.silent = silent
+    good_result = true
+
+    for command in commands.parsed
+        self.piped = command.len > 1
+        self.old_stdout = self.stdout.values
+        self.stdout = []
+        self.last_error = null
+        had_success = false
+        
+        for pipe in enumerate(command)
+            parts = smart_split(pipe.value)
+            if len(parts) == 0 then continue
+
+            cmd = parts[0].value
+            cmd_obj = null
+
+            // DEBUG STUFF
+            if self.DEBUG then
+                e = []
+                for p in parts
+                    e.push(p.value)
+                end for
+                print(e)
+            end if
+
+            if self.commands.hasIndex(cmd) then
+                cmd_obj = self.commands[cmd]
+
+            else if self.tools.hasIndex(cmd) then
+                cmd_obj = self.tools[cmd]
+
+            else
+                print("Command not found: " + cmd)
+                good_result = false
+                break
+            end if
+
+            if pipe.key == 0 then
+                // sep = parse_smart_split(parts[1:])
+                result = cmd_obj.call(self, parts[1:])
+
+                if not is_error(result) then 
+                    had_success = true
+                else
+                    self.last_error = result.stack("Kernel.run_command")
+                end if
+
+                if result isa string then
+                    self.print(result)
+                end if
+            else
+                was_piped = self.piped
+                if pipe.key == command.len - 1 then self.piped = false
+
+                self.old_stdout = self.stdout.values
+                self.stdout = []
+
+                for x in self.old_stdout
+                    parts_2 = smart_split(unformat_string(x.trim))
+                    result = cmd_obj.call(self, parts[1:] + parts_2)
+                    if not is_error(result) then 
+                        had_success = true
+                    else
+                        self.last_error = result.stack("Kernel.run_command")
+                        print(self.last_error.trace())
+                    end if
+                end for
+            end if
+
+            if not self.raw_piped then
+                for x in self.stdout 
+                    self.stdout[__x_idx] = """" + x.replace("""", """""") + """"
+                end for
+            end if
+            self.raw_piped = false
+        end for
+
+        if not had_success then
+            good_result = false
+        end if
+        if not had_success and self.last_error != null and not silent then
+            if self.DEBUG then
+                print(self.last_error.trace)
+            else
+                print(self.last_error.message)
+            end if
+            break
+        end if
+    end for
+
+    self.silent = prev_silent
+    return good_result
+end function
+
+
+Kernel.load_tools = function()
+    custom_obj = get_custom_object
+    self.tools = {}
+    self.commands = {}
+
+    shell = self.sessions[0].shell
+    comp = shell.host_computer
+    folders = comp.File("/etc/crow/tools")
+    if folders isa Error then exit(folders.stack("Kernel.load_tools").trace)
+
+    for x in folders.get_files
+        self.print("$P;Loading $T2;<b>" + x.name)
+
+        custom_obj.result = []
+        shell.launch(x.path, "init")
+        if custom_obj.result == [] then
+            print("    <#f00>Failed to import tool")
+            continue
+        end if
+
+        result = get_custom_object.result
+        for tool in result
+            tool._kernel = self
+            self.tools[tool.name] = tool
+
+            if hasIndex(tool, "settings") and tool.settings != null then
+                save = false
+                for category in tool.settings.data
+                    cat = category.key
+                    if not hasIndex(self.settings, cat) then
+                        self.settings[cat] = {}
+                    end if
+                    for setting in category.value
+                        if not hasIndex(self.settings[cat], setting.key) then
+                            self.settings[cat][setting.key] = setting.value
+                            self.raw_settings = self.raw_settings + char(10) + cat + " " + setting.key + " = " + setting.value
+                            save = true
+                        end if
+                    end for
+                end for
+                if save then self.save_settings()
+            end if
+
+            for command in tool.commands
+                if not command.value.standalone then continue
+                self.commands[command.key] = command.value
+            end for
+
+            if tool.hasIndex("on_load") then
+                result = tool.on_load(self)
+                if is_error(result) then
+                    self.print("    "+OsError.New(tool.name+".on_load", result.message).trace)
+                end if
+            end if
+
+            self.print("    "+ "$T;Loaded $T2;" + "$T2;(" + tool.version + ")<b> $S;" + tool.name + " $T2;" + tool.loaded_commands + " $T;/$T2; " + tool.total_commands)
+ 
+            custom_obj.remove("result")
+        end for
+    end for
+    print(" ")
+    self.print("$P;Loaded a total of $S;<b>" + self.tools.len + " </b>$P;tools.")
+end function
+
+
+Kernel.load_settings = function(path="/etc/crow/data/settings.txt")
+    shell = self.sessions[0].shell
+    comp = shell.host_computer
+    file = shell.File(path)
+    settings = {}
+
+    if is_error(file) then
+        if path == "/etc/crow/data/settings.txt" then
+            print("Saving default settings to " + path)
+            result = comp.touch("/etc/crow/data", "settings.txt", SETTINGS_DEFAULT)
+            if result isa Error then return result.stack("Kernel.load_settings")
+
+            error = self.load_settings(path)
+            return error
+        else
+            return file
+        end if
+    end if
+
+    raw_settings = file.get_content
+    if is_error(raw_settings) then return raw_settings.stack("Kernel.load_settings")
+
+    settings = raw_settings.split(char(10))
+    out = {}
+    for i in range(0, settings.len-1)
+        line = settings[i].trim
+
+        if line == "" then continue
+        if line[:2] == "//" then continue
+
+        data = line.split("=")
+        if data.len < 2 then
+            print(Error.New("(Settings)", "Invalid format: '"+line+"' on line "+i+". Skipping").message)
+            continue
+        end if
+        
+        setting_vars = data[0].trim.split(" ")
+        if setting_vars.len != 2 then
+            print(Error.New("(Settings)", "Invalid assignment : '"+line+"' on line "+i+". Skipping").message)
+            continue
+        end if
+
+        catagory = setting_vars[0]
+        key = setting_vars[1]
+        value = data[1:].join("=").trim
+
+        if out.indexes.indexOf(catagory) == null then out[catagory] = {}
+
+        out[catagory][key] = value
+    end for
+
+    self.raw_settings = raw_settings
+    self.settings = out
+end function
+
+
+Kernel.save_settings = function()
+    user = self.sessions[0].user
+    user_settings = "/home/" + user
+    if user == "root" then
+        user_settings = "/root"
+    end if
+    
+    f = self.sessions[0].file.get_file(user_settings+"/.crowrc")
+    if is_error(f) then return f.stack("Kernel.save_settings")
+
+    f.set_content(self.raw_settings)
+end function
+
+
+Kernel.get_prompt = function()
+    type = "file"
+    suffix = self.settings.input.file
+
+    if self.session.shell != null then
+        type = "shell"
+        suffix = self.settings.input.shell
+    else if self.session.computer != null then
+        type = "comp"
+        suffix = self.settings.input.computer
+    end if
+
+    status = self.settings.color.status_none + "None"
+    
+    if self.session == self.active_session then
+        status = self.settings.color.status_active + "Active"
+    else if self.active_sessions.indexOf(self.session) != null then
+        status = self.settings.color.status_parses + "Parses"
+    else if self.session != self.active_session then
+        status = self.settings.color.status_jumped + "Jumped"
+    end if
+
+    ip = "Unknown"
+    if self.session.wan != null then
+        ip = self.session.wan
+    end if
+
+    user = self.session.user
+    user = user.replace("^root$", self.settings.color.root + "root")
+
+    raw_prompt = self.settings.input.prompt
+    raw_prompt = raw_prompt.replace("\$usr", user)
+    raw_prompt = raw_prompt.replace("\$comp", self.session.comp_name)
+    raw_prompt = raw_prompt.replace("\$pwd", self.session.file.path)
+    raw_prompt = raw_prompt.replace("\$type", type)
+    raw_prompt = raw_prompt.replace("\$status", status)
+    raw_prompt = raw_prompt.replace("\$suffix", suffix)
+    raw_prompt = raw_prompt.replace("\$session", self.settings.color.session + self.session.id)
+    raw_prompt = raw_prompt.replace("\$ip", self.settings.color.ip_prompt + ip)
+    // raw_prompt.replace("\$pwd", self.active_session.file.path)
+    return self.color(raw_prompt)
+end function
+
+// Kernel API functions for tools
+Kernel.color = function(object)
+    if not object isa list then
+        object = "" + object
+    end if
+    if not object isa string and not object isa list then return TypeError.New("kernel_color", "string | list[string]", typeof(object))
+    
+    if object isa list then
+        result = []
+        for text in object
+            new_text = self.color(text)
+            if new_text isa Error then return new_text.stack("Kernel.color")
+            result.push(new_text)
+        end for
+        return result
+    else
+        result = object
+        if not self.settings.hasIndex("color") then return Error.New("kernel_color", "Color not found in settings")
+
+        for color in self.settings["color"]
+            result = result.replace("\$"+color.key+";", color.value)
+        end for
+        return result
+    end if
+end function
+
+
+Kernel.print = function(msg, clear)
+    seperated = self.color(str(msg)).split(char(10))
+    self.stdout = self.stdout + seperated
+    if not self.piped and not self.silent then print(self.color(msg), clear)
+end function
+
+Kernel.get_session = function(session_id)
+    for x in self.sessions
+        if x.id == session_id then
+            return x
+        end if
+    end for
+end function
+
+Kernel.line = function(title, length)
+    sep = floor((length - title.len - 4)/2)
+    if title == "" then 
+        self.print("$T;" + "—"*length)
+    else
+        self.print(("$T;" + "—"*sep + "(<b>$T2; " + title + "</b> $T;)" + "—"*sep))
+    end if
+end function
+
+
+Kernel.env.RAND_IP = function()
+    return ""+random(1,255)+"."+random(0,255)+"."+random(0,255)+"."+random(0,255)
+end function

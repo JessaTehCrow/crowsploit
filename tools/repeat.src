@@ -1,0 +1,100 @@
+import_code("../kernel/toolkernel")
+
+until_tool = Tool.New("until", "1.0.2")
+until_tool.short_description = "repeat commands"
+until_tool.long_description = "repeat commands until certain outputs are received, for x amount of times, or other reasons"
+
+success_args = [
+    Arg.New("command", "string").Info("Command to repeat for success"),
+    Kwarg.New("inverted", "bool").Alias("i").Default(false).Alias("i").Info("Repeat until it fails instead"),
+    Kwarg.New("delay", "float").Alias("d").Default(1.0).Info("How much time to wait between executions"),
+    // Kwarg.New("ignore-error", "bool").Default(false).Info("Ignore errors if you expect them")
+]
+
+success_func = function(a)
+    result = null
+
+    while (result != (not a.inverted))
+        if a.delay > 0 and result != null then
+            err = a.kernel.run_command("system wait " + a.delay, false, true)
+            if is_error(err) then return err.stack("until.success")
+        end if
+        result = a.kernel.run_command(a.command, false, true)
+    end while
+
+    for x in a.kernel.stdout
+        if a.kernel.piped or a.kernel.silent then continue
+        _print(x[1:-1])
+    end for
+end function
+
+success_cmd = until_tool.command("success",  success_args, @success_func)
+success_cmd.short_description = "Run until command is successful"
+success_cmd.long_description = "$P;Usage:
+$P;until success $string;'rshell interface'
+$P;until success $string;'scan \$RAND_IP'"
+
+// output
+
+output_args = [
+    Arg.New("result", "string").Info("Regex of result you're looking for"),
+    Arg.New("command", "string").Info("Command to repeat for output checking"),
+    Kwarg.New("inverted", "bool").Alias("i").Default(false).Alias("i").Info("Repeat until it doesn't detect it instead"),
+    Kwarg.New("delay", "float").Alias("d").Default(1.0).Info("How much time to wait between executions"),
+]
+
+output_func = function(a)
+    has_result = null
+    while has_result != (not a.inverted)
+        if has_result != null then
+            err = a.kernel.run_command("system wait " + a.delay, false, true)
+            if is_error(err) then return err.stack("until.output")
+        end if
+        a.kernel.run_command(a.command, false, true)
+        for x in a.kernel.stdout
+            has_result = x.matches(a.result) != {}
+            if has_result then break
+        end for
+    end while
+
+    for x in a.kernel.stdout
+        if a.kernel.piped or a.kernel.silent then continue
+        _print(x[1:-1])
+    end for
+end function
+
+output_cmd = until_tool.command("output", output_args, @output_func)
+output_cmd.short_description = "Run until specified output is detected"
+output_cmd.long_description = "$P;Usage:
+$P;until output $string;'False' 'scan \$RAND_IP' $T;<< Scan until a ip is found with unknown libraries"
+
+// count
+
+count_args = [
+    Arg.New("count", "int").Info("Amount of times to run command"),
+    Arg.New("command", "string").Info("Command to run x times"),
+    Kwarg.New("delay", "float").Alias("d").Default(1).Info("Delay between commands"),
+    Kwarg.New("ignore-error", "bool").Alias("e").Default(false).Info("Don't stop loop if there was an error")
+]
+
+count_func = function(a)
+    if a.count <= 0 then return Error.New("Cannot run command 0 or negative times. Use `until forever` for a never ending loop")
+    for x in range(a.count-1)
+        a.kernel.env.INDEX = a.count-x
+
+        result = a.kernel.run_command(a.command, false, false)
+        if not result and not a["ignore-error"] then break
+
+        err = a.kernel.run_command("system wait "+ a.delay, false)
+        if is_error(err) then return err.stack("until count")
+    end for
+    remove(a.kernel.env, "INDEX")
+end function
+
+count_cmd = until_tool.command("count", count_args, @count_func)
+count_cmd.short_description = "Run command for x times"
+count_cmd.long_description = "Run command for x times (Also sets an environment variable 'INDEX' for every iteration)
+$P;Usage:
+$P;until count $int;5 $string;'echo \$INDEX'"
+
+until_tool.init()

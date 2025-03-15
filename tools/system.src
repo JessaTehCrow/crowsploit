@@ -1,0 +1,2057 @@
+import_code("../kernel/toolkernel")
+import_code("../libs/sessionmanager")
+import_code("../libs/syntax_parser")
+
+mytool = Tool.New("system", "1.8.3")
+
+mytool.short_description = "All default system commands"
+mytool.long_description = "All default system commands"
+
+settings = Settings.init()
+settings.set("color", {
+    "P" : "<#08f>",
+    "S" : "<#0cc>",
+    "T" : "<#669>",
+    "T2" : "<#99c>",
+    "input" : "<#bcf>",
+    "root" : "<#f60>",
+    "error" : "<#e05>",
+    "lsfolder" : "<#08f>",
+    "lsbinary" : "<#0e8>",
+    "lsfile"   : "<#aad>",
+    "lsdata"   : "<#99c>",
+    "lsuser"   : "<#99c>",
+    "lscode"   : "<#fc1>",
+    "lssymlink" : "<#c158d6>",
+    "string" : "<#d63>",
+    "int"    : "<#39d>",
+    "float"  : "<#b5e>",
+    "bool"   : "<#35f>",
+    "ip"     : "<#d44>",
+    "rest"   : "<#557>",
+    "status_active" : "<#c80>",
+    "status_jumped" : "<#7c7>",
+    "status_parses" : "<#c4c>",
+    "status_none"   : "<#669>",
+    "session"       : "<#669>",
+    "ip_prompt"     : "<#d44>",
+})
+
+settings.set("input", {
+    "prompt":"<voffset=2em> </voffset><pos=0><size=85%><voffset=1.4em>$S;$type $status $session $ip</voffset><pos=0></size>$T;($pwd) $P;$usr$T;@$S;$comp $T2;$suffix$input;",
+    "shell" : ">",
+    "computer" : ":",
+    "file" : "-",
+})
+
+settings.set("alias", {
+    "c":"clear",
+    "la":"ls -la",
+})
+
+mytool.settings = settings
+
+
+// Clear screen //
+
+clear_func = function(a)
+    clear_screen()
+end function
+
+clearcmd = mytool.standalone_command("clear", [], @clear_func)
+clearcmd.short_description = "Clears screen"
+clearcmd.long_description = "$P;Examples:
+$S;clear"
+
+
+
+// Help //
+
+help_args = [
+    OptionalArg.New("tool|command", "string").Info("Help for build in command or tool"),
+    OptionalArg.New("command",      "string").Info("Help for tool command"),
+    Kwarg.New("small", "bool").Alias("s").Info("Small help output (Only for the main)")
+]
+
+help_func = function(a)
+    arg_colors = function(command)
+        result = []
+        for x in command.args.args
+            temp = "$" + x.type + ";" + x.name
+            if x.optional then
+                temp = temp + "?"
+            end if
+
+            if x.default != null then
+                temp = temp + "$T;:$T2;" + x.default
+            end if
+            result.push(temp)
+        end for
+
+        if command.has_rest then
+            result.push("$rest;rest")
+        end if
+
+        for x in command.args.kwargs
+            kwarg = x.value
+            temp = "$" + kwarg.type + ";--" + kwarg.name
+            if kwarg.alias != null then
+                temp = "$" + kwarg.type +";-"+kwarg.alias
+            end if
+            if kwarg.default != null then
+                temp = temp + "$T;:$T2;" + kwarg.default
+            end if
+            result.push(temp)
+        end for
+
+        result = a.kernel.color(result)
+        return result.join(" ")
+    end function
+
+    help_cmd = function(command, full=false)
+        args = arg_colors(command)
+        offset = -3
+        if a.small then offset = 1
+        if not full then return [command.name, args, command.short_description][:-offset]
+
+        offset = -4
+        if a.small then offset = 2
+
+        // Arg tabulate
+        arg_data = []
+        for x in command.args.args
+            type = a.kernel.color("$"+x.type+";"+x.type)
+            arg_data.push([x.name, type, ["False","True"][x.optional], x.info][:-offset])
+        end for
+        arg_result = tabulate_data(arg_data, ["Name", "Type", "Optional", "Info"][:-offset], a.kernel.color(["$P;", "$T;", "$S;", "$T2;"]))
+
+        // Kwarg tabulate
+        kwarg_data = []
+        for x in command.args.kwargs
+            k = x.value
+            type = a.kernel.color("$"+k.type+";"+k.type)
+            alias = ""
+            if k.alias then alias = "-" + k.alias
+            kwarg_data.push(["--"+k.name, type, alias, k.info][:-offset])
+        end for
+        kwarg_result = tabulate_data(kwarg_data, ["Name", "Type", "Alias", "Info"][:-offset], a.kernel.color(["$P;", "$T;", "$S;", "$T2;"]))
+        longest = max([arg_result.length, kwarg_result.length])
+
+        // Displaying
+        a.kernel.line("", longest)
+
+        a.kernel.print("<size=200%>$P;" + command.name)
+        a.kernel.print("$S;" + command.name + " " + arg_colors(command))
+
+        // Display args
+        a.kernel.line("Args", longest)
+        a.kernel.print(arg_result.string)
+        a.kernel.print(" ")
+
+        // Display kwargs
+        a.kernel.line("Kwargs", longest)
+        a.kernel.print(kwarg_result.string)
+        a.kernel.print(" ")
+
+        // Display description
+        a.kernel.line("Description", longest)
+        a.kernel.print("$T2;" + command.short_description)
+        a.kernel.print(" ")
+
+        a.kernel.print("$T2;" + command.long_description)
+        a.kernel.line("", longest)
+    end function
+
+    main = a["tool|command"]
+
+    if main != null then
+        if a.kernel.commands.hasIndex(main) then
+            help_cmd(a.kernel.commands[main], true)
+
+        else if a.kernel.tools.hasIndex(main) then
+            main = a.kernel.tools[main]
+
+            if a.command != null then
+                if not main.commands.hasIndex(a.command) then return Error.New("(HelpError) Command not found: " + main.name + "." + a.command)
+                help_cmd(main.commands[a.command], true)
+            else
+                tab_data = []
+                for cmd in main.commands
+                    tab_data.push(help_cmd(cmd.value))
+                end for
+                offset = -3
+                if a.small then offset = 1
+                result = tabulate_data(tab_data, ["name", "args", "description"][:-offset], a.kernel.color(["$S;", "$T2;", "$T2;"]), a.kernel.color(["<i>$T;"]))
+                if result isa Error then return result.stack("system.help")
+
+                a.kernel.line("", result.length)
+                print("$P;<size=200%>" + main.name)
+                print(main.long_description)
+                a.kernel.line("Commands", result.length)
+                print(result.string)
+                a.kernel.line("", result.length)
+            end if
+        end if
+    else
+        tool_data = []
+        for x in a.kernel.tools
+            tool_data.push([x.value.name, x.value.short_description])
+        end for
+        tool_result = tabulate_data(tool_data, ["Name", "Description"], a.kernel.color(["$S;", "$T2;"]), a.kernel.color(["<i>$T;"]))
+
+        offset = -3
+        if a.small then offset = 1
+        command_data = []
+        for x in a.kernel.commands
+            command_data.push([x.value.name, arg_colors(x.value), x.value.short_description][:-offset])
+        end for
+        command_result = tabulate_data(command_data, ["Name", "Args", "Description"][:-offset], a.kernel.color(["$S;", "$T;", "$T2;"]), a.kernel.color(["<i>$T;"]))
+
+
+        longest = max([tool_result.length, command_result.length])
+
+        a.kernel.line("Tools", longest)
+        print(tool_result.string)
+        print(" ")
+
+        a.kernel.line("Commands", longest)
+        print(command_result.string)
+        print(" ")
+        
+        a.kernel.line("", longest)
+    end if
+end function
+
+help = mytool.standalone_command("help", help_args, @help_func)
+help.short_description = "List help for tools and commands"
+help.long_description = "$P;Examples:
+$S;help
+$S;help $string;system
+$S;help $string;system $string;help
+$S;help $string;help"
+
+
+
+// echo //
+
+echo_args = [
+    RestArg.New()
+]
+
+echo_funcs = function(a)
+    print(a.rest.join(" "))
+end function
+
+echo_cmd = mytool.standalone_command("echo", echo_args, @echo_funcs)
+echo_cmd.short_description = "Prints text to screen"
+echo_cmd.long_description  = "$P;Examples:
+$S;echo $string;Hello world!
+$S;echo $string;How ""are you doing"" today?"
+
+
+
+// cat //
+
+cat_args = [
+    Arg.New("file", "string").Info("File to print contents for"),
+    Kwarg.New("force", "bool").Default(false).Alias("f").Info("Use a game exploit to cat files you don't have access to"),
+    Kwarg.New("format", "bool").Default(false).Alias("m").Info("Format the output like it's greyscript")
+]
+
+cat_function = function(a)
+    file = a.kernel.session.file.get_file(unformat_string(a.file))
+
+    if is_error(file) then return file.stack("system.cat")
+    if not file.is_file then return TypeError.New("system.cat", "file", file.file_type)
+    if not file.has_permission("r") then
+        if not a.force then
+            return PermissionError.New("system.cat", "read")
+        end if
+        
+        if a.kernel.session.shell == null then return ObjectError.New("system.cat (force)", "shell")
+        log("Force cat activated")
+
+        exploit_string = "get_custom_object.content=""import"+"_code("""+ file.path + """)"""
+        pfile = a.kernel.session.file
+
+        log("Finding file to create source")
+        things = pfile.goto("/").find_permission("rw", true)
+        target = null
+        for thing in things
+            target = thing
+            if thing.is_folder then break
+        end for
+        if target == null then return OsError.New("system.cat", "Cannot find writable folder for exploit")
+        log("Path found: " + target.path)
+
+        log("Creating file")
+        a.kernel.session.computer.touch(target.path, "catthing.src")
+        wait(0.02)
+        log("Setting content")
+        f = a.kernel.session.shell.File(target.path+"/catthing.src")
+        f.set_content(exploit_string)
+        wait(0.04)
+        log("Building file")
+        log(f.path)
+        log(target.path)
+        build_success = a.kernel.session.shell.build(f.path, target.path)
+        log("result: " + typeof(build_success) + " : " + build_success)
+        if build_success != "" then
+            return Error.New("system.cat (forced)","Failed to compile code. Source file may have double quotes in it")
+        end if
+        log("Launching catthing")
+        wait(0.02)
+        a.kernel.session.shell.launch(target.path + "/catthing")
+        ob = get_custom_object
+        if hasIndex(ob, "content") and @ob["content"] isa string then
+            print(get_custom_object.content)
+            remove(get_custom_object, "content")
+        end if
+        return
+    end if
+
+    content = file.get_content
+    if not a.kernel.piped then 
+        if file.path[-3:] == "src" or a.format then
+            result = parse_syntax(uncolor_string(content), true).replace("\\n", "\<b></b>n")
+            seperated = result.split(char(10))
+            steps = 400
+            for x in range(0,ceil(len(seperated)/steps)-1)
+                _print(seperated[x*steps:(x+1)*steps].join(char(10)))
+                wait(0.1)
+            end for 
+        else
+            _print(uncolor_string(content))
+        end if
+    end if
+
+    for x in content.split(char(10)) 
+        a.kernel.stdout.push(unformat_string(x))
+    end for
+end function
+
+cat_cmd = mytool.standalone_command("cat", cat_args, @cat_function)
+cat_cmd.short_description = "Print contents of file to terminal"
+cat_cmd.long_description  = "$P;Examples:
+$S;cat $string;/etc/passwd
+$S;cat $string;/etc/apt/sources.txt -m"
+
+
+
+// history //
+
+history_args = [
+    Kwarg.New("clear", "bool").Alias("c").Info("Clear history"),
+    Kwarg.New("limit",  "int").Alias("l").Default(10).Info("Amount of history items to display"),
+]
+
+history_function = function(a)
+    if a.clear == true then 
+        a.kernel.session.history = []
+        return
+    end if
+
+    if a.kernel.session.history == [] then return
+
+    history = a.kernel.session.history[-a.limit:]
+    for x in enumerate(history)
+        print("$T2;"+(history.len-1-x.key) + "  $P;" + x.value)
+    end for
+end function
+
+history_cmd = mytool.standalone_command("history", history_args, @history_function)
+history_cmd.short_description = "Show command history"
+history_cmd.long_description  = "$P;Examples:
+$S;history
+$S;history $bool;-clear
+$S;history $int;-limit 30"
+
+
+
+// Ls //
+
+ls_args = [
+    OptionalArg.New("path", "string").Info("Folder to list items from"),
+    Kwarg.New("long",    "bool").Alias("l").Info("Show permissions, User and group"),
+    Kwarg.New("all",     "bool").Alias("a").Info("Show hidden files and folders"),
+    Kwarg.New("longall","bool").Alias("la").Info("Both --long and --all"),
+]
+
+ls_func = function(a)
+    if a.longall then 
+        a.long = true
+        a.all = true
+    end if
+
+    ses_file = a.kernel.session.file
+    if a.path != null then
+        ses_file = ses_file.goto(a.path)
+        if is_error(ses_file) then return ses_file.stack("system.ls")
+    end if
+
+    items = []
+    for x in ses_file.get_all
+        if x.name[0] == "." and not a.all then continue
+        col = a.kernel.color("$ls"+x.file_type+";")
+        extra = ""
+        if x.file_type == "symlink" then
+            real_file = ses_file.get_path(x.path(1))
+            extra = "$T2; >> $ls" + real_file.file_type + ";" + real_file.path
+        end if
+
+        filesize = round(to_int(x.size)/1048576, 2)
+        
+        items.push([col+x.name, x.permissions, x.path, x.owner.replace("root", "$root;root"), x.group.replace("root", "$root;root"), extra, filesize])
+    end for
+
+    if a.long then
+        for x in items
+            print("$lsdata;" + x[1] + " $T;"+x[6] + "MB $lsuser;" + x[3] + " $lsuser;" + x[4] + " " + x[0] + x[5])
+        end for
+    else
+        result = []
+        raw_temp = []
+        col_temp = []
+        for x in items
+            if raw_temp.join("  ").len > 75 then
+                result.push(col_temp.join("  "))
+                col_temp = []
+                raw_temp = []
+            end if
+
+            raw_temp.push(unformat_string(x[0]))
+            col_temp.push(x[0])
+        end for
+
+        if raw_temp.len > 0 then
+            result.push(col_temp.join("  "))
+        end if
+
+        print(result.join(char(10)))
+    end if
+end function
+
+ls = mytool.standalone_command("ls", ls_args, @ls_func)
+ls.short_description = "List files and directories"
+ls.long_description = "$P;Examples:
+$S;ls $bool;-l
+$S;ls $bool;-a
+$S;ls $bool;-la"
+
+
+
+// CD //
+
+cd_args = [
+    OptionalArg.New("path", "string").Info("Path to change into")
+]
+
+cd_func = function(a)
+    file = a.kernel.session.file
+    if a.path == ".." then 
+        a.kernel.session.file = file.parent
+        return
+    end if
+
+    new_path = a.path
+
+    if a.path == null then
+        user = a.kernel.session.user
+        log(user)
+        if user == "root" then
+            new_path = "/root"
+        else if user == "unknown" then
+            return KernelError.New("system.cd", "Unknown user does not have a home folder")
+        else
+            new_path = "/home/" + user
+        end if
+    end if
+    // if file.path != "/" and a.path[0] != "/" then new_path = file.path + "/" + a.path
+    
+    log(new_path)
+    new_path = file.goto(new_path)
+    if is_error(new_path) then return new_path.stack("system.cd")
+
+    a.kernel.session.file = new_path
+end function
+
+cd = mytool.standalone_command("cd", cd_args, @cd_func)
+cd.short_description = "Change directory"
+cd.long_description = "$P;Examples:
+$S;cd $string;/etc
+$S;cd $string;/usr/bin
+$S;cd $string;/home/guest/Desktop"
+
+
+
+// exit
+
+exit_func = function(a)
+    kernel = a.kernel
+    session = kernel.session
+
+    if kernel.active_sessions.indexOf(session) != null then
+        if len(kernel.active_sessions) == 1 or kernel.session == kernel.active_sessions[0] then
+            if confirmation_prompt("Are you sure you want to exit the tool?") then
+                kernel.keep_session = false
+            end if
+        else if kernel.session != kernel.active_session then
+            return OsError.New("system.exit", "Cannot exit parent session of current active session")
+        else
+            kernel.sessions.remove(kernel.sessions.indexOf(session))
+            kernel.active_sessions.pop()
+            kernel.active_session = kernel.active_sessions[-1]
+            kernel.run_command("session use " + kernel.sessions[-1].id, false)
+            print("$P;New active session$T2;: $S; " + kernel.session.id)
+            exit()
+        end if
+    else
+        kernel.sessions.remove(kernel.sessions.indexOf(kernel.session))
+        kernel.run_command("session use " + kernel.active_session.id, false)
+    end if
+end function
+
+_exit =  mytool.standalone_command("exit", [], @exit_func)
+_exit.short_description = "Exit the current session"
+_exit.long_description = "$P;Usage:
+$P;exit"
+
+
+
+// tree //
+
+tree_args = [
+    OptionalArg.New("path",   "string").Info("Path to tree from"),
+    Kwarg.New("raw", "bool").Alias("r").Info("Show raw data. (Handy for piping)")
+]
+
+tree_func = function(a)
+    file = a.kernel.session.file
+    if a.path != null then
+        file = file.goto(a.path)
+        if is_error(file) then return file.stack("system.tree")
+    end if
+
+    sys_tree = file.tree(true)
+
+    last_depth = 0
+    for file in sys_tree
+        if a.raw then
+            print(file.path)
+        else
+            depth = file.path.count("/") - 1
+
+            if depth < last_depth then
+                print("$T;  |" * depth)
+            end if
+            
+            pointer = "$T; "
+            if file.is_folder then pointer = "$T;——Г "
+
+            user = file.owner.replace("root", "$root;root")
+            group = file.group.replace("root", "$root;root")
+            file_color = a.kernel.color("$ls" + file.file_type + ";")
+            extra = ""
+
+            if file.file_type == "symlink" then
+                original = file.get_path(file.path(1))
+                
+                extra = "$T2; >> " + "$ls" + original.file_type + ";" + original.path
+            end if
+
+            filesize = round(to_int(file.size)/1048576, 2)
+
+            print("$T;  |" *depth + pointer + "$lsdata;" + file.permissions + " $T;" + filesize + "MB " + user + " " + group + " " + file_color + file.name + extra)
+
+            last_depth = depth
+        end if
+    end for
+end function
+
+tree = mytool.command("tree", tree_args, @tree_func)
+tree.short_description = "Show the entire folder & file tree"
+tree.long_description = "$P;Usage:
+$S;system tree
+$S;system tree $string;/home
+$S;system tree $string;/etc $bool;--raw $string;
+$S;system tree $bool;-r"
+
+
+
+// grep
+
+grep_args = [
+    Arg.New("pattern",       "string").Info("Pattern to match"),
+    Kwarg.New("invert",      "bool").Alias("v").Info("Don't match pattern"),
+    Kwarg.New("regex",       "bool").Alias("e").Info("Enables regex"),
+    Kwarg.New("ignore-case", "bool").Alias("i").Info("Disable case-sensitive matching"),
+    Kwarg.New("highlight",   "bool").Alias("h").Info("Highlight matches"),
+    Kwarg.New("isolate",     "bool").Alias("s").Info("Only display the match, and ignore everything else"),
+    Kwarg.New("no-color",    "bool").Alias("c").Info("No color"),
+    RestArg.New()
+]
+
+grep_function = function(a)
+    if a.pattern == "" then return Error.New("system.grep", "pattern cannot be empty")
+    text = a.rest.join(" ")
+    if not a.regex then a.pattern = regex_escape(a.pattern)
+
+    amount = null
+    match = text
+    result = null
+    if a["ignore-case"] then
+        a.pattern = a.pattern.lower
+        match = match.lower
+    end if
+
+    if a["no-color"] or a.highlight then
+        text = unformat_string(text)
+    end if
+
+    if not a.isolate then
+        amount = unformat_string(match).matches(a.pattern).len
+
+        if (a.invert and amount == 0) or (not a.invert and amount > 0) then
+            result = text
+        end if
+    else
+        parts = []
+        if a.invert then
+            parts = text.split(a.pattern)
+        else
+            parts = text.matches(a.pattern).values
+        end if
+        result = parts.join(char(10))
+    end if
+
+    if result == "" or result == null then return
+
+    if a.highlight then
+        if a.invert then
+            result = a.kenrnel.color("$P;" + result)
+        else
+            matches = result.matches(a.pattern).values
+            results = result.split(a.pattern)
+            new_result = ""
+
+            for i in results.indexes
+                new_result = new_result + results[i]
+                if matches.hasIndex(i) then new_result = new_result + "$P;" + matches[i] + "</color>"
+            end for
+
+            result = a.kernel.color(new_result)
+        end if
+    end if
+
+    print(result)
+end function
+
+grep = mytool.standalone_command("grep", grep_args, @grep_function)
+grep.short_description = "Match strings (Mostly used with piping)"
+grep.long_description = "$P;Usage:
+$S;tree $bool;--raw $T;| $S;grep $bool;-e $string;""Mail.txt|Bank.txt"""
+
+
+
+// Find //
+
+find_args = [
+    OptionalArg.New("path", "string").Info("Path to start search from"),
+    Kwarg.New("name",  "string").Alias("n").Info("Match Name with item"),
+    Kwarg.New("perm",  "string").Alias("p").Info("Match permissions with item"),
+    Kwarg.New("user",  "string").Alias("o").Info("Match user with item"),
+    Kwarg.New("group", "string").Alias("g").Info("Match group with item"),
+    Kwarg.New("type",  "string").Alias("t").Info("Match file type")
+]
+
+find_func = function(a)
+    file = a.kernel.session.file
+
+    if a.perm then
+        err = file.has_permission(a.perm)
+        if is_error(err) then return err.stack("system.find")
+    end if
+
+    if a.type and ["binary", "file", "folder", "code"].indexOf(a.type) == null then
+        return FormatError.New("system.find", "binary, file, folder or code", a.type)
+    end if
+
+    if a.path then
+        file = file.goto(a.path)
+        if is_error(file) then return file.stack("system.find")
+    end if
+
+    sys_tree = file.tree(true)
+    if is_error(sys_tree) then return sys_tree.stack("system.find")
+
+    result = 0
+    for file in sys_tree
+        if a.name and not file.name.is_match(a.name) then continue
+        if a.type and file.file_type != a.type then continue
+        if a.user and file.owner != a.user then continue
+        if a.group and file.group != a.group then continue
+        if a.perm and not file.has_permission(a.perm) then continue
+
+        result = result + 1
+        print("$ls"+file.file_type+";"+file.path)
+    end for
+    if result == 0 then return OsError.New("system.find","No matches found")
+end function
+
+find = mytool.standalone_command("find", find_args, @find_func)
+find.short_description = "Find files based on attributes"
+find.long_description = "$P;Usage:
+$S;find $string;--perm rwx --user root
+$S;find $string;--type binary -p rwx
+$S;find $string;/bin"
+
+
+
+// reload //
+
+reload_args = [
+    Kwarg.New("commands", "bool").Alias("c").Info("Reloads the commands"),
+    Kwarg.New("settings", "bool").Alias("s").Info("Reloads the user settings")
+]
+
+reload_func = function(a)
+    user = a.kernel.sessions[0].user
+    user_settings = "/home/" + user
+    if user == "root" then
+        user_settings = "/root"
+    end if
+    if not a.settings and not a.commands then
+        a.settings = 1
+        a.commands = 1
+    end if
+
+    if a.commands then
+        a.kernel.load_tools()
+    end if
+    if a.settings then
+        err = a.kernel.load_settings(user_settings + "/.crowrc")
+        if is_error(err) then log(err.stack("system.reload").trace)
+        if is_error(err) then 
+            print("$error;Failed to load settings from " + user_settings + "/.crowrc")
+        else
+            print("$S;Loaded settings from " + user_settings + "/.crowrc")
+        end if
+    end if
+end function
+
+reload = mytool.command("reload", reload_args, @reload_func)
+reload.short_description = "Reload commands or settings"
+reload.long_description = "If neither --commands or --settings is provided, it reloads both.
+
+$P;Usage:
+$S;system reload
+$S;system reload $bool;--commands
+$S;system reload $bool;-s"
+
+
+
+// move //
+
+mv_args = [
+    Arg.New("path", "string").Info("File to move"),
+    Arg.New("new_path", "string").Info("Path to move to"),
+]
+
+mv_func = function(a)
+    ses_file = a.kernel.session.file
+
+    target = ses_file.get_path(a.path)
+    if is_error(target) then return target.stack("system.mv")
+    p = Path.New(target.path)
+    if not target.has_permission("rw") then return PermissionError.New("system.mv", "read & write")
+    if p.is_parent_of(ses_file.path) then return OsError.New("system.rm", "Cannot remove folder you are inside of")
+    old_name = target.name
+    filename = target.name
+    
+    new_path = ses_file.get_path(a.new_path)
+    if not is_error(new_path) and not new_path.is_folder then
+        filename = new_path.name
+        new_path = new_path.parent
+    end if
+
+    if is_error(new_path) then
+        if a.new_path.count("\/") == 0 then
+            new_path = ses_file
+        end if
+        filename = a.new_path.split("/")[-1]
+    end if
+
+    if is_error(new_path) then return new_path.stack("system.mv")
+    if not new_path.has_permission("w") then return PermissionError.New("system.mv", "write")
+    if filename.len >= 128 then return OsError.New("system.mv", "Filename cannot be above 128 characters")
+    
+    dir = new_path.path
+
+    err = target.move(dir, filename)
+    if is_error(err) then return err.stack("system.mv")
+    if err isa string then return Error.New(err)
+    print("$T;Moved $ls" + target.file_type + ";" + old_name + " $T;to $ls" + target.file_type + ";" + dir + "/" + filename)
+end function
+
+mv = mytool.standalone_command("mv", mv_args, @mv_func)
+mv.short_description = "Move files / folders"
+mv.long_description = "$P;Usage:
+$S;mv $string;sources.txt /etc/apt/sources.txt
+$S;mv $string;sources.txt /etc/apt/"
+
+
+
+// copy //
+
+copy_args = [
+    Arg.New("file", "string").Info("File to copy"),
+    Arg.New("target", "string").Info("Target path"),
+]
+
+copy_func = function(a)
+    ses_file = a.kernel.session.file
+
+    target = ses_file.get_path(a.file)
+    if is_error(target) then return target.stack("system.cp")
+    if not target.has_permission("rw") and a.file != "/" then return PermissionError.New("system.cp", "read & write")
+
+    old_name = target.name
+    filename = target.name
+    
+    p = Path.New(ses_file.path)
+    p.change(a.target)
+
+    new_path = ses_file.get_path(p.path)
+    if not is_error(new_path) and not new_path.is_folder then
+        filename = new_path.name
+        new_path = new_path.parent
+    else if is_error(new_path) then
+        new_path = ses_file.goto(p.folder)
+        filename = p.name
+    end if
+    
+    if is_error(new_path) then
+        if a.target.count("\/") == 0 then
+            new_path = ses_file
+        end if
+        filename = a.target.split("/")[-1]
+    end if
+    
+    if is_error(new_path) then return new_path.stack("system.cp")
+    if not new_path.has_permission("w") then return PermissionError.New("system.cp", "write")
+    if filename.len >= 128 then return OsError.New("system.cp", "Filename cannot be above 128 characters")
+
+    dir = new_path.path
+    
+    err = target.copy(dir, filename)
+    if is_error(err) then return err.stack("system.cp")
+    if err isa string then return Error.New(err)
+    print("$T;Copied $ls" + target.file_type + ";" + old_name + " $T;to $ls" + target.file_type + ";" + dir + "/" + filename)
+end function
+
+copy = mytool.standalone_command("cp", copy_args, @copy_func)
+copy.short_description = "Copy file to location"
+copy.long_description = "$P;Usage:
+$S;cp $string;/home/guest/malware /etc/init.d
+$S;cp $string;/etc/apt/sources.txt /root"
+
+
+
+// rm //
+
+rm_args = [
+    Arg.New("path", "string").Info("Path to remove"),
+    Kwarg.New("recursive", "bool").Alias("r").Info("Recursive to remove folder")
+]
+
+rm_func = function(a)
+    ses_file = a.kernel.session.file
+
+    
+    target = ses_file.get_path(a.path)
+    if is_error(target) then return target.stack("system.rm")
+    p = Path.New(target.path)
+    if not target.has_permission("rw") then return PermissionError.New("system.rm", "write")
+    if target.is_folder and not a.recursive then return OsError.New("system.rm", "Unable to remove folder. Use --recursive to delete entire folder")
+    if p.is_parent_of(ses_file.path) then return OsError.New("system.rm", "Cannot remove folder you are inside of")
+
+    type = target.file_type
+    target.delete()
+    print("$T;Deleted $ls" + type + ";" + target.path)
+end function
+
+rm = mytool.standalone_command("rm", rm_args, @rm_func)
+rm.short_description = "Remove file or folder"
+rm.long_description = "$P;Usage:
+$S;rm $string;/lib/kernel_module.so
+$S;rm $string;/etc/passwd"
+
+
+
+// touch //
+
+touch_args = [
+    Arg.New("name", "string").Info("File to create")
+]
+
+touch_func = function(a)
+    if a.kernel.session.computer == null then return ObjectError.New("system.touch", "computer")
+    ses_file = a.kernel.session.file
+    ses_comp = a.kernel.session.computer
+
+    target = ses_file.get_file(a.name)
+    if not is_error(target) then return OsError.New("system.touch", "File already exists")
+
+    p = Path.New(ses_file.path)
+    p.change(a.name)
+
+    err = ses_comp.touch(p.folder, p.name)
+    if is_error(err) then return err.stack("system.touch")
+
+    print("$T;Created file $lsfile;" + a.name)
+end function
+
+touch = mytool.standalone_command("touch", touch_args, @touch_func)
+touch.short_description = "Create new file"
+touch.long_description = "$P;Usage:
+$S;touch $string;file.txt
+$S;touch $string;/home/guest/Desktop/hello.txt"
+
+
+
+// mkdir
+
+mkdir_args = [
+    Arg.New("name", "string").Info("File to create")
+]
+
+mkdir_func = function(a)
+    if a.kernel.session.computer == null then return ObjectError.New("system.mkdir", "computer")
+    ses_file = a.kernel.session.file
+    ses_comp = a.kernel.session.computer
+
+    target = ses_file.get_file(a.name)
+    if not is_error(target) then return OsError.New("system.mkdir", "Folder already exists")
+
+    err = null
+    if a.name[0] == "/" then
+        err = ses_comp.create_folder(parent_path(a.name), a.name.split("/")[-1])
+    else
+        err = ses_comp.create_folder(ses_file.path, a.name)
+    end if
+    if is_error(err) then return err.stack("system.mkdir")
+
+    print("$T;Created folder $lsfolder;" + a.name)
+end function
+
+mkdir = mytool.standalone_command("mkdir", mkdir_args, @mkdir_func)
+mkdir.short_description = "Create new directory"
+mkdir.long_description = "$P;Usage
+$S;mkdir $string;newdir
+$S;mkdir $string;/root/owo"
+
+
+
+// Ps
+
+ps_func = function(a)
+    if a.kernel.session.computer == null then return ObjectError.New("system.ps", "computer")
+    ses_comp = a.kernel.session.computer
+
+    procs = ses_comp.show_procs
+    result = []
+    for x in procs.split(char(10))[1:]
+        data = x.split(" ")
+        data[0] = a.kernel.color(data[0].replace("^root$", "$root;root"))
+        result.push(data)
+    end for
+
+    data = tabulate_data(result, ["User", "PID", "CPU", "MEM", "Command"], a.kernel.color(["$T2;", "$S;", "$T;", "$T;", "$P;"]))
+    a.kernel.line("Processes", data.length)
+    print(data.string)
+    a.kernel.line("", data.length)
+end function
+
+ps = mytool.standalone_command("ps", [], @ps_func)
+ps.short_description = "Show running processes"
+ps.long_description  = "$P;Usage:
+$S;ps"
+
+
+
+// chown
+
+chown_args = [
+    Arg.New("option", "string").Info("New file info"),
+    Arg.New("file", "string").Info("Target file"),
+    Kwarg.New("recursive", "bool").Default(false).Alias("r").Info("Recursively set new owner & group")
+]
+
+chown_func = function(a)
+    ses_file = a.kernel.session.file
+    p = Path.New(ses_file.path)
+    p.change(a.file)
+
+    target = ses_file.get_path(p.path)
+    if is_error(target) then return target.stack("system.chown")
+    if not target.has_permission("rw") then return PermissionError.New("system.chown", "write")
+
+    raw = a.option.split(":")
+    if raw.len > 2 then return Error.New("Invalid format. use 'user:group'")
+
+    user = raw[0]
+    group = ""
+    if raw.len == 2 then group = raw[1]
+
+    err = target.set_owner(user, a.recursive)
+    if is_error(err) then return err.stack("system.chown")
+    if group then
+        err = target.set_group(group, a.recursive)
+        if is_error(err) then return err.stack("system.chown")
+    end if
+
+    print("$T;Set new permissions to $P;" + a.option)
+end function
+
+chown = mytool.standalone_command("chown", chown_args, @chown_func)
+chown.short_description = "Change file owner / group"
+chown.long_description = "$P;Usage:
+$S;chown $string;user:group file.txt
+$S;chown $string;root:root file.txt
+$S;chown $string;user file.txt"
+
+
+
+// chmod
+
+chmod_args = [
+    Arg.New("option", "string").Info("New file info"),
+    Arg.New("file", "string").Info("Target file"),
+    Kwarg.New("recursive", "bool").Default(false).Alias("r").Info("Recursively set permission")
+]
+
+chmod_func = function(a)
+    ses_file = a.kernel.session.file
+    p = Path.New(ses_file.path)
+    p.change(a.file)
+
+    target = ses_file.get_path(p.path)
+
+    if is_error(target) then return target.stack("system.chown")
+    if not target.has_permission("rw") then return PermissionError.New("system.chown", "write")
+    
+    err = target.chmod(a.option, a.recursive)
+    if is_error(err) then return err
+
+    print("$T;Set new permissions to $P;" + target.permissions)
+end function
+
+chmod = mytool.standalone_command("chmod", chmod_args, @chmod_func)
+chmod.short_description = "Change file permissions"
+chmod.long_description = "$T;Format: $S; [oug][-+][rwx]
+
+$P;Usage:
+$S;chmod $string;o-rwx file.txt
+$S;chmod $string;g-w file.txt
+$S;chmod $string;u-rw file.txt"
+
+
+
+// groups
+
+groups_args = [
+    Arg.New("user", "string").Info("User to check groups from")
+]
+
+groups_func = function(a)
+    if a.kernel.session.computer == null then return ObjectError.New("system.groups", "computer")
+    result = a.kernel.session.computer.groups(a.user)
+    if not result then return OsError.New("system.groups", "No user found with name '"+a.user+"'")
+    print(result.split(char(10))[:-1].join(", "))
+end function
+
+groups = mytool.command("groups", groups_args, @groups_func)
+groups.short_description = "Get groups for user"
+groups.long_description = "$P;Usage:
+$S;system groups $string;root
+$S;system groups $string;guest"
+
+
+
+// iwlist
+
+iwlist_func = function(a)
+    if a.kernel.session.computer == null then return ObjectError.New("system.iwlist", "computer")
+    comp = a.kernel.session.computer
+
+    wifis = comp.wifi_networks("wlan0")
+
+    if wifis == null then return OsError.New("system.iwlist", "No wifi card found")
+
+    tab_data = []
+    for x in wifis
+        tab_data.push(x.split(" "))
+    end for
+    result = tabulate_data(tab_data, ["BSSID", "PWR", "ESSID"], a.kernel.color(["$T2;", "$S;", "$P;"]))
+
+    a.kernel.line("Networks", result.length)
+    print(result.string)
+    a.kernel.line("", result.length)
+end function
+
+iwlist = mytool.command("iwlist", [], @iwlist_func)
+iwlist.short_description = "List all available networks"
+iwlist.long_description = "$P;Usage:
+$S;system iwlist"
+
+
+
+// Kill
+
+kill_args = [
+    Arg.New("process", "string").Info("Process to kill. Either name or PID")
+]
+
+kill_func = function(a)
+    if a.kernel.session.computer == null then return ObjectError.New("scan.kill", "computer")
+    comp = a.kernel.session.computer
+    raw_procs = comp.show_procs
+
+    procs = []
+    tab_data = []
+    for x in raw_procs.split(char(10))[1:]
+        data = x.split(" ")
+        usr = data[0].replace("^root$", a.kernel.color("$root;root$T2;"))
+        pid = data[1]
+        cpu = data[2]
+        mem = data[3]
+        cmd = data[4]
+
+        if pid == a.process or cmd.indexOf(a.process) != null then
+            tab_data.push([usr, pid, cpu, mem, cmd])
+            procs.push(pid)
+        end if
+    end for
+    result = tabulate_data(tab_data, ["User", "PID", "CPU", "MEM", "Program"], a.kernel.color(["$P;", "$S;", "$T2;", "$T2;", "$S;"]))
+    if procs.len == 0 then 
+        print("$T;No processes found to kill")
+        return
+    end if
+
+    a.kernel.line("Processes",result.length)
+    print(result.string)
+    a.kernel.line("", result.length)
+
+    uinp = ":3"
+    while ["y", "n", "yes", "no"].indexOf(uinp.lower()) == null
+        uinp = user_input(a.kernel.color("$P;Kill $S;<b>" + procs.len + "</b> $P;processes? $T;(y/n)$T2; :$input; "))
+    end while
+    if ["n", "no"].indexOf(uinp.lower()) != null then return
+
+    for proc in procs
+        result = comp.close_program(to_int(proc))
+        if is_error(result) then
+            print(result.message)
+        else
+            print("$P;Killed process $S;<b>" + proc)
+        end if
+    end for
+end function
+
+kill = mytool.standalone_command("kill", kill_args, @kill_func)
+kill.short_description = "Kill processes on the system"
+kill.long_description  = "$P;Usage:
+$S;kill $string;FileExplorer
+$S;kill $string;3361"
+
+
+
+// ifconfig
+
+ifconfig_func = function(a)
+    comp = a.kernel.session.computer
+    router = a.kernel.session.router
+    public = "Unknown"
+
+    if not comp then return ObjectError.New("system.ifconfig", "computer")
+    if not comp.is_network_active then 
+        print("$T;No active network.")
+        return
+    end if
+    if not router then 
+        public = comp.public_ip
+    else
+        public = router.public_ip
+    end if
+
+    local = comp.local_ip
+    gateway = comp.network_gateway
+
+    print("$S;Public  $T;: $P; " + public)
+    print("$S;Local   $T;: $P; " + local)
+    print("$S;Gateway $T;: $P; " + gateway)
+    print("$T;Connected via: $S;" + comp.active_net_card)
+end function
+
+ifconfig = mytool.standalone_command("ifconfig", [], @ifconfig_func)
+ifconfig.short_description = "Show network information"
+ifconfig.long_description = "$P;Usage:
+$S;ifconfig"
+
+
+
+// reload commands
+
+reload_func = function(a)
+    a.kernel.load_tools()
+end function
+
+
+
+// run
+
+run_args = [
+    Arg.New("program", "string").Info("What program to execute"),
+    RestArg.New()
+]
+
+run_func = function(a)
+    if a.kernel.session.shell == null then return ObjectError.New("system.run", "shell")
+    args = a.rest
+    file = a.kernel.session.file.get_file(a.program)
+
+    if is_error(file) then return file.stack("system.run")
+    // if not file.has_permission("x") then return PermissionError.New("system.run", "execute")
+
+    result = a.kernel.session.shell.launch(file.path, args.join(" "))
+    log(str(result))
+
+end function
+
+
+run = mytool.command("run", run_args, @run_func)
+run.short_description = "Run baseline shell command"
+run.long_description = "$P;Usage:
+$S;system run /bin/ls"
+
+
+
+// debug
+
+debug_func = function(a)
+    a.kernel.DEBUG = not a.kernel.DEBUG
+    print("$P;Toggled debug $S;" + ["Off", "On"][a.kernel.DEBUG])
+end function
+
+debug = mytool.command("debug", [], @debug_func)
+debug.short_description = "Toggle debug on / off"
+debug.long_description = "Toggle debug on / off"
+
+
+
+// ftp
+
+ftp_args = [
+    Arg.New("host", "ip").Info("Host to connect to"),
+    Kwarg.New("username", "string").Alias("u").Info("User to login with"),
+    Kwarg.New("password", "string").Alias("p").Info("Password to login with"),
+    Kwarg.New("port", "int").Default(21).Info("Port to connect to"),
+    Kwarg.New("stay", "bool").Default(false).Alias("s").Info("Stay in current session")
+]
+
+ftp_func = function(a)
+    if a.kernel.session.shell == null then return ObjectError.New("system.ftp", "shell")
+    user = a.username
+    pass = a.password
+
+    if user == null then
+        user = user_input("<#888>Username: <#fff>")
+    end if
+    if pass == null then
+        pass = user_input("<#888>Password: <size=0.1%>")
+    end if
+
+    result = a.kernel.session.shell.connect_service(a.host, a.port, user, pass, "ftp")
+    if is_error(result) then return result.stack("system.ftp")
+    ses = Session.New(result)
+    a.kernel.new_session(ses)
+
+    print("$P;New session created")
+    print("$S;"+ ses.user +"$T;@$S;"+ ses.comp_name)
+    print("$T;ID:$P;"+ses.id)
+
+    if not a.stay then
+        a.kernel.session = ses
+        a.kernel.run_command("session", false)
+    end if
+end function
+
+ftp = mytool.command("ftp", ftp_args, @ftp_func)
+ftp.short_description = "Connect to an ftp port and get a shell :3"
+ftp.long_description = "$P;Usage
+$P;system ftp $string;192.168.1.12
+$P;system ftp $string;192.168.1.12 $int;-p 21
+$P;system ftp $string;192.168.1.12 $int;-p 21 $string;-u root -p password
+$P;system ftp $string;192.168.1.12 $int;-p 32 $string;--username root --password password"
+
+
+
+// ssh
+
+ssh_args = [
+    Arg.New("host", "string").Info("Host to connect to"),
+    Kwarg.New("username", "string").Alias("u").Info("User to login with"),
+    Kwarg.New("password", "string").Alias("p").Info("Password to login with"),
+    Kwarg.New("port", "int").Default(22).Info("Port to connect to"),
+    Kwarg.New("stay", "bool").Default(false).Alias("s").Info("Stay in current session")
+]
+
+ssh_func = function(a)
+    if a.kernel.session.shell == null then return ObjectError.New("system.ftp", "shell")
+    host = a.host.split("@")
+    username = a.username
+    password = a.password
+
+    if len(host) != 2 and len(host) != 1 then
+        return ValueError.New("system.ssh", "user@ip | ip", a.host)
+    end if
+    if len(host) == 2 then
+        if not is_valid_ip(host[1]) then return ValueError.New("system.ssh", "ip", host[1])
+        username = host[0]
+        host = host[1]
+    end if
+    if password == null then
+        password = user_input("<#888>Password: <size=0.1%>")
+    end if
+    if a.username != null then
+        host = a.host
+    end if
+
+    log(host)
+    log(username)
+    log(password)
+    result = a.kernel.session.shell.connect_service(host, a.port, username, password, "ssh")
+    if is_error(result) then return result.stack("system.ssh")
+    ses = Session.New(result)
+    a.kernel.new_session(ses)
+
+    print("$P;New session created")
+    print("$S;"+ ses.user +"$T;@$S;"+ ses.comp_name)
+    print("$T;ID:$P;"+ses.id)
+    if not a.stay then
+        a.kernel.session = ses
+        a.kernel.run_command("session", false)
+    end if
+end function
+
+ssh = mytool.command("ssh", ssh_args, @ssh_func)
+ssh.short_description = "Connect to an ssh port and get a shell :3"
+ssh.long_description = "$P;Usage
+$P;system ssh $string;root@192.168.1.1
+$P;system ssh $string;192.168.1.1 -u root -p password"
+
+
+
+// su
+
+su_args = [
+    Arg.New("user", "string").Info("Username to login as"),
+    OptionalArg.New("password", "string").Info("Password to try to login as"),
+    Kwarg.New("session", "bool").Alias("s").Default(0).Info("To create a new session from the login")
+]
+
+su_func = function(a)
+    if a.kernel.session != a.kernel.active_session then return OsError.New("system.su", "Cannot escelate on a non-active system")
+    if a.password == null then
+        a.password = user_input(a.kernel.color("$T2;Password $T;: <size=0.1%>"))
+    end if
+
+    shell = get_shell(a.user, a.password)
+    if shell == null then return OsError.New("system.su", "Failed to login as " + a.user)
+    ses = Session.New(Shell.New(shell))
+    if is_error(ses) then return ses.stack("system.su")
+
+    if ses.computer.is_network_active then
+        ses.router = get_router
+    end if
+
+    if a.session then
+        a.kernel.new_session(ses)
+        a.kernel.run_command("session use " + ses.id, false)
+    else
+        a.kernel.session.overwrite(ses)
+        a.kernel.run_command("session", false)
+    end if
+
+end function
+
+su = mytool.standalone_command("su", su_args, @su_func)
+su.short_description = "Login as another user"
+su.long_description = "$P;Usage:
+$P;su $string;root ""password""
+$P;su $string;some_user"
+
+
+
+// download
+
+download_args = [
+    Arg.New("file", "string").Info("File to download from session"),
+    Kwarg.New("from", "int").Alias("f").Info("Session to download from (Defaults to active session)")
+]
+
+download_func = function(a)
+    if a.kernel.session.shell == null then return ObjectError.New("system.download", "shell")
+
+    session = a.kernel.active_session
+    if a["from"] != null then
+        session = null
+        for x in a.kernel.sessions
+            if x.id == a["from"] then
+                session = x
+            end if
+        end for
+    end if
+    
+    if session == a.kernel.session then return OsError.New("system.download", "Cannot download from same session")
+    if session == null then return OsError.New("system.download", "Session with id '"+a["from"]+"' not found")
+    if session.shell == null then return OsError.New("system.download", "Target session needs shell access")
+    if not a.kernel.session.file.has_permission("rw") then OsError.New("system.download", "Current session path needs read/write access")
+    file = session.file.get_path(a.file)
+    if is_error(file) then return file.stack("system.download")
+    if not file.has_permission("rw") then return OsError.New("system.download", "File needs read/write access")
+
+    log(file.path)
+    log(a.kernel.session.file.path)
+
+    res = session.shell.scp(file.path, a.kernel.session.file.path, a.kernel.session.shell)
+    if is_error(res) then return res.stack("system.download")
+end function
+
+download = mytool.standalone_command("download", download_args, @download_func)
+download.short_description = "Download from the active session to the current (or another) session"
+download.long_description = "$P;Usage:
+$P;download $string;/etc/passwd
+$P;download $string;/user/Jessa/traffic_network"
+
+
+
+// upload
+
+upload_args = [
+    Arg.New("file", "string").Info("File to upload to session"),
+    Kwarg.New("to", "int").Alias("t").Info("Session to upload to (Defaults to active session)")
+]
+
+upload_func = function(a)
+    // if a.kernel.session.shell == null then return ObjectError.New("system.upload", "shell")
+
+    session = a.kernel.active_session
+    if a.to != null then
+        session = null
+        for x in a.kernel.sessions
+            if x.id == a.to then
+                session = x
+            end if
+        end for
+    end if
+    
+    if session == a.kernel.session then return OsError.New("system.upload", "Cannot upload to same session")
+    if session == null then return OsError.New("system.upload", "Session with id '"+a.to+"' not found")
+    if not session.file.has_permission("rw") then OsError.New("system.upload", "Target session path needs read/write access")
+    file = a.kernel.session.file.get_path(a.file)
+    if is_error(file) then return file.stack("system.upload")
+    
+    file_overwrite = false
+    if file.has_permission("r") and file.is_file then file_overwrite = true
+
+    if session.shell == null and not file_overwrite then return OsError.New("system.upload", "Target session needs shell access")
+    if not file.has_permission("r") and not file_overwrite then return OsError.New("system.upload", "File needs read access")
+
+    if not file_overwrite then
+        res = a.kernel.session.shell.scp(file.path, session.file.path, session.shell)
+        if is_error(res) then return res.stack("system.upload")
+    else
+        session.computer.touch(session.file.path, file.name)
+        f = session.file.get_file(session.file.path + "/" + file.name)
+        if is_error(f) then return f.stack("system.upload")
+        f.set_content(file.get_content)
+    end if
+end function
+
+upload = mytool.standalone_command("upload", upload_args, @upload_func)
+upload.short_description = "Upload a file from the current session to the active (or another) session"
+upload.long_description = "$P;Usage:
+$P;upload $string;/var/virus $int;--to 2
+$P;upload $string;/user/Jessa/traffic_network "
+
+
+
+// ping
+
+ping_args = [
+    Arg.New("host", "string").Info("Host to ping")
+]
+
+ping_func = function(a)
+    host = a.host.trim
+    if not is_valid_ip(host) then
+        // matches (https://)(www.)host.tld
+        if not host.is_match("^(https:\/\/)?(w{3}\.)?\w+\.(com|org|net|info)$") then return ValueError.New("system.ping", "ip/host", host)
+        host = nslookup(host)
+        if host == "IP not found" then return OsError.New("system.ping", "Host address not found")
+    end if
+
+    shell = a.kernel.session.shell
+    if not is_lan_ip(host) then
+        shell = a.kernel.sessions[0].shell
+    end if
+
+    if shell == null then return ObjectError.New("system.ping", "shell")
+
+    result = shell.ping(host)
+    msg = "$P;Host $S;" + host + " $P;is "
+    if is_error(result) then return result.stack("system.ping")
+    if result then
+        msg = msg + "$S;Reachable"
+    else
+        msg = msg + "$error;Not reachable"
+    end if
+    print(msg)
+end function
+
+ping_cmd = mytool.standalone_command("ping", ping_args, @ping_func)
+ping_cmd.short_description = "Ping host to see if it's reachable"
+ping_cmd.long_description = "$P;Usage:
+$P;ping $string;192.168.0.1
+$P;ping $string;134.122.3.12
+$P;ping $string;mybank.org
+$P;ping $string;www.mybank.org"
+
+
+
+// build
+
+build_args = [
+    Arg.New("source", "string").Info("Source file to build"),
+    Kwarg.New("allow-import", "bool").Alias("a").Default(0).Info("Allow final binary to be imported")
+]
+
+build_func = function(a)
+    if a.kernel.session.shell == null then return ObjectError.New("system.build", "shell")
+    file = a.kernel.session.file.get_file(a.source)
+    if is_error(file) then return file.stack("system.build")
+
+    dest = a.kernel.session.file.path
+
+    log(a["allow-import"])
+    res = a.kernel.session.shell.build(file.path, dest, a["allow-import"])
+    if is_error(res) then return res.stack("system.build")
+    print("$S;Successfully build binary")
+end function
+
+build_cmd = mytool.command("build", build_args, @build_func)
+build_cmd.short_description = "Build code files into binaries"
+build_cmd.long_description = "$P;Usage:
+$P;system build $lscode;/root/myprogram.src
+$P;system build $lscode;/root/myprogram.src $bool;--allow-import"
+
+
+
+// groupadd
+
+groupadd_args = [
+    Arg.New("user", "string").Info("Which user to add to the group"),
+    Arg.New("group", "string").Info("Group name to add to the user")
+]
+
+groupadd_func = function(a)
+    ses = a.kernel.session
+    if ses.computer == null then return ObjectError.New("system.groupadd", "computer")
+    if not ses.user == "root" then return PermissionError.New("system.groupadd", "root")
+
+    res = ses.computer.create_group(a.user, a.group)
+    if is_error(res) then return res.stack("system.groupadd")
+    print("$S;Added $T2;" + a.user + " $S;to group $T2;" + a.group)
+end function
+
+groupadd = mytool.command("groupadd", groupadd_args, @groupadd_func)
+groupadd.short_description = "Add groups to users"
+groupadd.long_description = "$P;Usage:
+$P;system addgroup $string;root coolgroup
+$P;system addgroup $string;jessa crows"
+
+
+
+// groupdel
+
+groupdel_args = [
+    Arg.New("user", "string").Info("Which user to add to the group"),
+    Arg.New("group", "string").Info("Group name to add to the user")
+]
+
+groupdel_func = function(a)
+    ses = a.kernel.session
+    if ses.computer == null then return ObjectError.New("system.groupdel", "computer")
+    if not ses.user == "root" then return PermissionError.New("system.groupdel", "root")
+
+    res = ses.computer.delete_group(a.user, a.group)
+    if is_error(res) then return error.stack("system.groupdel")
+    print("$S;Removed $T2;" + a.user + " $S;from the group $T2;" + a.group)
+end function
+
+groupdel = mytool.command("groupdel", groupdel_args, @groupdel_func)
+groupdel.short_description = "Remove users from a group"
+groupdel.long_description = "$P;Usage:
+$P;system groupdel $string;root coolgroup
+$P;system groupdel $string;jessa crows"
+
+
+
+// userdel
+
+userdel_args = [
+    Arg.New("user", "string").Info("Which user to delete from existance"),
+    Kwarg.New("home", "bool").Default(false).Alias("h").Info("Delete their home directory as well")
+]
+
+userdel_func = function(a)
+    ses = a.kernel.session
+    if ses.computer == null then return ObjectError.New("system.userdel", "computer")
+    if not ses.user == "root" then return PermissionError.New("system.userdel", "root")
+
+    res = ses.computer.delete_user(a.user, a.home)
+    if is_error(res) then return res.stack("system.userdel")
+    log(res)
+    print("$S;Successfully deleted user $T2;" + a.user)
+end function
+
+userdel = mytool.command("userdel", userdel_args, @userdel_func)
+userdel.short_description = "Delete a user from the system"
+userdel.long_description = "$P;Usage:
+$P;system userdel $string;jess $bool;--home
+$P;system userdel $string;jess"
+
+
+
+// useradd
+
+useradd_args = [
+    Arg.New("username", "string").Info("Username of the new user"),
+    Arg.New("password", "string").Info("Password for the new user")
+]
+
+useradd_func = function(a)
+    ses = a.kernel.session
+    if ses.computer == null then return ObjectError.New("system.useradd", "computer")
+    if not ses.user == "root" then return PermissionError.New("system.useradd", "root")
+
+    res = ses.computer.create_user(a.username, a.password)
+    if is_error(res) then return res.stack("system.useradd")
+    log(res)
+    print("$S;Successfully created user $T2;" + a.username + "$S; with password $T2;" + a.password)
+end function
+
+useradd = mytool.command("useradd", useradd_args, @useradd_func)
+useradd.short_description = "Create a new user in the system"
+useradd.long_description  = "$P;Usage:
+$P;system useradd $string;jess crowpassword" 
+
+
+// whois
+
+
+whois_args = [
+    Arg.New("host", "ip")
+]
+
+whois_func = function(a)
+    if a.host == "" then return OsError.New("system.whois", "Host cannot be empty")
+
+    res = whois(a.host)
+    if res.indexOf(char(10)) == null then return Error.New("system.whois", res)
+    parts = res.replace(char(10), ":").split(":")
+    log(parts)
+
+    domain = parts[1]
+    admin = parts[3]
+    email = parts[5]
+    phone = parts[7]
+
+    print("$T2;Domain $T;:$P;" + domain)
+    print("$T2;Admin  $T;:$P;" + admin)
+    print("$T2;E-Mail $T;:$P;" + email)
+    print("$T2;Phone  $T;:$P;" + phone)
+end function
+
+whois_cmd = mytool.standalone_command("whois", whois_args, @whois_func)
+whois_cmd.short_description = "Show admin info for ip"
+whois_cmd.long_description = "$P;Usage:
+$P;whois $ip;12.34.56.78"
+
+
+
+// corrupt
+
+remlog_args = [
+    Kwarg.New("message", "string").Alias("m").Info("Content to add to the log (to leave behind message)")
+]
+
+remlog_func = function(a)
+    ses = a.kernel.session
+    log_file = ses.file.get_file("/var/system.log")
+    if is_error(log_file) then return log_file.stack("system.remlog")
+    if not log_file.has_permission("rw") then return PermissionError.New("system.remlog", "Read & Write for /var/system.log")
+    
+    file = null
+    for f in ses.file.goto("/").find_permission("rw", true)
+        if f.is_file() then
+            if f.path == "/etc/xorg.conf" then continue
+            log(f.path)
+            file = f
+            if f.path == "/etc/fstab" then break
+            if f.path == "/etc/init.d/Sources.txt" then break
+        end if
+    end for
+
+    if file != null then
+        res = file.move("/var", "system.log")
+        if is_error(res) then return res.stack("system.remlog")
+    else
+        print("$error;No files found to overwrite system.log, using computer")
+        if ses.computer == null then return ObjectError.New("system.remlog", "computer")
+        attempt = ses.computer.touch("/var", "owo.txt")
+        if is_error(file) then return attempt.stack("system.remlog")
+        wait(0.02)
+        file = ses.file.getfile("/var/owo.txt")
+        if is_error(file) then return file.stack("system.remlog")
+        res = file.move("/var", "/system.log")
+        if is_error(res) then return res.stack("system.remlog")
+    end if
+    
+    if a.message != null then file.set_content(a.message)
+    print("$S;Successfully corrupted log")
+end function
+
+remlog = mytool.command("remlog", remlog_args, @remlog_func)
+remlog.short_description = "Corrupt the log"
+remlog.long_description = "$P;Usage:
+$P;system remlog"
+
+
+
+// // env
+
+// env_func = function(a)
+//     tab_data = []
+//     for item in a.kernel.env
+//         tab_data.push([item.key, item.value])
+//     end for
+
+//     titles = ["Env Key", "Value"]
+
+//     res = tabulate_data(tab_data, titles, [a.kernel.color("$P;"), a.kernel.color("$S;")])
+//     if is_error(res) then return res.stack("system.env")
+
+//     print(res.string)
+// end function
+
+// env = mytool.command("env", [], @env_func)
+// env.short_description = "Show environment variables"
+// env.long_description = "$P;Usage:
+// $P;system env"
+
+
+
+// symlink
+
+symlink_args = [
+    Arg.New("path", "string").Info("File to create a link for"),
+    Arg.New("target", "string").Info("Destination to create link to")
+]
+
+symlink_func = function(a)
+    ses = a.kernel.session.file
+
+    target = ses.get_path(a.path)
+    if is_error(target) then return target.stack("system.symlink")
+
+    p = Path.New(ses.path)
+    p.change(a.target)
+
+    target_folder = null
+    filename = null
+
+    temp = ses.get_path(p.path)
+    if is_error(temp) then
+        filename = p.name
+        target_folder = p.folder
+    else if temp.is_folder then
+        filename = target.name
+        target_folder = p.path
+    else
+        return OsError.New("system.symlink", "File already exists : " + p.path)
+    end if
+    log(target_folder)
+    log(filename)
+    log(p.path)
+    res = target.symlink(target_folder, filename)
+    if is_error(res) then return res.stack("system.symlink")
+    print("$P;Created symlink $lssymlink;" + target_folder +"/"+filename)
+end function
+
+symlink_cmd = mytool.command("ln", symlink_args, @symlink_func)
+symlink_cmd.short_description = "Create symbolic link of a file"
+symlink_cmd.long_description = "$P;Usage:
+$P;ln $string;/home/jess/program /bin/program
+$P;ln $string;/home/jess /root/jess"
+
+
+// reformat
+
+reformat_args = [
+    Arg.New("seperator", "string").Info("Seperator to use to format output with"),
+    Arg.New("format", "string").Info("Format to use for data"),
+    Kwarg.New("trim", "bool").Alias("t").Default(false).Info("Trim leading/trailing whitespaces"),
+    Kwarg.New("raw", "bool").Alias("r").Default(false).Info("Parse result with command rather than string parameter"),
+    RestArg.New()//.Info("Data (Will be joined with a singular space)")
+]
+
+reformat_func = function(a)
+    if len(a.rest) == 0 then return Error.New("system.reformat", "No data supplied")
+    raw_data = a.rest.join(" ")
+    data = []
+    log(a.rest)
+
+    for x in raw_data.split(a.seperator)
+        if x == "" then continue
+        if a.trim then
+            data.push(x.trim)
+        else
+            data.push(x)
+        end if
+    end for
+
+    result = a.format
+
+    for i in data
+        result = result.replace("\{"+__i_idx+"\}", i)
+    end for
+
+    if a.raw then
+        a.kernel.raw_piped = true
+    end if
+    print(result)
+end function
+
+reformat = mytool.standalone_command("rf", reformat_args, @reformat_func)
+reformat.short_description = "Reformat input data to be used as you wish"
+reformat.long_description = "$P;Usage:
+$T2;echo 'test:1:2:3' | $P;rf $string;':' '{0} {1} {2} {3}' $T;>> 'test 1 2 3'
+$T2;crack 'root:4337fb150cbc24bd1842fb3b8f828a6c' | $P;rf $string;':' '-u ""{0}"" -p ""{1}""' --raw | system ssh 1.2.3.4"
+
+
+// repeat
+
+// repeat_args = [
+//     Arg.New("amount", "int").Info("How many times to repeat"),
+//     Arg.New("command", "string").Info("What command to repeat"),
+//     Kwarg.New("wait", "float").Info("How long to wait between attempts")
+// ]
+
+// repeat_func = function(a)
+//     if a.wait < 0.01 then return Error.New("system.repeat", "Cannot wait less than 0.01 per attempt")
+//     if a.wait > 300 then return Error.New("system.repeat", "Cannot wait longer than 300 per attempt")
+//     for x in range(0, a.amount)
+//         a.kernel.run_command(a.command, false)
+//         if a.wait != null then
+//             wait(a.wait)
+//         end if
+//     end for
+// end function
+
+// repeat_cmd = mytool.command("repeat", repeat_args, @repeat_func)
+// repeat_cmd.short_description = "Repeat command N times"
+// repeat_cmd.long_description =  "Repeat commands multiple times"
+
+
+
+// write
+
+write_args = [
+    Arg.New("target", "string").Info("Target file to write to"),
+    RestArg.New().Info("String to write to file"),
+]
+
+write_function = function(a)
+    file = a.kernel.session.file.get_file(a.target)
+    if is_error(file) then return file.stack("system.write")
+    if not file.is_file then return OsError.New("system.write", "Cannot write to non-file")
+    if not file.has_permission("rw") then PermissionError.New("system.write", "Read / Write")
+
+    content = file.get_content()
+
+    log(a.rest)
+    if a.rest == null then a.rest = []
+    input_content = a.rest.join(" ")
+    if input_content[-1] != char(10) then
+        input_content = input_content + char(10)
+    end if
+
+    new_content = content + input_content
+
+    file.set_content(new_content)
+end function
+
+write_cmd = mytool.command("write", write_args, @write_function)
+
+// setup
+
+install_args = [
+    Arg.New("service", "string").Info("Service library to install"),
+    Kwarg.New("start", "bool").Info("Start the service after install"),
+    Kwarg.New("stop", "bool").Info("Stop the service"),
+]
+
+install_func = function(a)
+    if a.kernel.session.user != "root" then return PermissionError.New("system.install", "root")
+    if a.kernel.active_session != a.kernel.session then return 
+
+    file = a.kernel.session.file.get_file(a.service)
+    if is_error(file) then return file.stack("system.install")
+    lib = include_lib(file.path)
+    if lib == null then return OsError.New("system.install", "Library " + a.service + " not found")
+
+    if a.stop then
+        res = lib.stop_service()
+        if res isa string then return Error.New("system.install", res)
+        return
+    end if
+
+    res = lib.install_service()
+    if res isa string then return Error.New("system.install", res)
+
+    if a.start then
+        wait(0.1)
+        res = lib.start_service()
+        if res isa string then return Error.New("system.install", res)
+    end if
+end function
+
+install_cmd = mytool.command("install", install_args, @install_func)
+install_cmd.short_description = "Install, start or stop a service"
+install_cmd.long_description =  "$P;Usage:
+
+$P;install /lib/libssh.so
+$P;install /lib/libssh.so --start
+$P;install /lib/libssh.so --stop"
+
+
+// terminal
+
+terminal_args = []
+
+terminal_func = function(a)
+    if a.kernel.session.shell == null then return ObjectError.New("system.terminal", "shell")
+
+    confirm = confirmation_prompt("<#f00><b>This will quit crowsploit, and thus will lose all of your sesssions. Continue?")
+    if not confirm then return
+
+    a.kernel.keep_session = false
+    a.kernel.session.shell.start_terminal()
+end function
+
+terminal_cmd = mytool.command("terminal", [], @terminal_func)
+terminal_cmd.short_description = "Start active terminal"
+terminal_cmd.long_description = "$P;Usage:
+system terminal"
+
+// Passwd
+
+passwd_args = [
+    Arg.New("user", "string").Info("User to change password for"),
+    OptionalArg.New("password","string").Info("New password for user")
+]
+
+passwd_func = function(a)
+    if a.kernel.session.user != "root" then return PermissionError.New("system.passwd", "root")
+
+    if a.password == null then
+        a.password = user_input("Password : <size=0.1%>")
+    end if
+
+    res = a.kernel.session.computer.change_password(a.user, a.password)
+    if is_error(res) then return res.stack("system.passwd")
+    print("$S;Succesfully changed password")
+end function
+
+passwd_cmd = mytool.command("passwd", passwd_args, @passwd_func)
+passwd_cmd.short_description = "Change password for existing user"
+passwd_cmd.long_description = "$P;Usage:
+$P;system passwd $string;root mypass
+$P;system passwd $string;Jessa"
+
+
+// wait
+
+wait_args = [
+    Arg.New("amount","float").Info("Amount of time to wait (in seconds)")
+]
+
+wait_func = function(a)
+    if a.amount < 0.01 then
+        return OsError.New("system.wait", "Cannot wait less than 0.01 seconds due to greyscript limitations")
+    end if
+
+    count = floor(a.amount / 300)
+    if count > 0 then
+        for x in range(count)
+            wait(300)
+        end for
+    end if
+
+    if a.amount%300 != 0 then
+        wait(a.amount%300)
+    end if
+end function
+
+wait_cmd = mytool.command("wait", wait_args, @wait_func)
+wait_cmd.short_description = "Wait x amount of time before running next command"
+wait_cmd.long_description = "$P;Usage
+system wait $float; 3
+$P;system wait $float 0.2"
+
+
+// rename
+
+rename_args = [
+    Arg.New("file", "string").Info("File to rename"),
+    Arg.New("name", "string").Info("New name for file")
+]
+
+rename_func = function(a)
+    file = a.kernel.session.file.get_path(a.file)
+    if is_error(file) then return file.stack("system.rename")
+    if not file.has_permission("w") then return PermissionError.New("system.raname", "read")
+    result = file.rename(a.name)
+    if is_error(result) then return result.stack("system.rename")
+end function
+
+rename_cmd = mytool.command("rename", rename_args, @rename_func)
+rename_cmd.short_description = "Rename a file or folder"
+rename_cmd.long_description  = "$P;Usage:
+$P;system rename $string;/etc/passwd passnt
+$P;system rename $string;/var/system.log lognt"
+
+// init
+
+mytool.init()
+
+
+import_code("./session")
+import_code("./apt-get")
+import_code("./alias")
+import_code("./repeat")
+import_code("./env")
+import_code("./macro")
+// import_code("./monitor")

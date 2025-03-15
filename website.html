@@ -1,0 +1,361 @@
+<!DOCTYPE html> 
+
+<title>Crowsploit is a modular tool dedicated to allowing the end-user to dictate how to use the tool. This is done through a modular settings file much alike the .bashrc you would see in linux. As well as giving the end-user kernel access using the command API</title>
+<style>
+
+body {
+    margin:0;
+    background-color:#0e1320;
+    width:100%;
+}
+
+#banner {
+    background-color:#182035;
+    width:100%;
+    margin:0;
+    height:50px;
+    text-align: center;
+    vertical-align: center;
+    color:#8ae09f;
+    font-weight: bold;
+    font-size: 35px;
+    border-bottom:2px solid #0e1320;
+}
+
+#content {
+    width:100%;
+    /* background-color:red; */
+    height:calc(100vh - 100px);
+    margin:0;
+    overflow-y:scroll;
+}
+
+#footer {
+    text-align: center;
+    width:100%;
+    background-color:#182035;
+    height:50px;
+}
+
+.section {
+    margin-right: auto;
+    margin-left: auto;
+    width:90vw;
+    background-color: #070c1a;
+    height: auto;
+    overflow-wrap:normal;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    margin-bottom:50px;
+    text-align: center;
+    padding-top:15px;
+    padding-bottom: 15px;
+}
+
+.section p {
+    text-align: left;
+    width:700px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+#menu .active {
+    background-color: #232c44 ;
+}
+
+p {
+    font-size: large;
+    color:rgb(196, 210, 212);
+    font-weight:normal;
+    margin-left: 50px;
+    margin-right: 50px;
+}
+
+h3,
+h1 {
+    color:#b2d6ff;
+}
+
+h2 {
+    color:#8ae09f;
+}
+
+#menu {
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    margin-top: 50px;
+    height:50px;
+    margin-left: auto;
+    margin-right: auto;
+    background-color:#182035;
+    width:90vw;
+    text-align:center;
+}
+
+#menu button {
+    border:none;
+    background-color:rgba(0,0,0,0);
+    height:50px;
+    font-size: 30px;
+    padding-right: 20px;
+    padding-left: 20px;
+    color:#b2d6ff;
+}
+
+#menu button:hover {
+    background-color:#31436b;
+}
+
+#menu button:active {
+    transform: none !important;
+}
+
+.hidden {
+    display: none;
+}
+
+input {
+    background-color:rgba(0,0,0,0);
+    border:none;
+    color:#b2d6ff;
+    width:auto;
+    font-size: large;
+    text-align: center;
+    margin-top: -10px;
+    font-weight: bold;
+}
+
+.p {
+    color:#08f;
+}
+
+.s {
+    color : #0cc
+}
+
+.t {
+    color : #669
+}
+
+.t2 {
+    color : #99c
+}
+
+.string {
+    color : #d63
+}
+
+.int {
+    color : #39d
+}
+
+.bool {
+    color : #35f
+}
+
+.ip {
+    color : #d44
+}
+
+.code {
+    background-color:black;
+    color:rgb(207, 207, 207);
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top:5px;
+    padding-bottom:5px;
+    font-size: medium;
+    font-weight: bold;
+}
+
+details {
+    width:70%;
+    margin-top:0px;
+    margin-right: auto;
+    margin-left: auto;
+    background-color: #0e1320;
+    border-radius: 0px 0px 5px 5px;
+    padding: 10px;
+    overflow-wrap:break-word;
+}
+
+summary {
+    background-color: #182035;
+    color:#b2d6ff;
+    padding:10px;
+    border-radius: 5px 5px 0px 0px;
+    width:70%;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 17px;
+}
+
+summary:hover {
+    background-color: #1d263d;
+}
+
+
+</style>
+
+<html>
+<body>
+    <div id="banner">
+        Crowsploit
+    </div>
+
+    <div id="content">
+        <div id="menu">
+            <button id="crowsploit_btn" onclick="crowsploit()" class="active">Crowsploit</button>
+            <button id="commands_btn" onclick="commands()">Commands</button>
+            <button id="install_btn" onclick="install()">Install</button>
+            <button class="btn btn-primary" id="HackShopTools">Shop</button>
+        </div>
+        <div class="section" id="crowsploit">
+            <h1>Crowsploit</h1>
+            <p>Crowsploit is a modular tool dedicated to allowing the end-user to dictate how to use the tool. This is done through a modular settings file much alike the .bashrc you would see in linux. As well as giving the end-user kernel access using the command API. </p>
+            <p>This means that the user can create their own scripts with built-in error handling, argument parsing, and system control with little to no effort.</p>
+            <p><b>For installation, see install</b></p>
+            <h2>Changelogs</h2>
+            <br>
+            <br>
+            <details onclick="hideme(this)">
+                <summary><b>March 21 2001</b></summary>
+                <h3>Crowsploit interface (2.16.1)</h3>
+                <p>Fixed crowsploit freezing if ran as <span class="code">sudo crowsploit</span></p>
+            </details>
+            <details onclick="hideme(this)">
+                <summary><b>August 5 2000</b></summary>
+                <h3>System</h3>
+                <p>Added <span class="code">macro</span> tool</p>
+                <p><b>Macro tool</b></p>
+                <p>This allows you to make custom macros for crowsploit</p>
+                <br>
+                <h3>Crowsploit interface 1.2.2</h3>
+                <p>Added the ability for multi-line commands<br>by trailing your command with \</p>
+                <p>Fixed bug with \ not existing in string arguments</p>
+                <p>Added functionality for on_load for new tools</p>
+                <p>Fixed Env variables being handles as commands</p>
+                <h3>Exploit 1.3.4</h3>
+                <h3>until 1.0.2</h3>
+                <p>Fixed bug where adding multiple libraries<br>to the -l flag would only search for one</p>
+                <h3>Tool kernel 1.2.1</h3>
+                <p>(Tool kernel updates mean you have to redownload tools)</p>
+                <p>Fixed rest args being parsed as non-string values</p>
+                <p>Fixed 1/0 not being treated as booleans</p>
+            </details>
+            <details onclick="hideme(this)">
+                <summary><b>July 6 2000</b></summary>
+                <h3>System</h3>
+                <p>Added <span class="code">until</span> tool</p>
+                <p>Added <span class="code">env</span> tool</p>
+                <p><b>Until tool</b></p>
+                <p>This tool allows you to repeat commands until a certain<br> metrix has been fulfilled</p>
+                <br>
+                <br>
+                <p><b>env tool</b></p>
+                <p>This tool allows you to set and delete your own<br> environment variables</p>
+                <h3>Crowsploit interface</h3>
+                <p>Fixed bug where silent output would persist</p>
+            </details>
+            <details onclick="hideme(this)">
+                <summary><b>May 11 2000</b></summary>
+                <h3>Crowsploit</h3>
+                <p>Fixed bug where the <span class="code">/</span> would return an error<br>when trying to move anything to it</p>
+                <p>(This is was a kernel-level bug, <br>so it requires a redownload of system & exploit)</p>
+                <h3>Exploit 1.3.4</h3>
+                <p>Added <span class="code">--repeat</span> keyword argument for</p>
+                <p><span class="code">scan for</span> command. This filters out repeating libraries</p>
+                <p>Fixed bug for <span class="code">/</span></p>
+                <p></p>
+                <h3>System 1.7.2</h3>
+                <p>Fixed bug for <span class="code">/</span></p>
+            </details>
+        </div>
+        <div class="section hidden" id="commands">
+            <h1>Commands</h1>
+            <p>Crowsploit comes with a lot of commands that cannot be displayed on the website.</p>
+            <p>However, I can show how the command system works for crowsploit, and show a real-world example</p>
+            <h2>Command chain & piping</h2>
+            <p>Commands within crowsploit can all be chained and piped together.</p>
+            <p>All visual output you see that's from a script, can be piped to another command. This allows you to chain commands together to get a quick result without needing to copy-paste everything</p>
+            <p>There's a few built-in tools to help you get the data you need. Such as <span class="code">grep</span> and <span class="code">rf</span> (reformat)</p>
+            <p>This can be used to scan an entire network, but only display ips that match a certain format, or to find a specific file on a system</p>
+            <p>Crowsploit is designed to be chained together.</p>
+            <h2>Examples</h2>
+            <p>Say we have user access to a system, and we need the root password in <span class="code">/etc/passwd</span>. We can very easily get the content of the file, filter for root and crack the hash in one command</p>
+            <p>That would look like the following:</p>
+            <span class="code"><span class="p">cat</span> <span class="string">/etc/passwd</span> | <span class="p">grep</span> <span class="string">"root"</span> | <span class="p">crack</span></span>
+            <p>Lets break this down:</p>
+            <span class="code"><span class="p">cat</span> <span class="string">/etc/passwd</span></span>
+            <p>This cats the the root file and saves it into the kernel bufffer</p>
+            <span class="code"><span class="p">grep</span> <span class="string">"root"</span></span>
+            <p>This filters the buffer to only lines that include the word <span class="string">"root"</span> and cans the other lines that don't</p>
+            <span class="code"><span class="p">crack</span></span>
+            <p>This is the final piece. This cracks the filtered hash from the <span class="code">/etc/passwd</span> and shows the final password for you to escalate from</p>
+        </div>
+        <div class="section hidden" id="install">
+            <h1>Install</h1>
+            <p>The installation of crowsploit is very simple.</p>
+            <p>To get crowsploit you have to click on the shop tab on top and download crowsploit.</p>
+            <p>Once crowsploit is installed, run it with the following command:<br><span class="code">crowsploit setup</span></p>
+            <p><b>Make sure you run it as root</b></p>
+            <p>Once crowsploit is setup correctly, you can buy <span class="code">system</span> and <span class="code">exploit</span> and put these files in <span class="code">/etc/crow/tools/</span></p>
+            <p>When you have moved the files to that directory, you can launch crowsploit again and you'll have a working crowsploit interface!</p>
+        </div>
+    </div>
+
+    <div id="footer">
+        <p>Join the discord!! <input type="text" onclick="selectText()" id="input" value=" discord.gg/qW5Uv2SAmq "> (you can select and copy this link)</p>
+    </div>
+    <script>
+        const sect_crowsploit = document.getElementById("crowsploit");
+        const sect_commands = document.getElementById("commands");
+        const sect_install = document.getElementById("install");
+
+        const crowsploit_btn = document.getElementById("crowsploit_btn")
+        const commands_btn = document.getElementById("commands_btn")
+        const install_btn = document.getElementById("install_btn")
+
+        function hideme(elem) {
+            elem.style.display = "none";
+        }
+
+        function crowsploit() {
+            sect_crowsploit.setAttribute('class','section');
+            sect_commands.setAttribute('class','section hidden');
+            sect_install.setAttribute('class','section hidden');
+
+            crowsploit_btn.setAttribute("class", "active")
+            commands_btn.setAttribute("class", "")
+            install_btn.setAttribute("class", "")
+        }
+
+        function commands() {
+            sect_crowsploit.setAttribute('class','section hidden');
+            sect_commands.setAttribute('class','section');
+            sect_install.setAttribute('class','section hidden');
+
+            crowsploit_btn.setAttribute("class", "")
+            commands_btn.setAttribute("class", "active")
+            install_btn.setAttribute("class", "")
+        }
+
+        function install() {
+            sect_crowsploit.setAttribute('class','section hidden');
+            sect_commands.setAttribute('class','section hidden');
+            sect_install.setAttribute('class','section');
+
+            crowsploit_btn.setAttribute("class", "")
+            commands_btn.setAttribute("class", "")
+            install_btn.setAttribute("class", "active")
+        }
+
+        function selectText() {
+            let elem = document.getElementById("input")
+            elem.focus();
+            elem.select();
+        }
+
+    </script>
+</body>
+</html>

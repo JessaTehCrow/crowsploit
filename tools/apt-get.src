@@ -1,0 +1,267 @@
+import_code("../kernel/toolkernel")
+
+apt_tool = Tool.New("apt-get", "1.2.1")
+apt_tool.short_description = "All apt client handling"
+apt_tool.long_description = "All apt client handling"
+
+
+
+// Add repo
+
+add_repo_args = [
+    Arg.New("host", "ip").Info("Repository address to add"),
+    OptionalArg.New("port", "int").Default(1542).Info("Port of the repository"),
+    Kwarg.New("update", "bool").Default(false).Alias("u").Info("Automatically update repo after adding")
+]
+
+add_repo_func = function(a)
+    session = a.kernel.session
+
+    if not session.apt then return ObjectError.New("aptget.add_repo", "apt")
+
+    result = session.apt.add_repo(a.host, a.port)
+    if result == null then return Error.New("aptget.add_repo", "Failed to add repository")
+    if result != "" then return Error.New("aptget.add_repo", result)
+
+    print("$S;Added apt repository")
+
+    if a.update then
+        a.kernel.run_command("apt-get update", false)
+    end if
+end function
+
+add_repo_cmd = apt_tool.command("addrepo",add_repo_args, @add_repo_func)
+add_repo_cmd.short_description = "Add new repository to current apt session"
+add_repo_cmd.long_description = "$P;Usage:
+$P;apt-get $S;addrepo $ip;138.32.12.3 $int;-p 1547
+$P;apt-get $S;addrepo $ip;138.32.12.3 $bool;--update
+$P;apt-get $S;addrepo $ip;138.32.12.3 $int;--port 1547 $bool;-u"
+
+
+
+// delrepo
+
+del_repo_args = [
+    Arg.New("host", "ip").Info("Repository address to add"),
+    Kwarg.New("update", "bool").Default(false).Alias("u").Info("Automatically update repo after adding")
+]
+
+del_repo_func = function(a)
+    session = a.kernel.session
+
+    if not session.apt then return ObjectError.New("aptget.del_repo", "apt")
+    
+    result = session.apt.del_repo(a.host)
+    if result == null then return Error.New("aptget.del_repo", "Failed to remove repository")
+    if result != "" then return Error.New("aptget.del_repo", result)
+
+    print("$S;Deleted apt repository")
+
+    if a.update then
+        a.kernel.run_command("apt-get update", false)
+    end if
+end function
+
+del_repo_cmd = apt_tool.command("delrepo", del_repo_args, @del_repo_func)
+del_repo_cmd.short_description = "Add new repository to current apt session"
+del_repo_cmd.long_description = "$P;Usage:
+$P;apt-get $S;delrepo $ip;138.32.12.3
+$P;apt-get $S;delrepo $ip;138.32.12.3 $bool;--update
+$P;apt-get $S;delrepo $ip;138.32.12.3 $bool;-u"
+
+
+
+// install
+
+apt_install_args = [
+    Arg.New("library", "string").Info("Library to install"),
+    Kwarg.New("path", "string").Alias("p").Info("Path to install to")
+]
+
+apt_install_func = function(a)
+    session = a.kernel.session
+    if not session.apt then return ObjectError.New("aptget.install", "apt")
+    if not session.user == "root" then return PermissionError.New("aptget.install", "root")
+
+    result = null
+    if a.path != null then
+        result = session.apt.install(a.library, a.path)
+    else
+        result = session.apt.install(a.library)
+    end if
+
+    if result == null then return Error.New("aptget.install", "Failed to install library")
+    if result != "" and result != 1 then return Error.New("aptget.install", result)
+
+    print("$S;Installed $P;" + a.library)
+end function
+
+apt_install_cmd = apt_tool.command("install", apt_install_args, @apt_install_func)
+apt_install_cmd.short_description = "Install libraries from apt session"
+apt_install_cmd.long_description = "$P;Usage:
+$P;apt-get $S;install $string;metaxploit.so"
+
+
+
+// update
+
+apt_update_args = []
+
+apt_update_func = function(a)
+    session = a.kernel.session
+    if not session.apt then return ObjectError.New("aptget.install", "apt")
+    
+    res = session.apt.update()
+    if res == 0 then return Error.New("aptget.update", "Malformed /etc/apt/Sources.txt")
+    if res != "" then return Error.New("aptget.update", res)
+
+    print("$S;Successfully updated apt")
+end function
+
+apt_update = apt_tool.command("update", [], @apt_update_func)
+apt_update.short_description = "Update apt Sources"
+apt_update.long_description = "$P;Usage:
+$P;apt-get $S;update"
+
+
+
+// search
+
+apt_search_args = [
+    Arg.New("prompt", "string").Info("Propmt to search for")
+]
+
+apt_search_func = function(a)
+    session = a.kernel.session
+    if not session.apt then return ObjectError.New("aptget.install", "apt")
+
+    res = session.apt.search(a.prompt)
+    if res == null then return Error.New("aptget.search", "Unable to search for libraries")
+    if res.indexOf(char(10)) == null then return Error.New("aptget.search", res)
+    
+    descs = {}
+    descs["libssh.so"] = "Library to setup ssh"
+    descs["libftp.so"] = "Library to setup ftp"
+    descs["libhttp.so"] = "Library to setup http"
+    descs["libsql.so"] = "Library to setup sql"
+    descs["libsmtp.so"] = "Library to setup mailservice"
+    descs["libchat.so"] = "Library to setup chat"
+    descs["libcam.so"] = "Library to setup camera"
+    descs["librepository.so"] = "Library to setup repositories"
+    descs["blockchain.so"] = "Library for interacting with the blockchain"
+    descs["kernel_router.so"] = "Library required for the router"
+    descs["aptclient.so"] = "Library to run apt commands"
+    descs["kernel_module.so"] = "Library required to boot"
+    descs["init.so"] = "Library required to boot"
+    descs["net.so"] = "Library required to boot"
+    descs["libtrafficnet.so"] = "Library to interact with traffic stuff"
+    descs["libsmartappliance.so"] = "Library to interact with smart appliances"
+    descs["AdminMonitor.exe"] = "It monitors all the networks to which the user is connected, notifies if any administrator is active in the network and notifies if the user is being tracked by the administrator"
+    descs["metaxploit.so"] = "Library analysis tool"
+    descs["crypto.so"] = "Crypto suite library"
+    descs["librshell.so"] = "Library used in the reverse shell service. It is automatically included with the service installer."
+
+    libs = res.matches("<b>.+<\/b>")
+    for lib in libs.values
+        lib = unformat_string(lib)
+        print("$P;" + lib)
+        if descs.hasIndex(lib) then
+            print("$T;  " + descs[lib])
+        else
+            print("$T;No description")
+        end if
+    end for
+end function
+
+apt_search = apt_tool.command("search", apt_search_args, @apt_search_func)
+apt_search.short_description = "Search for libraries from apt"
+apt_search.long_description = "$P;Usage:
+$P;apt-get $S;search $string;metaxploit
+$P;apt-get $S;search $string;crypto
+$P;apt-get $S;search $string;http"
+
+
+
+// upgrade
+
+upgrade_args = [
+    Kwarg.New("full", "bool").Default(false).Alias("f").Info("Search entire system for libraries")
+]
+
+upgrade_func = function(a)
+    session = a.kernel.session
+    if not session.apt then return ObjectError.New("aptget.upgrade", "apt")
+    if not session.user == "root" then return PermissionError.New("aptget.install", "root")
+
+    staged = []
+
+    if not a.full then
+        files = session.file.goto("/lib").find_name(".+\.so")
+    else
+        files = session.file.goto("/").find_name(".+\.so", true)
+    end if
+
+    for file in files
+        if session.apt.check_upgrade(file.path) then
+            staged.push(file)
+        end if
+    end for
+
+    if staged == [] then return Error.New("apt-get.upgrade", "No files to be upgraded")
+
+    print("$P;Staged files ready to be upgraded:")
+    for file in staged
+        print("$S;  " + file.path)
+    end for
+
+    if not confirmation_prompt("Upgrade files?") then return
+
+    for file in staged
+        a.kernel.run_command("apt-get install " + file.name + " -p " + file.parent.path, false)
+    end for
+end function
+
+upgrade = apt_tool.command("upgrade", upgrade_args, @upgrade_func)
+upgrade.short_description = "Upgrade all libraries"
+upgrade.long_description  = "$P;Usage:
+$P;apt-get $S;upgrade
+$P;apt-get $S;upgrade $bool;--full"
+
+
+
+// show
+
+show_args = [
+    Arg.New("repository", "string").Info("Repository to check")
+]
+
+show_func = function(a)
+    session = a.kernel.session
+    if not session.apt then return ObjectError.New("aptget.upgrade", "apt")
+    res = session.apt.show(a.repository)
+    if res == null then return Error.New("aptget.show", "Failed to get repository")
+    if res.indexOf(char(10)) == null then return Error.New("aptget.show", res)
+    
+    res = unformat_string(res)
+    for item in res.split(char(10) + char(10))
+        if item == "" then continue
+        
+        parts = item.split(char(10))
+        title = parts[0]
+        rest = parts[1:].join(char(10) + "  $T;")
+        print("$P;" + title)
+        print("  $T;" + rest)
+    end for
+
+end function
+
+show_cmd = apt_tool.command("show", show_args, @show_func)
+show_cmd.short_description = "Show libraries of a repository"
+show_cmd.long_description = "$P;Usage:
+$P;apt-get $S;show $string;metaxploit.so
+$P;apt-get $S;show $string;crypto.so"
+
+
+// Init
+
+apt_tool.init()

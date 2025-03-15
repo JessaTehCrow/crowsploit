@@ -1,0 +1,202 @@
+import_code("../kernel/mainkernel")
+import_code("../libs/proxyextension")
+import_code("../libs/dbmanager")
+import_code("../libs/utils")
+
+if program_path == "/etc/crow/tools/crowsploit" then exit("<#f00>crowsploit detected running as a tool. Quitting loop")
+
+interface_version = "1.2.3"
+
+motd = "$T;    ___                  $P;|$T;             ___     
+$T;    \  '———.____     __ $P;-$S;+$P;-$T;   ____.———'  / 
+$T;     \____      /   /_ \ $P;|$T;   \     _____/
+$T;       \____    \____/  \____/    ____/
+$T;        \____     $P;Crowsploit$T;     ____/
+$T;            '——._____    _____.——'
+$T;                    /____\"
+
+fun_facts = [
+    "Crows can have grudges on people, as well as pass them down to their young",
+    "Befriending wild crows is very easy! All you need to do is give them food",
+    "Crows will give gifts to people that feed them regularly",
+    "Research on crows shows that their inteligence is comparable to a 7 year old",
+    "When a crow dies, their family will hold a crow-equivalent of a funeral",
+    "Crows can use basic tools to get whatever they need done",
+    "To crack open nuts, crows will put them on the road until a car drives over them",
+    "Crows have the ability to mimic human speach, much like a parrot",
+    "Though ravens and crows are very similar, they don't get along with eachother",
+    "Crows have a slimmer and curvier beak compared to a raven",
+    "Crows and bluejays don't look alike, but they are from the same animal family",
+    "When it snows, crows like to play and slide down it with their buddies",
+    "Crows and other corvids like hanging upside down, for the fun of it!",
+]
+
+secret_facts = [
+    "<#4f8>This message has a 1 in 2000 chance to show up!",
+    "I know where you are",
+    "<b>I am in your network",
+    "TmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXAsIE5ldmVyIGdvbm5hIGxldCB5b3UgZG93bg==",
+]
+
+get_fact = function()
+    fact = fun_facts[random(0,fun_facts.len-1)]
+
+    if random(0,500) == 1 then
+        fact = "$error;" + secret_facts[random(0, secret_facts.len-1)]
+    end if
+    return fact
+end function
+
+custom_obj = get_custom_object
+kernel = null
+shell = Shell.New(get_shell)
+comp = shell.host_computer
+
+kernel_setup = function()
+    e = comp.create_folder("/etc", "crow")
+    if is_error(e) then return e
+    e = comp.create_folder("/etc/crow", "tools")
+    if is_error(e) then return e
+
+    print("<#4fa>Created folder <#4af>/etc/crow/tools")
+    print("<#999>Move the <#4af>system<#999> tool into the <#4af>/etc/crow/tools<#999> folder and restart crowsploit")
+end function
+
+if hasIndex(custom_obj, "kernel") and params == ["main"] then
+    kernel = custom_obj["kernel"]
+    remove(custom_obj, "kernel")
+
+else if hasIndex(custom_obj, "kernel") then
+    kernel = custom_obj.kernel(simple_hash(current_date))
+
+    kernel.print("$P;Crowsploit connected to kernel")
+    custom_obj.remove("kernel")
+
+    active = kernel.active_session
+    session = kernel.session
+    session.user = active_user
+    if comp.is_network_active then
+        session.router = get_router
+    end if
+
+    session.path = program_path 
+    session.load_lib("/lib/crypto.so")
+    session.load_lib("/lib/metaxploit.so")
+    session.load_lib("/lib/aptclient.so")
+    session.file = session.file.goto(current_path)
+    
+    destination = current_path
+
+    res = active.shell.scp(active.meta_dir, destination, session.shell)
+    if not is_error(res) then
+        kernel.print("$S;Loaded metaxploit")
+        session.load_lib(destination + "/metaxploit.so")
+    end if
+
+    if params == ["crypto"] then
+        res = active.shell.scp(active.crypto_dir, destination, session.shell)
+        if not is_error(res) then
+            kernel.print("$S;Loaded crypto")
+            session.load_lib(destination + "/crypto.so")
+        end if
+    end if
+
+    res = active.shell.scp(active.apt_dir, destination, session.shell)
+    if not is_error(res) then
+        kernel.print("$S;Loaded Apt")
+        session.load_lib(destination + "/aptclient.so")
+    end if
+
+    kernel.active_session = session
+    kernel.active_sessions.push(session)
+    kernel.env.ACTIVE = session.id
+
+else if params == ["setup"] then
+    e = kernel_setup()
+    if is_error(e) then
+        print(e.trace())
+    else
+        print("<#4fa>Setup complete")
+    end if
+    exit()
+else
+    kernel = new Kernel
+    session = Session.New(shell)
+    session.user = active_user
+    if comp.is_network_active then
+        session.router = get_router
+    end if
+    session.path = launch_path
+    session.load_lib("/lib/crypto.so")
+    session.load_lib("/lib/metaxploit.so")
+    session.load_lib("/lib/aptclient.so")
+    session.file = session.file.goto(current_path)
+
+    kernel.new_session(session)
+    kernel.active_session = session
+    kernel.active_sessions.push(session)
+
+    kernel.session = session
+    user = active_user
+    user_settings = "/home/" + user
+    if user == "root" then
+        user_settings = "/root"
+    end if
+
+    error = kernel.load_settings(user_settings + "/.crowrc")
+    if is_error(error) then
+        print("<#e05>Missing settings")
+        print("<#e05>Creating settings in : " + user_settings + "/.crowrc")
+        touch_err = comp.touch(user_settings, ".crowrc", SETTINGS_DEFAULT)
+        if touch_err then print(touch_err.message)
+        error = kernel.load_settings(user_settings + "/.crowrc")
+    end if
+    if is_error(error) then exit(error.message)
+
+    print(char(10))
+    kernel.print(motd)
+    print(char(10))
+    kernel.line("Info", 47)
+    kernel.print("              $P;By <b><u>JessaTehCrow" + char(10))
+    kernel.print("       $S;Kernel version $T;: $T2;" + kernel.version)
+    kernel.print("    $S;Interface version $T;: $T2;" + interface_version)
+    if kernel.nightly then
+        kernel.print("          $S;Kernel type$T; : $error;Nightly")
+        kernel.print("$T;<i>    (Some features may not be stable)")
+    end if
+
+    print(char(10))
+    kernel.print("$T;Fun fact")
+    kernel.print("$S;<size=80%>" + get_fact())
+    print(char(10))
+    if session.crypto == null then
+        kernel.print("$error;Crypto not found")
+    end if
+    if session.metax == null then
+        kernel.print("$error;Metaxploit not found")
+    end if
+    kernel.load_tools()
+
+    kernel.print()
+    kernel.print("$P;Check for updates on $T2;www.crowsploit.com!")
+    kernel.print("$S;Join the discord: $T2;discord.gg/qW5Uv2SAmq $S;for help and more info!")
+    
+    while kernel.keep_session
+        custom_obj.kernel = kernel
+        shell.launch(program_path, "main")
+        kernel.silent = false
+        kernel.piped = false
+    end while
+end if
+
+while kernel.keep_session
+    inp = user_input(kernel.get_prompt + " ")
+    if inp == "" then continue
+    while inp.trim()[-1] == "\"
+        inp = inp.trim[:-1]
+        user_inp = user_input(kernel.color("$input;") + " ")
+        inp = inp + " " + user_inp
+    end while
+
+    kernel.run_command(inp)
+end while

@@ -1,0 +1,284 @@
+import_code("./proxies")
+
+Path = {}
+Path.slices = null
+ 
+Path.New = function(full_path)
+    if not full_path isa string then return TypeError.New("Path.new", "string", typeof(full_path))
+    if full_path[0] != "/" then return
+
+    p = new self
+    p.slices = []
+    slices = full_path.split("/")[1:]
+
+    temp = slices.join("/")
+    if temp != "" then
+        p.change(slices.join("/"))
+    end if
+
+    return p
+end function
+
+Path.change = function(new_path)
+    if not new_path isa string then return TypeError.New("Path.change", "string", typeof(full_path))
+    relative = false
+    if new_path[0] == "/" then
+        self.slices = Path.New(new_path).slices
+        return
+    end if
+
+    slices = new_path.split("/")
+    for slice in slices
+        if slice == ".." then
+            self.slices.pop()
+        else if slice == "." or slice == "" then
+            continue
+        else
+            self.slices.push(slice)
+        end if
+    end for
+end function
+
+Path.path = function()
+    return "/" + self.slices.join("/")
+end function
+
+Path.name = function()
+    r = self.slices[-1:].join("")
+    if r == "" then return "/"
+    return r
+end function
+
+Path.folder = function()
+    return "/" + self.slices[:-1].join("/")
+end function
+
+Path.is_parent_of = function(path)
+    p = self.path
+    return path[:len(p)] == p
+end function
+
+
+File.tree = function(recursive=false, max_depth=15, depth=0)
+    if depth >= max_depth then return []
+
+    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_name","bool", typeof(recursive))
+    current = self
+    result = []
+
+    if not self.is_folder then
+        current = self.parent
+    end if
+
+    for x in current.get_all
+        result.push(x)
+        if x.is_folder and recursive then
+            result = result + x.tree(recursive, max_depth, depth+1)
+        end if
+    end for
+
+    return result
+end function
+
+
+File.find_permission = function(perms, recursive=false)
+    if not perms isa string then return TypeError.New("File.find_permission","string", typeof(perms))
+    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_name","bool", typeof(recursive))
+
+    result = []
+    for x in self.tree(recursive)
+        temp_result = x.has_permission(perms)
+        if is_error(temp_result) then return temp_result.stack("File.find_permission")
+        if temp_result == true then result.push(x)
+    end for
+    return result
+end function
+
+
+File.find_name = function(name, recursive=false)
+    if not name isa string then return TypeError.New("File.find_name","string", typeof(name))
+    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_name","bool", typeof(recursive))
+
+    result = []
+    for x in self.tree(recursive)
+        if not x.name.is_match(name) then continue
+        result.push(x)
+    end for
+    return result
+end function
+
+
+File.find_user = function(user, recursive=false)
+    if not user isa string then return TypeError.New("File.find_user","string", typeof(user))
+    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_name","bool", typeof(recursive))
+
+    result = []
+    for x in self.tree(recursive)
+        if x.owner != user then continue
+        result.push(x)
+    end for
+    return result
+end function
+
+
+File.find_type = function(type, recursive=false)
+    if not type isa string then return TypeError.New("File.find_type","string", typeof(type))
+    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_name","bool", typeof(recursive))
+    result = []
+    for x in self.tree(recursive)
+        if x.is_folder and type == "folder" then
+            result.push(x)
+        else if x.is_binary and type == "binary" then
+            result.push(x)
+        else if x.is_file and type == "file" then
+            result.push(x)
+        end if
+    end for
+    return result
+end function
+
+
+File.find_group = function(group, recursive=false)
+    if not group isa string then return TypeError.New("File.find_group","string", typeof(group))
+    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_name","bool", typeof(recursive))
+
+    result = []
+    for x in self.tree(recursive)
+        if x.group != group then continue
+        result.push(x)
+    end for
+    return result
+end function
+
+
+File.goto = function(target)
+    p = Path.New(self.path)
+    p.change(target)
+
+    temp = self
+    while temp.path != "/"
+        temp = temp.parent
+    end while
+
+    for s in p.slices
+        folders = temp.get_folders
+        found = false
+        for folder in folders 
+            if folder.name.is_match("^" + s + "$") then
+                temp = folder
+                found = true
+                break
+            end if
+        end for
+        if not found then
+            return OsError.New("File.goto", "Folder not found : " + target)
+        end if
+    end for
+
+    return temp
+end function
+
+
+File.get_file = function(target)
+    p = Path.New(self.path)
+    p.change(target)
+
+    folder = self.goto(p.folder)
+    if is_error(folder) then return folder.stack("File.get_file")
+
+    for file in folder.get_files
+        if file.name.is_match("^"+p.name+"$") then return file
+    end for
+    return OsError.New("File.get_file", "No file found at path : " + p.path)
+end function
+
+
+File.get_path = function(target)
+    p = Path.New(self.path)
+    p.change(target)
+    
+    folder = self.goto(p.folder)
+    if is_error(folder) then return folder.stack("File.get_file")
+
+    if folder.path == target then return folder
+
+    for file in folder.get_all
+        if file.name.is_match("^"+p.name+"$") then return file
+    end for
+    return OsError.New("File.get_path", "No file found at path : " + p.path)
+end function
+
+
+File.get_user = function()
+    root = self.goto("/root")
+    if is_error(root) then return root.stack("File.get_user")
+    if root.has_permission("rwx") then return "root"
+
+    home = self.goto("/home")
+    if is_error(home) then return "unknown"
+    perms = home.find_permission("rwx", true)
+
+    if is_error(perms) then return perms.stack("File.get_user")
+    for x in perms
+        if x.name == ".Trash" then
+            return x.owner
+        end if
+    end for
+    return "unknown"
+end function
+
+
+File.get_permission = function()
+    uname = self.get_user()
+    if is_error(uname) then return uname
+    if ["guest","root","unknown"].indexOf(uname) != null then return uname
+    return "user"
+end function
+
+
+File.get_all = function()
+    if not self.is_folder then return TypeError.New("File.get_all","folder", self.file_type)
+
+    result = []
+    for item in (self.object.get_folders + self.object.get_files)
+        result.push(File.New(item))
+    end for
+
+    return result
+end function
+
+
+Computer.get_user = function()
+    root = self.File("/")
+    writables = root.find_permission("w", true)
+    if writables.len == 0 then return "unknown"
+
+    for x in writables
+        if not x.is_folder then continue
+        f = self.File(x.path + "/Sources.txt")
+
+        self.touch(x.path, "Sources.txt")
+        check = self.File(x.path + "/Sources.txt")
+        if is_error(check) then return check.stack("Computer.get_user")
+        return check.owner
+    end for
+    return "unknown"
+end function
+
+Computer.get_permission = function()
+    uname = self.get_user()
+    if is_error(uname) then return uname
+    if ["guest","root","unknown"].indexOf(uname) != null then return uname
+    return "user"
+end function
+
+Shell.get_user = function()
+    return self.host_computer.get_user
+end function
+
+Shell.get_permission = function()
+    uname = self.get_user()
+    if is_error(uname) then return uname
+    if ["guest","root","unknown"].indexOf(uname) != null then return uname
+    return "user"
+end function

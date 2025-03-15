@@ -1,0 +1,413 @@
+import_code("./proxies")
+
+regex_escape = function(text)
+    result = text
+
+    for x in "+*?^$.[]{}()|/"
+        result = result.replace("\"+x, "\"+x)
+    end for
+
+    return result
+end function
+
+
+count = function(text, substr)
+    err = expect_all([text, substr], string)
+    if err then return TypeError.New("string", typeof(err))
+    return text.matches(substr).len
+end function
+
+
+string.count = function(substr)
+    return count(self, substr)
+end function
+
+
+map_list = function(arr, func)
+    if not func isa list and not typeof(func) == "function" then return TypeError.New("map_list","func | list[func]", typeof(func))
+
+    funcs = func
+    if typeof(func) == "function" then funcs = [func]
+
+    result = []
+    for item in arr
+        temp = item
+
+        for f in funcs
+            if typeof(@f) != "function" then return TypeError.New("map_list", "func", typeof(@f))
+            temp = f(temp)
+        end for
+        result.push(temp)
+    end for
+
+    return result
+end function
+
+
+min = function(a,b)
+    if not a isa number and not a isa list then return TypeError.New("min","number | list", typeof(a))
+    if a isa number and not b isa number then return TypeError("number", typeof(b))
+    
+    if a isa number then return [a,b][a>b]
+
+    smallest = null
+
+    for item in a
+        if not item isa number then return TypeError.New("min","list[number]", typeof(item))
+        if smallest == null then smallest = item
+        smallest = min(smallest, item)
+    end for
+    
+    return smallest
+end function
+
+
+max = function(a,b)
+    if not a isa number and not a isa list then return TypeError.New("max","number | list", typeof(a))
+    if a isa number and not b isa number then return TypeError.New("max","number", typeof(b))
+    
+    if a isa number then return [a,b][a<b]
+    biggest = null
+
+    for item in a
+        if not item isa number then return TypeError.New("max","list[number]", typeof(item))
+        if biggest == null then biggest = item
+        biggest = max(biggest, item)
+    end for
+
+    return biggest
+end function
+
+
+enumerate = function(array)
+    if not array isa list and not array isa string then return TypeError.New("enumerate","list", array)
+    result = {}
+
+    for x in array
+        result[__x_idx] = x
+    end for
+    return result
+end function
+
+
+simple_hash = function(text)
+    chars = "AaBbCcDdEeFfGgHhJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz0123456789"
+    hash_val = md5(text)
+    result = ""
+    
+    for x in enumerate(text)
+        seed = code(hash_val[x.key%hash_val.len]) + code(x.value) + x.key + chars.len
+        result = result + chars[seed%chars.len]
+    end for
+    return result
+end function
+
+
+uncolor_string = function(text)
+    if not text isa string then return TypeError.New("unformat_string","string", typeof(text))
+    tags = [
+        "align",
+        "alpha",
+        "color",
+        "b",
+        "i",
+        "cspace",
+        "font",
+        "indent",
+        "line-height",
+        "line-indent",
+        "link",
+        "lowercase",
+        "uppercase",
+        "smallcaps",
+        "margin",
+        "mark",
+        "mspace",
+        "noparse",
+        "nobr",
+        "page",
+        "pos",
+        "size",
+        "space",
+        "sprite",
+        "s",
+        "u",
+        "style",
+        "sub",
+        "sup",
+        "voffset",
+        "width",
+        "link",
+        "#[0-9a-f]{3}",
+        "#[0-9a-f]{6}",
+    ]
+    new_value = text
+    joined = tags.join("|")
+    results = new_value.matches("<\/?("+joined+")(\s.*?|=.*?|.{0})>")
+    for r in results
+        new_value = new_value.replace(r.value, r.value.insert(1, "<sup></sup>"))
+    end for
+    //new_value = new_value.replace("<\/?("+joined+")(\s.*?|=.*?|.{0})>", "")
+    return new_value
+end function
+
+
+unformat_string = function(text)
+    if not text isa string then return TypeError.New("unformat_string","string", typeof(text))
+    tags = [
+        "align",
+        "alpha",
+        "color",
+        "b",
+        "i",
+        "cspace",
+        "font",
+        "indent",
+        "line-height",
+        "line-indent",
+        "link",
+        "lowercase",
+        "uppercase",
+        "smallcaps",
+        "margin",
+        "mark",
+        "mspace",
+        "noparse",
+        "nobr",
+        "page",
+        "pos",
+        "size",
+        "space",
+        "sprite",
+        "s",
+        "u",
+        "style",
+        "sub",
+        "sup",
+        "voffset",
+        "width",
+        "link",
+        "#[0-9a-f]{3}",
+        "#[0-9a-f]{6}",
+    ]
+    new_value = text
+    joined = tags.join("|")
+    new_value = new_value.replace("<\/?("+joined+")(\s.*?|=.*?|.{0})>", "")
+    return new_value
+end function
+
+
+tabulate_data = function(data, titles, data_colors, title_colors, spaces=3)
+    // Type checking
+    if not data isa list then return TypeError.New("tabulate_data","list[list[any]]", typeof(data))
+    err = expect_all(data, list)
+    if err != null then return TypeError.New("tabulate_data","list[any]", typeof(err))
+
+    // Defaults
+    if data_colors == null then data_colors = ["<#ddd>"]
+    if title_colors == null then title_colors = ["<i><#669>"]
+
+    result = {}
+    result.string = null
+    result.longest = null
+    result.lines = []
+
+    // Tabulator extra functions
+    get_line = function(items, lengths, colors)
+        result = ""
+        for item in enumerate(items)
+            col = colors[item.key%colors.len]
+            value = str(item.value)
+            local_spaces = lengths[item.key] - unformat_string(value).len
+            result = result + col + value + " "*(local_spaces+spaces)
+        end for
+        return result
+    end function
+
+    // Tabulator
+    longest = []
+    for title in titles 
+        longest.push(len(title))
+    end for
+
+    // enumerate longest line
+    for items in data
+        for item in enumerate(items)
+            if item.key >= titles.len then break
+            longest[item.key] = max(longest[item.key], unformat_string(str(item.value)).len)
+        end for
+    end for
+
+    result.lines.push(get_line(titles, longest, title_colors))
+    for item in data
+        result.lines.push(get_line(item, longest, data_colors))
+    end for
+    
+    result.length = unformat_string(result.lines[0]).len
+    result.string = result.lines.join(char(10))
+    return result
+end function
+
+
+globals_to_locals = function(local, global)
+    for x in global
+        local[x.key] = @x.value
+    end for
+end function
+
+
+bin_to_int = function(bin)
+    result = 0
+
+    base = len(bin)
+    for x in bin
+        result = result + (2*to_int(x)) ^ base / 2
+        base = base - 1
+    end for
+    return result
+end function
+
+
+int_to_bin = function(val)
+    result = []
+
+    i = 0
+    while val > 0
+        result.insert(0, val % 2)
+        val = floor(val / 2)
+        i = i + 1
+    end while
+
+    return result.join("")
+end function
+
+
+hex_chars = "0123456789abcdef"
+int_to_hex = function(val)
+    result = []
+    
+    i = 0
+    while val > 0
+        result.insert(0, hex_chars[val % 16])
+        val = floor(val/16)
+        i = i + 1
+    end while
+
+    return result.join("")
+end function
+
+
+hex_to_int = function(hex)
+    result = 0
+    
+    base = len(hex)-1
+    for c in hex.lower()
+        result = result + (indexOf(hex_chars, c) * (16^base))
+        base = base - 1
+    end for
+
+    return result
+end function
+
+random = function(min, max, float=false)
+    err = expect_all([min, max], number)
+    if err != null then return TypeError.New("utils.random", "int", typeof(err))
+    if max < min then return ValueError.New("utils.random", "Min must be smaller than max")
+
+    result = min + rnd * (max-min)
+    if float then return result
+    return round(result)
+end function
+
+Binary = {}
+Binary.New = function(bits=1)
+    bin = new self
+    self.bits = bits
+    bin.bin = ""
+    return bin
+end function
+
+Binary.register = function(val, bits)
+    if val isa list then
+        for x in range(0, len(val)-1)
+            bin = int_to_bin(val[x])
+            padding = "0" * (bits[x] - len(bin))
+            self.bin = self.bin + padding + int_to_bin(val[x])
+        end for
+    else if val isa number then
+        bin = int_to_bin(val)
+        padding = "0"*(bits - len(bin))
+        self.bin = self.bin + padding + int_to_bin(val)
+    end if
+end function
+
+Binary.register_hex = function(hex, bits)
+    if hex isa list then
+        for x in range(0, len(hex)-1)
+            bin = int_to_bin(hex_to_int(val[x]))
+            padding = "0" * (bits[x] - len(bin))
+            self.bin = self.bin + int_to_bin(hex_to_int(x))
+        end for
+    else if hex isa string then
+        bin = int_to_bin(hex_to_int(hex))
+        padding = "0"*(bits - len(bin))
+        self.bin = self.bin + padding + int_to_bin(hex_to_int(hex))
+    end if
+end function
+
+Binary.value = function()
+    return bin_to_int(self.bin)
+end function
+
+Binary.hex_value = function()
+    return int_to_hex(self.value)
+end function
+
+Binary.read = function(sections)
+    bin = "0"*(self.bits - len(self.bin)) + self.bin
+    if sum(sections) != len(bin) then
+        return null
+    end if
+    result = []
+    temp = bin
+
+    for x in sections
+        result.push(bin_to_int(temp[:x]))
+        temp = temp[x:]
+    end for
+
+    return result
+end function
+
+
+select_prompt = function(msg, arr, silent=false)
+    print("<#fa0>" + msg)
+    if not silent then
+        for i in range(1, arr.len)
+            print("<#444>[<#f4c>" + i + "<#444>]<#6af> " + arr[i-1])
+        end for
+    end if
+
+    result = user_input(": <#f4c>")
+    while result != "" and not (result.to_int >= 1 and result.to_int <= arr.len)
+        print("<#f47>Selection must be between <#fff>1<#f47> and <#fff>" + arr.len)
+        result = user_input(": <#f4c>")
+    end while
+
+    if result == "" then 
+        return null
+    else
+        return arr[result.to_int-1]
+    end if 
+end function
+
+
+confirmation_prompt = function(msg)
+    print("<#fa0>" + msg)
+    while true
+        inp = user_input("<#f4c>y / n <#446>: <#f4c>").lower()
+        if ["y", "ye", "yes"].indexOf(inp) != null then return true
+        if ["n", "no"].indexOf(inp) != null then return false
+        print("<#f47>Please input (y)es or (n)o")
+    end while
+end function

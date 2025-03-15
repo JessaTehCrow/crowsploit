@@ -1,0 +1,106 @@
+string_value_type = function(text)
+    if not text isa string then return TypeError.New("string_value_type", "string", typeof(text))
+    if text.is_match("^\d+\.\d+$") then
+        return [text.val, "float"]
+
+    else if is_valid_ip(text) or text == "localhost" then
+        return [text, "ip"]
+
+    else if text.is_match("^\d+$") then
+        return [text.to_int, "int"]
+
+    else if text.is_match("^(true|false|1|0)$") then
+        return [text.is_match("^(true|1)$"), "bool"]
+    end if
+
+    return [text, "string"]
+end function
+
+
+smart_split = function(text)
+    Part = {}
+    Part.New = function()
+        p = new self
+        p.quoted = false
+        p.type = null
+        p.value = ""
+        p.eval_value = null
+
+        return p
+    end function
+
+    Part.add_char = function(c)
+        self.value = self.value + c
+    end function
+
+    backs = false
+    parts = []
+    parts.push(Part.New())
+
+    quote = ""
+
+    for c in text
+        // Check for escape chars
+        if c == "\" then
+            backs = not backs
+            if backs == false then
+                parts[-1].add_char(c)
+            end if
+            continue
+        end if
+
+        if c == """" or c == "'" then
+            if quote == "" and parts[-1].value == "" and not backs then
+                parts[-1].quoted = true
+                quote = c
+                continue
+
+            else if c == quote and not backs then
+                quote = ""
+                parts.push(Part.New())
+                continue
+
+            else if backs then
+                backs = false
+                parts[-1].add_char(c)
+                continue
+            end if
+        end if
+
+        if backs and c != "\" then
+            backs = false
+            parts[-1].add_char("\")
+        end if
+
+        if c == " " and quote == "" then
+            if parts[-1].value == "" then continue
+            
+            parts.push(Part.New())
+        else
+            parts[-1].add_char(c)
+        end if
+    end for
+
+    if parts[-1].value == "" then
+        parts.pop()
+    end if
+
+    for p in parts
+        res = string_value_type(p.value)
+        p.eval_value = res[0]
+        p.type = res[1]
+    end for
+
+    return parts
+end function
+
+
+parse_smart_split = function(smart)
+    result = []
+    for x in smart
+        parsed_value = string_value_type(x)
+        if parsed_value isa Error then return parsed_value.stack("parse_smart_split")
+        result.push(parsed_value)
+    end for
+    return result
+end function

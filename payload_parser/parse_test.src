@@ -1,0 +1,28 @@
+import_code("./lexer")
+
+t = "@requires root
+@requires computer
+@requires shell
+@requires file
+@requires active
+
+@param ""message"" string
+
+echo ""$P;Some message""
+
+log ""$P;Debug message""
+
+function test()
+    eriuh
+
+// Comment
+test = get_env(""RAND_IP"")
+set_env(""RAND_IP"", message)
+
+ips = >> scan {test} -p 0 -e"
+
+l = Lexer.init(t)
+
+for token in l.get_tokens()
+    print(token.line+":"+token.first+ " " + token.type + " '"+token.value+"'")
+end for

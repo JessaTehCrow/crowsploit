@@ -1,0 +1,20 @@
+@requires root
+@requires computer
+@requires shell
+@requires file
+@requires active
+
+@param "message" string
+
+echo "$P;Some message"
+
+log "$P;Debug message"
+
+function test()
+    return "some value"
+
+// Comment
+test = get_env("RAND_IP")
+echo "$P;Using ip:$S;" + test
+
+ips = >> scan {test} -p 0 -e

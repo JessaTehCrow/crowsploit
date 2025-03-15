@@ -1,0 +1,410 @@
+import_code("../libs/argparse")
+import_code("../libs/utils")
+import_code("../libs/proxyextension")
+
+_global = {}
+_global.set = function(k,v)
+    self[k] = v
+end function
+
+_print = @print
+print = function(msg, clear)
+    if _global.hasIndex("kernel") then 
+        _global.kernel.print(msg, clear)
+    else
+        _print(msg, clear)
+    end if
+end function
+
+log = function(msg)
+    if _global.hasIndex("kernel") and _global.kernel.DEBUG then
+        _print(_global.kernel.color(msg))
+    end if
+end function
+
+Arg = {}
+Arg.name = ""
+Arg.type = null
+Arg.default = null
+Arg.optional = false
+Arg.kwarg = false
+Arg.alias = null
+Arg.info = ""
+
+Arg.New = function(name, type)
+    arg = new self
+    arg.name = name
+    arg.type = type
+    return arg
+end function
+
+Arg.Default = function(default)
+    self.default = default
+    return self
+end function
+
+Arg.Info = function(text)
+    self.info = text
+    return self
+end function
+
+
+OptionalArg = new Arg
+OptionalArg.New = function(name, type)
+    arg = new self
+    arg.name = name
+    arg.type = type
+    arg.optional = true
+    return arg
+end function
+
+
+Kwarg = new Arg
+Kwarg.New = function(name, type)
+    arg = new self
+    arg.name = name
+    arg.type = type
+    arg.kwarg = true
+    return arg
+end function
+
+Kwarg.Alias = function(alias)
+    self.alias = alias
+    return self
+end function
+
+
+RestArg = new Arg
+RestArg.New = function()
+    arg = new self
+    arg.name = "rest"
+    arg.type = "string"
+    arg.optional = true
+    arg.info = "All overflowing data"
+    return arg
+end function
+RestArg.remove("Default")
+RestArg.remove("Info")
+
+Command = {}
+Command.name = ""
+Command.has_rest = false
+Command.callable = null
+Command.standalone = false
+Command.args = {"args":[], "kwargs":{}}
+Command.short_description = "Default command description"
+Command.long_description = "Default long command description"
+
+
+Command._parse_args = function(raw)
+    parsed_args = []
+    parsed_kwargs = {}
+    last_kwarg = null
+    rest = []
+
+    for x in raw
+        value = x.eval_value
+        type = x.type
+
+        if last_kwarg != null then
+            // Kwarg parsing
+            command_kwarg = self.args.kwargs[last_kwarg]
+            is_bool = value == 1 or value == 0
+
+            if not is_bool and command_kwarg.type == "bool" then
+                last_kwarg = null
+            else
+                if type != "string" and command_kwarg.type == "string" and value != null then 
+                    value = x.value
+                    type = "string"
+                end if
+
+                if is_bool and command_kwarg.type == "bool" then type = "bool"
+                if command_kwarg.type != type then return ParseTypeError.New("Command.parse_args" ,command_kwarg.name, command_kwarg.type, value)
+                
+                parsed_kwargs[last_kwarg] = value
+                last_kwarg = null
+                continue
+            end if
+        end if
+
+        if value != "" and type == "string" and value[0] == "-" and not x.quoted then
+            last_kwarg = value[2:]
+
+            if value[:2] != "--" then 
+                for y in self.args.kwargs
+                    if y.value.alias == value[1:] then
+                        last_kwarg = y.key
+                    end if
+                end for
+
+                if last_kwarg == value[2:] then return ParseKwargError.New("Command.parse_args", value[1:])
+            end if
+
+            // Kwarg parsing
+            if not self.args.kwargs.hasIndex(last_kwarg) then return ParseKwargError.New("Command.parse_args", last_kwarg)
+            kwarg = self.args.kwargs[last_kwarg]
+
+            if kwarg.type == "bool" then
+                if kwarg.default == null or kwarg.default == false then
+                    parsed_kwargs[last_kwarg] = true
+                else
+                    parsed_kwargs[last_kwarg] = false
+                end if
+            end if
+
+        else
+            // Arg parsing
+            if self.has_rest and parsed_args.len >= self.args.args.len then
+                rest.push(x.value)
+                continue
+            
+            else if parsed_args.len >= self.args.args.len then 
+                return ParseError.New("Command.parse_args", "Too many arguments")
+
+            end if
+            arg = self.args.args[parsed_args.len]
+            if type != "string" and arg.type == "string" and value != null then 
+                value = x.value
+                type = "string"
+            end if
+
+            if arg.type == "float" and type == "int" then type = "float"
+            if arg.type != type then return ParseTypeError.New("Command.parse_args", arg.name, arg.type, value)
+            parsed_args.push(value)
+        end if
+    end for
+
+    if self.has_rest then
+        parsed_kwargs["rest"] = rest
+    end if
+
+    return {"args":parsed_args, "kwargs":parsed_kwargs}
+end function
+
+
+Command._optional_args = function()
+    amount = 0
+    for x in self.args.args
+        if x.optional then amount = amount + 1
+    end for
+    return amount
+end function
+
+
+Command.call = function(kernel, args)
+    _global.set("kernel", kernel)
+    parsed = self._parse_args(args)
+    if parsed isa Error then return parsed.stack("Command.call")
+
+    optionals = self._optional_args
+    command_args = parsed.kwargs
+
+    if parsed.args != [] then
+        for x in enumerate(parsed.args)
+            arg = self.args.args[x.key]
+            command_args[arg.name] = x.value
+        end for
+    end if
+
+    for x in self.args.args
+        if command_args.hasIndex(x.name) then continue
+        command_args[x.name] = x.default
+    end for
+
+    for x in self.args.kwargs.values
+        if command_args.hasIndex(x.name) then continue
+        command_args[x.name] = x.default
+    end for
+
+    not_enough_args = (self.args.args.len - optionals) > parsed.args.len
+    if not_enough_args then return ParseError.New("Command.call", "Not enough arguments")
+
+    command_args.kernel = kernel
+    return self.callable(command_args)
+end function
+
+
+Tool = {}
+
+Tool.name = "CrowTool"
+Tool.version = "1.0.0"
+Tool.tool_kernel = "1.2.1"
+Tool.has_main = false
+Tool.loaded_commands = 0
+Tool.total_commands  = 0
+Tool.commands = {}
+
+Tool.short_description = "Default tool description"
+Tool.long_description = "Default long tool description.
+This will be shown on the full help display.
+This might be used to explain uses, or extra information"
+
+
+Tool.init = function()
+    if params.len == 0 then exit("Invalid initialization")
+    if params[0] != "init" then exit("Invalid initialization")
+    custom_obj = get_custom_object
+
+    custom_obj.result.push(self)
+end function
+
+
+Tool.New = function(name, version)
+    tool = new self
+    tool.commands = {}
+    tool.name = name
+    tool.settings = null
+    tool.version = version
+    return tool
+end function
+
+
+Tool.call = function(kernel, smart)
+    if smart == [] and not self.has_main then
+        return Error.New("Tool.call","No command for tool supplied")
+    else if smart == [] then
+        return self.commands["main"].call(kernel, [])
+    end if
+
+    command = smart[0]
+    args = smart[1:]
+    has_command = self.commands.hasIndex(command.value)
+    cmd = null
+
+    if has_command then
+        cmd = self.commands[command.value]
+
+    else if self.has_main then
+        cmd = self.commands["main"]
+        args = smart
+
+    else
+        return Error.New("Tool.call", "Command '" + command.value + "' does not exist")
+    end if
+
+    result = cmd.call(kernel, args)
+    return result
+end function
+
+
+Tool._command = function(name, fargs, main=false)
+    self.total_commands = self.total_commands + 1
+
+    if name == "main" and not main then 
+        return CommandError.New("Tool._command", name, self.name, "Command name 'main' is reserved.")
+    end if
+
+    args = {"args":[], "kwargs":{}}
+    has_rest = false
+    for x in fargs
+        if not x isa Arg then
+            return CommandError.New("Tool._command", name, self.name, "Non argument passed to init")
+
+        else if ["int", "string", "bool", "float", "ip"].indexOf(x.type) == null then
+            return CommandError.New("Tool._command", name, self.name,"Invalid argument type '"+x.type+"'. Should be: bool, float, int, string or ip")
+
+        else if x.default != null and ((string_value_type(str(x.default))[1] != x.type) and (x.type == "bool" and (x.default != 0 and x.default != 1))) then
+            return CommandError.New("Tool._command", name, self.name, "Argument default for '"+x.name+"' does not match argument type. Expected '" + x.type + "' got '"+str(x.default)+"'")
+
+        else if x.alias != null and not x.alias isa string then
+            return CommandError.New("Tool._command", name, self.name, "Kwarg alias must be a string")
+
+        end if
+
+        if x.kwarg then
+            args.kwargs[x.name] = x
+        
+        else if x.name == "rest" then
+            has_rest = true
+
+        else
+            args.args.push(x)
+        end if
+    end for
+
+    self.loaded_commands = self.loaded_commands + 1
+    cmd = new Command
+    cmd.name = name
+    cmd.args = args
+    cmd.has_rest = has_rest
+    return cmd
+end function
+
+
+Tool.on_load = function(kernel)
+    return
+end function
+
+
+Tool.command = function(name, fargs, callable)
+    cmd = self._command(name, fargs)
+    if cmd isa Error then 
+        _print(cmd.message)
+        return {}
+    end if
+
+    globals_to_locals(locals, globals)
+    cmd.callable = function(args)
+        return callable(args)
+    end function
+
+    self.commands[name] = cmd
+    return cmd
+end function
+
+
+Tool.standalone_command = function(name, fargs, callable)
+    cmd = self._command(name, fargs)
+    if cmd isa Error then 
+        _print(cmd.message)
+        return {}
+    end if
+
+    globals_to_locals(locals, globals)
+    cmd.callable = function(args)
+        return callable(args)
+    end function
+
+    cmd.standalone = true
+    self.commands[name] = cmd
+
+    return cmd
+end function
+
+
+Tool.main_command = function(fargs, callable)
+    cmd = self._command("main", fargs, true)
+    if cmd isa Error then 
+        _print(cmd.message)
+        return {}
+    end if
+
+    globals_to_locals(locals, globals)
+    cmd.callable = function (args)
+        return callable(args)
+    end function
+
+    self.commands["main"] = cmd
+    self.has_main = true
+    return cmd
+end function
+
+
+Settings = {}
+Settings.init = function()
+    s = new self
+    s.data = {}
+    return s
+end function
+
+Settings.set = function(tab, value)
+    for i in value
+        if not i.value isa string then
+            print(Error.New("Settings.set","(Settings error) Invalid value while setting settings: " + i))
+            return
+        end if
+    end for
+
+    self.data[tab] = value
+end function

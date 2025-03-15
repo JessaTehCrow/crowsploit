@@ -1,0 +1,659 @@
+import_code("./proxyextension")
+import_code("./error")
+import_code("./utils")
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// version; address; unsec ; active; registered; ports; local; subcomputers; group_count; path exists; dependency; depversion; object; objperms;//
+// int    ; string ; string; int   ; int       ; int  ; bool ; int         ; int        ; string     ; int       ; int       ; int   ; int     ;//
+//////////////////////////////////////////////////////////////////  Example  /////////////////////////////////////////////////////////////////////
+//                                              201;05AA48D5;poopy;0;2;3;0;0;1;/Public;net.so;115;2;1;                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // version
+    //      What version this exploit works for
+    //      00-99
+    //
+    // address
+    //      What address this exploit is for
+    //      1-8 chars
+    //
+    // unsec
+    //      Unsec string to exploit
+    //      any string
+    //
+    // active (2 bits)
+    //      If there's an active account online
+    //      0 = None
+    //      1 = Guest
+    //      2 = User
+    //      3 = Root
+    // 
+    // Registered (2 bits)
+    //      How many registered users the device needs to have
+    //      1-4
+    // 
+    // Ports (3 bits)
+    //      How many open ports
+    //      1-4
+    //
+    // local (1 bit)
+    //      If it can only be exploited locally
+    //      0/1
+    //
+    // subcomputers (3 bits)
+    //      How many computers it has in its subnet
+    //      1-4
+    //      
+    // group_count (3 bits)
+    //      How many groups need to exist on the device (exact)
+    //      1-4
+    //
+    // path exists (2 bits)
+    //      Path needs to exist on device to exploit
+    //      String of path to check
+    //      0 = /bin
+    //      1 = /Public
+    //      2 = /usr
+    //      3 = /lib/aptclient.so
+    //      
+    //
+    // dependency (2 bits)
+    //      What dependency this exploit relies on
+    //      0 = None
+    //      1 = kernel_module.so
+    //      2 = init.so
+    //      3 = net.so
+    //
+    // depversion
+    //      What minimum version the dependency must be
+    //      00-99
+    //
+    // object (4 bits)
+    //      What object this exploits returns
+    //      0 = unknown
+    //      1 = file
+    //      2 = computer
+    //      3 = shell
+    //      4 = bounce
+    //      5 = password
+    //      6 = firewall
+    //
+    // perms (4 bits)
+    //      What perms the exploit comes with
+    //      0 = unknown
+    //      1 = Guest
+    //      2 = User
+    //      3 = Root
+    //      4 = None
+//
+
+service_libs = {}
+service_libs.ssh  = "libssh.so"
+service_libs.ftp  = "libftp.so"
+service_libs.http = "libhttp.so"
+service_libs.smtp = "libsmtp.so"
+service_libs.chat = "libchat.so"
+service_libs.cam  = "libcam.so"
+service_libs.rshell = "librshell.so"
+service_libs.repository = "librepository.so"
+service_libs.criminals = "libsql.so"
+service_libs.employees = "libsql.so"
+service_libs.students = "libsql.so"
+service_libs.bank_account = "libsql.so"
+service_libs.kernel_router = "kernel_router.so"
+service_libs.unknown = "unknown"
+service_libs.smartappliance = "libsmartappliance.so"
+service_libs.trafficnet = "libtrafficnet.so"
+
+db_path = "/var/exdb/"
+
+obj_colors = {
+    "Unknown" : "<#444>Unknown",
+    "File" : "<#68f>File",
+    "Computer" : "<#b72>Computer",
+    "Shell" : "<#b22>Shell",
+    "Firewall": "<#94f>Firewall",
+    "Password" : "<#888>Password",
+    "Bounce": "<#4cc>Bounce"
+}
+
+perm_colors = {
+    "unknown":"<#444>Unknown",
+    "None": "<#444>None",
+    "guest":"<#46b>Guest",
+    "user":"<#b72>User",
+    "root":"<#b22>Root",
+}
+
+active_enum = [
+    "",
+    "Guest",
+    "User",
+    "Root"
+]
+
+dependency_enum = [
+    "",
+    "kernel_module.so",
+    "init.so",
+    "net.so"
+]
+
+object_enum = [
+    "Unknown",
+    "File",
+    "Computer",
+    "Shell",
+    "Password",
+    "Firewall"
+]
+
+perms_enum = [
+    "unknown",
+    "none",
+    "guest",
+    "user",
+    "root"
+]
+
+Exploit = {}
+Exploit.New = function()
+    exploit = new self
+    exploit.version = 0
+    exploit.address = ""
+    exploit.unsec = ""
+    exploit.active = ""
+    exploit.registered = 0
+    exploit.ports = 0
+    exploit.local = false
+    exploit.subcomputers = 0
+    exploit.group_count = 0
+    exploit.exists = ""
+    exploit.dependency = ""
+    exploit.depversion = 0
+    exploit.object = "Unknown"
+    exploit.objperms = "unknown"
+
+    return exploit
+end function
+
+Exploit.serialize = function()
+    bin = Binary.New(23)
+
+    bin.register([
+        indexOf(active_enum, self.active),
+        self.registered,
+        self.ports,
+        self.local,
+        self.subcomputers,
+        self.group_count,
+        indexOf(dependency_enum, self.dependency),
+        indexOf(object_enum, self.object),
+        indexOf(perms_enum, self.objperms),
+        ], [2,3,3,1,3,3,2,3,3])
+
+    return [
+        self.version,
+        self.address,
+        self.unsec,
+        self.exists,
+        self.depversion,
+        bin.hex_value,
+    ].join(";")
+end function
+
+Exploit.execute = function(library, extra=null)
+    libversion = to_int(library.version.replace("\.", ""))
+    if libversion != self.version then 
+        return ExploitError.New("Exploit.execute","Library version does not match exploit")
+    end if
+    
+    exploit_result = null
+    if extra == null then
+        exploit_result = library.overflow("0x"+self.address, self.unsec)
+    else
+        exploit_result = library.overflow("0x"+self.address, self.unsec, extra)
+    end if
+
+    restype = typeof(exploit_result)
+
+    object = "Unknown"
+    perm = "unknown"
+
+    if restype == "shell" then
+        exploit_result = Shell.New(exploit_result)
+        object = "Shell" // shell
+        perm = exploit_result.get_permission()
+
+    else if restype == "computer" then
+        exploit_result = Computer.New(exploit_result)
+        object = "Computer" // computer
+        perm = exploit_result.get_permission()
+
+    else if restype == "file" then
+        exploit_result = File.New(exploit_result)
+        object = "File" // file obj
+        perm = exploit_result.get_permission()
+
+    else if exploit_result == true then
+        if extra == null then
+            object = "Firewall" // firewall
+            perm = "None"
+        else
+            object = "Password" // password
+        end if
+
+    else if exploit_result == false then
+        if is_valid_ip(extra) then
+            object = "Password"
+        end if
+    else if exploit_result isa string then
+        return Error.New("exploit.execute", exploit_result)
+    end if
+
+    return [object, perm, exploit_result]
+end function
+
+Exploit.data = function(ip)
+    if not ip isa string and not ip == null then return TypeError.New("Exploit.data", "string", typeof(ip))
+    if ip != null and not is_valid_ip(ip) then
+        return ValueError.New("Exploit.data", "ip", ip)
+    end if
+    is_router = false
+
+    if ip != null then
+        is_router = (is_lan_ip(ip) and ip[-2:] == ".1") or (not is_lan_ip(ip))
+    end if
+
+    h = function(a)
+        if a > 0 then return "<#4af>"+a
+        return "<#444>"+a
+    end function
+
+    obj = self.object
+    if is_router and self.object == "Computer" then
+        obj = "Bounce"
+    end if
+
+    return [
+        self.version,
+        self.address,
+        self.unsec,
+        obj_colors[obj],
+        perm_colors[self.objperms],
+        self.active,
+        h(self.registered),
+        h(self.ports),
+        ["<#4c4>False", "<#c44>True"][self.local],
+        h(self.subcomputers),
+        h(self.group_count),
+        self.exists,
+        ["<#444>None",self.dependency][self.dependency != ""],
+        h(self.depversion),
+    ]
+end function
+
+
+parse_file = function(lines)
+    exploits = []
+    for exploit in lines.split("\n")
+        lib = Exploit.New()
+
+        vals = exploit.split(";")
+        lib.version = to_int(vals[0])
+        lib.address = vals[1]
+        lib.unsec = vals[2]
+        lib.active = active_enum[to_int(vals[3])]
+        lib.registered = to_int(vals[4])
+        lib.ports = to_int(vals[5])
+        lib.local = vals[6] == "1"
+        lib.subcomputers = to_int(vals[7])
+        lib.group_count = to_int(vals[8])
+        lib.exists = vals[9]
+        lib.dependency = dependency_enum[to_int(vals[10])]
+        lib.depversion = to_int(vals[11])
+        lib.object = object_enum[to_int(vals[12])]
+        lib.objperms = perms_enum[to_int(vals[13])]
+        exploits.push(lib)
+    end for
+    return exploits
+end function
+
+
+ExploitLibrary = {}
+ExploitLibrary.New = function(library, version)
+    lib = new self
+    lib.exploits = []
+    if typeof(library) == "MetaLib" then        
+        lib.name = library.lib_name
+        lib.version = library.version.split("\.")[0]
+        lib.raw_version = to_int(library.version.replace("\.", ""))
+
+    else if library isa string and version isa string then
+        lib.name = library
+        lib.version = version.split("\.")[0]
+        lib.raw_version = to_int(version.replace("\.", ""))
+
+    else
+        return TypeError.New("ExploitLibrary.New", "String | Library", "String or metaLibrary")
+    end if
+
+    return lib
+end function
+
+
+ExploitLibrary.serialize = function()
+    result = []
+
+    for exploit in self.exploits
+        result.push(exploit.serialize())
+    end for
+
+    return result.join(char(10))
+end function
+
+
+ExploitLibrary.load = function(computer)
+    if typeof(computer) != "map" then return ParseTypeError.New("ExploitLibrary.load_lib", "computer", "Computer", typeof(computer))
+    dir = db_path + self.name + "/" + self.version
+    result = computer.File(dir)
+    
+    if is_error(result) or result == null then
+        computer.touch(db_path + self.name, self.version)
+        result = computer.File(dir)
+    end if
+
+    if is_error(result) then return result
+
+    content = result.get_content()
+    if is_error(content) then return content
+    if content == "" then return
+
+    for x in content.split("\n")
+        exploit = Exploit.New()
+
+        vals = x.split(";")
+        exploit.version = to_int(vals[0])
+        exploit.address = vals[1]
+        exploit.unsec = vals[2]
+        exploit.exists = vals[3]
+        exploit.depversion = to_int(vals[4])
+
+        bin = Binary.New(23)
+        bin.register_hex(vals[5], 23)
+
+        result = bin.read([2,3,3,1,3,3,2,3,3])
+
+        exploit.active = active_enum[result[0]]
+        exploit.registered = result[1]
+        exploit.ports = result[2]
+        exploit.local = result[3]
+        exploit.subcomputers = result[4]
+        exploit.group_count = result[5]
+        exploit.dependency = dependency_enum[result[6]]
+        exploit.object = object_enum[result[7]]
+        exploit.objperms = perms_enum[result[8]]
+        self.register_exploit(exploit)
+    end for
+end function
+
+
+ExploitLibrary.save_exploits = function(computer)
+    if computer == null then return ParseTypeError.New("ExploitLibrary.save_exploits", "computer", "computer", typeof(computer))
+    dir = db_path + self.name + "/"
+    filename = self.version
+    file = computer.File(dir+filename)
+    
+    if file == null or is_error(file) then
+        touch = computer.touch(dir, filename)
+        file = computer.File(dir+filename)
+    end if
+
+    if is_error(file) then return file.stack("ExploitLibrary.save_exploits")
+
+    return file.set_content(self.serialize())
+end function
+
+
+ExploitLibrary.register_exploit = function(exploit)
+    self.exploits.push(exploit)
+end function
+
+
+ExploitLibrary.exploits_with_version = function(version=null)
+    if version == null then 
+        version = self.raw_version
+    else
+        version = to_int(version.replace("\.", ""))
+    end if
+    result = []
+    for exploit in self.exploits
+        if exploit.version == version then result.push(exploit)
+    end for
+    return result
+end function
+
+
+ExploitLibrary.get_exploit = function(exploit)
+    for x in self.exploits
+        if x.version != exploit.version then continue
+        if x.address != exploit.address then continue
+        if x.unsec != exploit.unsec then continue
+        return x
+    end for
+end function
+
+
+ExploitLibrary.merge = function(library)
+    for x in library.exploits
+        e = self.get_exploit(x)
+                
+        if e == null then
+            self.exploits.push(x)
+        else
+            other = (x.object == "Unknown") + (x.objperms == "unknown")
+            existing = (e.object == "Unknown") + (e.objperms == "unknown")
+
+            if other < existing then
+                e.object = x.object
+                e.objperms = x.objperms
+            end if
+        end if
+    end for
+end function
+
+
+ExploitLibrary.display = function(kernel, relevant=false, short=false, ip=null)
+    tab_titles = [
+        "version",
+        "address",
+        "unsec",
+        "object",
+        "perms",
+        "active",
+        "users",
+        "ports",
+        "local",
+        "subnet",
+        "groups",
+        "path",
+        "dependency",
+        "depversion",
+    ]
+
+    colors = [
+        kernel.color("$T;"),
+        kernel.color("$T;"),
+        kernel.color("$T;"),
+        kernel.color("$T2;"),
+        kernel.color("$T2;"),
+        kernel.color("$S;"),
+        kernel.color("$S;"),
+        kernel.color("$T;"),
+        kernel.color("$S;"),
+        kernel.color("$T2;"),
+        kernel.color("$S;"),
+        kernel.color("$S;"),
+        kernel.color("$S;"),
+        kernel.color("$S;"),
+    ]
+
+    if short then
+        tab_titles = tab_titles[:1] + tab_titles[3:]
+        colors = colors[:1] + colors[3:]
+    end if
+    if relevant then
+        tab_titles = tab_titles[1:]
+        colors = colors[1:]
+    end if
+
+
+    tab_data = []
+    for exploit in self.exploits
+        if exploit.version != self.raw_version and relevant then continue
+        data = exploit.data(ip)
+
+        if short then 
+            data = data[:1] + data[3:]
+        end if
+        if relevant then
+            data = data[1:]
+        end if
+
+        tab_data.push(data)
+    end for
+
+    if tab_data == [] then
+        tab_data = [["No data"]]
+    end if
+
+    kernel.print("<size=200%>$P;" + self.name)
+    kernel.print("$T2;Version $T;: $S;" + self.raw_version)
+    print(tabulate_data(tab_data, tab_titles, colors, ["<i><u>"+kernel.color("$T2;")]).string)
+end function
+
+
+get_exploits = function(metax, library, address)
+    text = unformat_string(metax.scan_address(library, address))
+    exploits = ExploitLibrary.New(library)
+
+    for x in text.split("Unsafe check")[1:]
+        lines = x.split(char(10))
+        variable = lines[0].split(" ")[-3][:-1]
+        exploit = Exploit.New()
+        exploit.address = address[2:]
+        exploit.unsec = variable
+        exploit.version = to_int(library.version.replace("\.", ""))
+
+        for req in lines[1:]
+            sep = req.split(" ")
+
+            // Active account check
+            if req.is_match("\* Checking guest.+") then exploit.active = "Guest"
+            if req.is_match("\* Checking an active.+") then exploit.active = "User"
+            if req.is_match("\* Checking root.+") then exploit.active = "Root"
+
+            // Active dependency check
+            if req.is_match("\* Using.+") then
+                exploit.dependency = sep[3]
+                exploit.depversion = to_int(sep[-1].replace("\.", ""))
+            end if
+
+            // Amount of registered users
+            if req.is_match("\* Checking registered.+") then
+                exploit.registered = to_int(sep[-1][:-1])
+            end if
+
+            // Local
+            if req.is_match("\* Checking existing.+") then exploit.local = true
+
+            // Ports
+            if req.is_match("\* \d+ port.+") then
+                exploit.ports = to_int(sep[1])
+            end if
+
+            // Subcomputers
+            if req.is_match("\* \d+ computers.+") then
+                exploit.subcomputers = to_int(sep[1])
+            end if
+
+            // Path
+            if req.is_match("\* Checking path.+") then
+                exploit.exists = sep[3]
+            end if
+
+            // Groups
+            if req.is_match("\* \d+ user.+") then
+                exploit.group_count = to_int(sep[1])
+            end if
+        end for
+        exploits.register_exploit(exploit)
+    end for
+
+    return exploits
+end function
+
+
+get_addresses = function(metax, library)
+    result = []
+    scan_results = metax.scan(library)
+
+    return scan_results
+end function
+
+
+enum_exploit = function(exploit, library, target)
+    if typeof(library) != "MetaLib" then return ParseTypeError.New("metautils.enum_exploit", "library", "MetaLib", typeof(library))
+    if not expect(exploit, Exploit) then return ParseTypeError.New("metautils.enum_exploit", "exploit", "Exploit", typeof(library))
+    if not expect(target, string) then return ParseTypeError.New("metautils.enum_exploit", "target", "string", typeof(library))
+
+    result = exploit.execute(library)
+    if is_error(result) then return result
+    if not (not result[-1]) then return result
+
+    result = exploit.execute(library, target)
+    if not (not result[-1]) then return result
+
+    return result
+end function
+
+
+full_scan = function(metax, library, router, silent=false, existing=null, skip_existing=false)
+    if typeof(metax) != "MetaxploitLib" then return ParseTypeError.New("metautils.full_scan", "matax", "MetaxploitLib", typeof(metax))
+    if typeof(library) != "MetaLib" then return ParseTypeError.New("metautils.full_scan", "library", "MetaLib", typeof(library))
+    if typeof(router) != "router" then return ParseTypeError.New("metautils.full_scan", "router", "router", typeof(router))
+
+    target = router.devices_lan_ip[0]
+    addresses = get_addresses(metax, library)
+    exploits = ExploitLibrary.New(library)
+
+    for address in addresses
+        temp_exploits = get_exploits(metax, library, address)
+
+        for exploit in temp_exploits.exploits
+            if existing != null and skip_existing != false then
+                res = existing.get_exploit(exploit)
+                if res != null and res.object != "Unkown" and res.objperms != "unknown" then continue
+            end if
+            result = enum_exploit(exploit, library, target)
+            if is_error(result) then return result.stack("full_scan")
+            exploit.object = result[0]
+            exploit.objperms = result[1]
+
+            if exploit.object == "Password" and not silent then
+                print("<#fff>Password reset detected.")
+                r = select_prompt("What elevation did it have?", ["root", "user"])
+                if r != null then exploit.objperms = r
+            else if exploit.object == "Password" and silent then
+                exploit.objperms = "Unknown"
+            end if
+
+            if exploit.object != "Unknown" then
+                print(obj_colors[exploit.object] + "<#666> : " + perm_colors[exploit.objperms])
+            end if
+
+            exploits.register_exploit(exploit)
+        end for
+    end for
+
+    return exploits
+end function

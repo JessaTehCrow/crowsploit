@@ -1,0 +1,141 @@
+Error = {}
+Error.stacktrace = null
+Error.message = null
+
+type_col = "<#c55>"
+text_col = "<#e88>"
+
+Error.New = function(name, msg)
+    error = new self
+    error.stacktrace = []
+    error.message = text_col + str(name + " : " + msg)
+    return error
+end function
+
+Error.stack = function(name)
+    self.stacktrace.insert(0, name)
+    return self
+end function
+
+Error.trace = function()
+    temp = self.stacktrace.values
+    temp.push(self.message)
+    return text_col + temp.join(" <b><#766>>></b> " + text_col)
+end function
+
+TypeError = new Error
+TypeError.New = function(name, expected, got)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(TypeError) " + text_col + name + " Expected '" + expected + "' got '" + str(got) + "'"
+    return error
+end function
+
+FormatError = new Error
+FormatError.New = function(name, format, got)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(FormatError) " + text_col + name + " Expected '" + format + "' got '" + got + "'"
+    return error
+end function
+
+ValueError = new Error
+ValueError.New = function(name, expected, got)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(ValueError) " + text_col + name + " Expected '" + expected + "' got '" + got + "'"
+    return error
+end function
+
+PermissionError = new Error
+PermissionError.New = function(name, required)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(PermissionError) " + text_col + name + " Lacking required permissions: " + required
+    return error
+end function
+
+OsError = new Error
+OsError.New = function(name, msg)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(OsError) " + text_col + name + " " + msg
+    return error
+end function
+
+ParseError = new Error
+ParseError.New = function(name, msg)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(ParseError) " + text_col + name + " " + msg
+    return error
+end function
+
+IndexError = new Error
+IndexError.New = function(name, index)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(IndexError) " + text_col + name + " Index '"+str(index)+"' Does not exist"
+    return error
+end function
+
+ParseTypeError = new Error
+ParseTypeError.New = function(name, argname, type, got)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(ParseError) " + text_col + name + " Argument '"+argname+"' should be '" + type + "' got '" + got + "'"
+    return error
+end function
+
+ParseKwargError = new Error
+ParseKwargError.New = function(name, arg, value)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(ParseError) " + text_col+name+" Does not have '"+arg+"' kwarg " + value
+    return error
+end function
+
+CommandError = new Error
+CommandError.New = function(name, command, tool, extra)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(CommandError) " + text_col+name+", Failed to initialize command '"+command+"' in tool '"+tool+"' : " + extra
+    return error
+end function
+
+ObjectError = new Error
+ObjectError.New = function(name, required)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(ObjectError) " + text_col + name + " " + required + " access is required."
+    return error
+end function
+
+ExploitError = new Error
+ExploitError.New = function(name, message)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(ExploitError) " + text_col + name + " " + message
+    return error
+end function
+
+KernelError = new Error
+KernelError.New = function(name, message)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(KernelError) " + text_col + name + " " + message
+    return error
+end function
+
+IdiotError = new Error
+IdiotError.New = function(name, message)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(IdiotError) " + text_col + name + " <#0ff>" + message
+    return error
+end function
+
+is_error = function(obj)
+    if not obj isa map then return false
+    return obj.indexes == ["__isa", "stacktrace", "message"]
+end function

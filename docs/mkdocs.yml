@@ -1,0 +1,45 @@
+site_name: Crowsploit
+
+theme:
+    name: material
+    features:
+        - content.code.copy
+        - content.code.annotate 
+        - navigation.footer
+    icon:
+        annotation: material/plus-circle-outline
+ 
+
+markdown_extensions:
+    - pymdownx.tabbed:
+        alternate_style: true
+    - pymdownx.highlight:
+        anchor_linenums: true
+        line_spans: __span
+        pygments_lang_class: true
+        use_pygments: true
+    - pymdownx.tasklist:
+        custom_checkbox: true
+    - toc:
+        permalink: "#"
+    - pymdownx.emoji:
+        emoji_index: !!python/name:material.extensions.emoji.twemoji
+        emoji_generator: !!python/name:material.extensions.emoji.to_svg
+    - def_list
+    - pymdownx.highlight
+    - pymdownx.inlinehilite
+    - pymdownx.snippets
+    - pymdownx.superfences
+    - admonition
+    - pymdownx.details
+    - attr_list
+    - md_in_html
+    - pymdownx.caret
+    - pymdownx.tilde
+  
+plugins:
+    - search
+    - awesome-pages
+
+extra_css:
+    - stylesheets/extra.css

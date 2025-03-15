@@ -1,0 +1,155 @@
+import_code("../kernel/toolkernel")
+import_code("../libs/utils")
+import_code("../libs/sessionmanager")
+
+rshell = Tool.New("rshell", "1.0.8")
+
+rshell.short_description = "Start rshell clients and servers"
+rshell.long_description =  "Start rshell clients and servers"
+
+// Client //
+
+rshell_client_args = [
+    Kwarg.New("name", "string").Alias("n").Default("ssh").Info("Process name for rshell client"),
+    Kwarg.New("port", "int").Alias("p").Default(22).Info("Port for rshell client"),
+    Kwarg.New("target", "string").Alias("t").Default("1").Info("What ip to target for the client"),
+]
+
+rshell_client_func = function(a)
+    if a.kernel.session.metax == null then return ObjectError.New("rshell.client","Metaxploit")
+    target = a.target
+    ses_comp = a.kernel.session.computer
+
+    blacklist = ["dsession","kernel_task","xorg","ssh_enc"]
+
+    if blacklist.indexOf(a.name) != null then return OsError.New("rshell.client", "Name '"+a.name+"' is reserved")
+
+    start_procs = ses_comp.show_procs
+
+    if target.is_match("^\d+$") then
+        sesid = to_int(target)
+        session = a.kernel.get_session(sesid)
+        if session == null then
+            return IndexError.New("rshell.client", "No session with id '"+ sesid +"' found")
+        end if
+        target = session.wan
+    else if not is_valid_ip(target) then
+        return FormatError.New("rshell.client", "xxx.xxx.xxx.xxx", a.target)
+    end if
+
+    client = a.kernel.session.metax.rshell_client(target, a.port, a.name)
+    if client == null then return Error.New("rhsell.client", "Failed to start rshell client")
+
+    if client isa string and ses_comp.show_procs == start_procs then
+        return Error.New("rshell.client", client)
+    end if
+
+    print("$S;Successfully started rshell with process name $T2;'"+a.name+"'")
+end function
+
+rshell_client_cmd = rshell.command("client", rshell_client_args, @rshell_client_func)
+rshell_client_cmd.short_description = "Setup rshell environment"
+rshell_client_cmd.long_description = "$P;Usage:
+$P;rshell client
+$P;rshell client $string;-n 'Minecraft' $int;-p 25565
+$P;rshell client $string;-t 192.168.0.2
+$P;rshell client $string;-t 3 $T;<= Points to session #3"
+
+// rshell interface
+
+rshell_interface_args = []
+
+rshell_interface_func = function(a)
+    if a.kernel.session.metax == null then return ObjectError.New("rshell.interface", "metaxploit")
+    shells = a.kernel.session.metax.rshell_server
+    if shells isa string then
+        return Error.New("rshell.interface", shells)
+    else if len(shells) == 0 then
+        return Error.New("rshell.interface", "No reverse shells to list")
+    end if
+
+    data = []
+    for s in shells
+        c = s.host_computer
+        wan = c.public_ip
+        lan = c.local_ip
+        cname = c.get_name
+
+        data.push([__s_idx+1, cname, wan, lan])
+    end for
+
+    res = tabulate_data(data, ["ID","Computer", "Public", "Local"], a.kernel.color(["$S;", "$P;", "$T;", "$T;"]))
+    print(res.string)
+    print(" ")
+
+    result = select_prompt("Load interface: ", shells, true)
+    if result == null then return
+
+    result = Shell.New(result)
+    ses = Session.New(result)
+    a.kernel.new_session(ses)
+    a.kernel.run_command("sessions", false)
+end function
+
+rshell_interface_cmd = rshell.command("interface", rshell_interface_args, @rshell_interface_func)
+rshell_interface_cmd.short_description = "See all rshells"
+rshell_interface_cmd.long_description = "See all rshells"
+
+// server
+
+rshell_server_args = [
+    Kwarg.New("port", "int").Default(69240).Info("Port to host server on"),
+]
+
+rshell_server_func = function(a)
+    home = a.kernel.session == a.kernel.sessions[0]
+    if a.kernel.session.shell == null then return ObjectError.New("rshell.server", "Shell")
+    if a.kernel.session.user != "root" then return PermissionError.New("rshell.server", "Need root access")
+    if a.kernel.session != a.kernel.active_session then return OsError.New("rshell.server", "Session needs to be an active session")
+
+    if home then
+        result = confirmation_prompt("Installing rshell server on home device is not recommeded. Proceed anyway?")
+        if not result then
+            return
+        end if
+    end if
+
+    rshell_download_path = "/lib/librshell.so"
+    file = null
+
+    if not home then
+        result = a.kernel.run_command("system download " + rshell_download_path + " -f 1", false)
+
+        if not result then 
+            return a.kernel.last_error.stack("rshell.server")
+        end if
+
+        file = a.kernel.session.file.get_file("librshell.so")
+        file.move("/lib", file.name)
+        if is_error(result) then 
+            return result.stack("rshell.server")
+        end if
+    else
+        file = a.kernel.session.file.get_file(rshell_download_path)
+        if is_error(file) then return file.stack("rshell.server")
+    end if
+
+    rshell_lib = include_lib(file.path)
+    r = rshell_lib.install_service()
+    if r isa string then return Error.New("rshell.server", r)
+    if r != 1 then return Error.New("rshell.server", "Failed to setup rshell server")
+
+    wait(0.2)
+    c = a.kernel.run_command("system run /server/rshelld start", false)
+    if c != 1 then
+        return a.kernel.last_error.stack("rshell.server")
+    end if
+    print("$S;Rshell server started")
+end function
+
+rshell_server_cmd = rshell.command("server", rshell_server_args, @rshell_server_func)
+rshell_server_cmd.short_description = ""
+rshell_server_cmd.long_description = ""
+
+// Initialize command
+rshell.init()

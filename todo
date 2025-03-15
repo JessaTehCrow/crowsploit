@@ -1,0 +1,34 @@
+- system info
+    show active users
+    subcomputers (router only)
+    ports open (to/from computer)
+    registered users (might need root?)
+    check local (ez?)
+    dependency (local only)
+
+- exploit
+    check possibility
+
+- silent rm
+    move file over it and back
+    (does not leave logs)
+
+- session view
+    show public / local ip?
+
+- payloads
+    run multiple commands in sequence
+    error checking?
+    object checking?
+    build lexer (done)
+    build parser
+    build interpreter
+
+- sniffing
+
+- `>>` and `>` functionality
+    to write to files
+
+- Libtrafficnet
+
+- smartappliance

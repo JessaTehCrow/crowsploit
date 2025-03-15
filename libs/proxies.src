@@ -1,0 +1,453 @@
+import_code("./error")
+import_code("./typehandler")
+
+
+File = {}
+File.object = null
+File.type = "file"
+
+File.New = function(obj)
+    if typeof(obj) != "file" then return TypeError.New("File.New","file", typeof(obj))
+    file = new File
+    file.object = obj
+    return file
+end function
+
+File.path = function(original_path=false)
+    return self.object.path(original_path)
+end function
+
+File.copy = function(path, name)
+    err = expect_all([path, name], string)
+    if err != null then return TypeError.New("File.copy","string", err)
+    result = self.object.copy(path, name)
+    if err isa string then return Error.New("File.copy",result)
+end function
+
+File.is_file = function()
+    obj = self.object
+    return not (obj.is_folder or obj.is_binary)
+end function
+
+File.is_folder = function()
+    return self.object.is_folder
+end function
+
+File.is_symlink = function()
+    if not hasIndex(self.object.__isa, "is_symlink") then return false
+    return self.object.is_symlink
+end function
+
+File.is_binary = function()
+    return self.object.is_binary
+end function
+
+File.file_type = function()
+    if self.is_symlink then return "symlink"
+    if self.is_folder then return "folder"
+    if self.is_binary then return "binary"
+    if self.is_file and self.object.name.is_match(".+\.src") then return "code"
+    if self.is_file then return "file"
+end function
+
+File.permissions = function()
+    return self.object.permissions
+end function
+
+File.has_permission = function(perm)
+    if not perm isa string then return TypeError.New("File.has_permission","string", typeof(perm))
+    if not perm.is_match("^(?!.*(.).*\1)[rwx]{1,3}$") then return FormatError.New("File.has_permission","rwx", perm)
+    for x in perm
+        if not self.object.has_permission(x) then return false
+    end for
+    return true
+end function
+
+File.chmod = function(perm, recursive=false)
+    if not self.has_permission("w") then return PermissionError.New("File.set_permission","write")
+    if not perm isa string then return TypeError.New("File.set_permission","string", typeof(perm))
+
+    if not perm.is_match("^[oug][+-](?!.*(.).*\1)[rwx]{1,3}$") then
+        return FormatError.New("File.set_permission","[oug][+-][rwx]")
+    end if
+    self.object.chmod(perm, recursive)
+end function
+
+File.delete = function()
+    if not self.parent.has_permission("w") then return PermissionError.New("File.delete","write")
+    self.object.delete
+end function
+
+File.get_content = function()
+    if not self.is_file then return TypeError.New("File.get_content","file", self.file_type)
+    if not self.has_permission("r") then return PermissionError.New("File.get_content","read")
+
+    return self.object.get_content()
+end function
+
+File.get_folders = function()
+    if not self.is_folder then return TypeError.New("File.get_folders","folder", self.file_type)
+
+    result = []
+    for folder in self.object.get_folders 
+        result.push(File.New(folder))
+    end for
+
+    return result
+end function
+
+File.get_files = function()
+    if not self.is_folder then return TypeError.New("File.get_files","folder", self.file_type)
+
+    result = []
+    for file in self.object.get_files 
+        result.push(File.New(file))
+    end for
+    
+    return result
+end function
+
+File.group = function()
+    return self.object.group
+end function
+
+File.move = function(path, name)
+    if not path isa string then return TypeError.New("File.move","string", typeof(path))
+    if not name isa string then return TypeError.New("File.move","string", typeof(name))
+
+    if not self.parent.has_permission("w") then return PermissionError.New("File.move","write")
+    result = self.object.move(path, name)
+    if result isa string then return Error.New("File.move", result)
+end function
+
+File.name = function()
+    return self.object.name
+end function
+
+File.owner = function()
+    return self.object.owner
+end function
+
+File.parent = function()
+    parent = self.object.parent
+    if parent == null then return self
+
+    return File.New(parent)
+end function
+
+File.rename = function(name)
+    if not name isa string then return TypeError.New("File.rename","string", typeof(name))
+    if not self.parent.has_permission("w") then return PermissionError.New("File.rename","write")
+    result = self.object.rename(name)
+    if result isa string and result != "" then return Error.New("File.rename",result)
+end function
+
+File.set_content = function(content)
+    if not self.parent.has_permission("w") then return PermissionError.New("File.set_content","write")
+    result = self.object.set_content(content)
+    if result isa string then return Error.New("File.set_content",result)
+end function
+
+File.set_group = function(group, recursive)
+    //if not self.has_permission("w") then return PermissionError.New("File.set_group","write")
+    result = self.object.set_group(group, recursive)
+    if result == "Permission denied" then return PermissionError.New("File.set_group","write")
+    if result == "" then return
+    if result isa string then return Error.New("File.set_group", result)
+end function
+
+File.set_owner = function(owner, recursive)
+    //if not self.has_permission("w") then return PermissionError.New("File.set_owner","write")
+    result = self.object.set_owner(owner, recursive)
+    if result == "Permission denied" then return PermissionError.New("File.set_group","write")
+    if result == "" then return
+    if result isa string then return Error.New("File.set_owner", result)
+end function
+
+File.size = function()
+    return self.object.size
+end function
+
+File.symlink = function(destination, name)
+    if len(name) > 128 then return OsError.New("File.symlink","Filename cannot be longer than 128 characters")
+    //if not self.has_permission("w") then return PermissionError.New("File.symlink", "read")
+    if not is_error(self.get_path(destination+"/"+name)) then return OsError.New("File.symlink", "Path already exists : " + destination+"/"+name)
+    target_folder = self.goto(destination)
+    if is_error(target_folder) then return target_folder.stack("File.symlink")
+    if not target_folder.has_permission("w") then return PermissionError.New("File.symlink", "write")
+
+    res = self.object.symlink(destination, name)
+    if res isa string then return OsError.New("File.symlink", res)
+    return res
+end function
+
+
+
+Computer = {}
+Computer.object = null
+Computer.type = "computer"
+
+Computer.New = function(obj)
+    if typeof(obj) != "computer" then return TypeError.New("Computer.New","computer", typeof(obj))
+    comp = new Computer
+    comp.object = obj
+    return comp
+end function
+
+Computer.File = function(path)
+    if not path isa string then return TypeError.New("Computer.file","string", typeof(path))
+    file = self.object.File(path)
+    if file == null then return OsError.New("Computer.file","Could not retrieve file from computer ("+path+")")
+    return File.New(file)
+end function
+
+Computer.active_net_card = function()
+    return self.object.active_net_card
+end function
+
+Computer.change_password = function(user, password)
+    err = expect_all([user, password], string)
+    if err != null then return TypeError.New("Computer.change_password","string", err)
+    result = self.object.change_password(user, password)
+    if result isa string then return Error.New("Computer.change_password",result)
+end function
+
+Computer.close_program = function(pid)
+    if not pid isa number then return TypeError.New("Computer.close_program","number", typeof(pid))
+    result = self.object.close_program(pid)
+    if result isa string then return Error.New("Computer.close_program",result)
+end function
+
+Computer.connect_ethernet = function(netDevice, local, gateway)
+    err = expect_all([netDevice, local, gateway])
+    if err != null then return TypeError.New("Computer.connect_ethernet","string", err)
+    result = self.object.connect_ethernet(netDevice, local, gateway)
+    if result isa string then return Error.New("Computer.connect_ethernet",result)
+end function
+
+Computer.connect_wifi = function(netDevice, bssid, essid, pass)
+    err = expect_all([netDevice, bssid, essid, pass], string)
+    if err != null then return TypeError.New("connect_wifi","string", err)
+    result = self.object.connect_wifi(netDevice, bssid, essid, pass)
+    if result isa string then return Error.New("Computer.connect_wifi",result)
+end function
+
+Computer.create_folder = function(path, name)
+    if not path isa string then return TypeError.New("Computer.create_folder","string", typeof(path))
+    if not name isa string then return TypeError.New("Computer.create_folder","string", typeof(name))
+    result = self.object.create_folder(path, name)
+    if result isa string then return Error.New("Computer.create_folder",result)
+end function
+
+Computer.create_group = function(user, group)
+    if not user isa string then return TypeError.New("Computer.create_group","string", typeof(user))
+    if not group isa string then return TypeError.New("Computer.create_group","string", typeof(group))
+    if user == "" or group == "" then return OsError.New("Computer.create_group", "User and Group cannot be empty")
+    if len(user) > 15 then return OsError.New("Computert.delete_group", "User cannot exceed 15 characters")
+    result = self.object.create_group(user, group)
+    if result isa string then return Error.New("Computer.create_group",result)
+    if result == null then return Error.New("Computer.create_group", "Failed to create group for user")
+end function
+
+Computer.delete_group = function(user, group)
+    if not user isa string then return TypeError.New("Computer.delete_group","string", typeof(user))
+    if not group isa string then return TypeError.New("Computer.delete_group","string", typeof(group))
+    if user == "" or group == "" then return OsError.New("Computer.delete_group", "User and Group cannot be empty")
+    if len(user) > 15 then return OsError.New("Computer.delete_group", "User cannot exceed 15 characters")
+    result = self.object.delete_group(user, group)
+    if result isa string then return Error.New("Computer.delete_group",result)
+    if result == null then return Error.New("Computer.delete_group", "Failed to create group for user")
+end function
+
+Computer.create_user = function(name, pass)
+    if not name isa string then return TypeError.New("Computer.create_user","string", typeof(name))
+    if not pass isa string then return TypeError.New("Computer.create_user","string", typeof(pass))
+    if name == "" then return OsError.New("Computer.create_user", "Username cannot be empty")
+    if len(name) > 15 or len(pass) > 15 then return OsError.New("Computer.create_user", "Username and Password cannot exceed 15 characters")
+
+    result = self.object.create_user(name, pass)
+    if result == null then return Error.New("Computer.create_user", "Failed to create user")
+    if result isa string then return Error.New("Computer.create_user",result)
+end function
+
+Computer.delete_user = function(user, remove_home=false)
+    if not user isa string then return TypeError.New("Computer.delete_user","string", typeof(user))
+    if user == "" then return Error.New("Computer.delete_user", "Username cannot be empty")
+    if not remove_home isa number then return TypeError.New("Computer.delete_user","number", typeof(remove_home))
+    if remove_home != false or remove_home != true then ValueError.New("Computer.delete_user","0,1", str(remove_home))
+
+    result = self.object.delete_user(user, remove_home)
+    if result == null then return Error.New("Computer.delete_user", "Failed to create user")
+    if result isa string then return Error.New("Computer.delete_user",result)
+end function
+
+Computer.get_name = function()
+    return self.object.get_name
+end function
+
+Computer.get_ports = function()
+    return self.object.get_ports
+end function
+
+Computer.groups = function(user)
+    if not user isa string then return TypeError.New("Computer.groups","string", typeof(user))
+    result = self.object.groups(user)
+    if not result then return OsError.New("Computer.groups", "No user found with name '"+user+"'")
+    return result
+end function
+
+Computer.is_network_active = function()
+    return self.object.is_network_active
+end function
+
+Computer.local_ip = function()
+    return self.object.local_ip
+end function
+
+Computer.network_devices = function()
+    return self.object.network_devices
+end function
+
+Computer.network_gateway = function()
+    return self.object.network_gateway
+end function
+
+Computer.public_ip = function()
+    return self.object.public_ip
+end function
+
+Computer.show_procs = function()
+    return self.object.show_procs
+end function
+
+Computer.touch = function(path, file, content)
+    err = expect_all([path, file, content], string)
+    if err != null then return TypeError.New("Computer.touch","string", typeof(err))
+    if file == "" then return OsError.New("Computer.touch", "Filename cannot be empty")
+
+    result = self.object.touch(path, file)
+    if result isa string then return Error.New("Computer.touch",result)
+    if content == null then return
+    wait(0.02)
+    file = self.File(path+"/"+file)
+    if is_error(file) then return file.stack("Computer.touch")
+    file.set_content(content)
+end function
+
+Computer.wifi_networks = function(interface)
+    if not interface isa string then return TypeError.New("Computer.wifi_networks", "string", typeof(interface))
+    return self.object.wifi_networks(interface)
+end function
+
+
+
+
+
+
+Shell = {}
+Shell.object = null
+Shell.type = "shell"
+
+Shell.New = function(obj)
+    if ["shell", "ftpshell"].indexOf(typeof(obj)) == null then return Error.New("Shell.New","shell", typeof(obj))
+    shell = new Shell
+    shell.object = obj
+    return shell
+end function
+
+Shell.host_computer = function()
+    comp = host_computer(self.object)
+    if comp == null then return Error.New("Shell.host_computer","Could not retrieve computer from shell")
+    return Computer.New(comp)
+end function
+
+Shell.File = function(path)
+    comp = self.host_computer
+    if is_error(comp) then return comp.stack("Shell.File")
+
+    file = comp.File(path)
+    if is_error(file) then return file.stack("Shell.File")
+    
+    return file
+end function
+
+Shell.build = function(source, result, allowImport=false)
+    err = expect_all([source, result], string)
+    if err != null then return TypeError.New("Shell.build","string", typeof(err))
+    if not allowImport isa number then return TypeError.New("Shell.build","number", typeof(allowImport))
+
+    if allowImport != 1 and allowImport != 0 then return ValueError.New("Shell.build","0,1", str(allowImport))
+    res = build(self.object, source, result, allowImport)
+    if res != "" then return Error.New("shell.build", res)
+    return res
+end function
+
+Shell.launch = function(program, args)
+    err = expect_all([program], string)
+    if err != null then return TypeError.New("Shell.launch","string", typeof(err))
+    if typeof(args) != "null" and not args isa string then return TypeError.New("Shell.launch","string", typeof(args))
+
+    result = null
+    if args == null then
+        result = launch(self.object, program)
+        // result = self.object.launch(program)
+    else
+        result = launch(self.object, program, args)
+        // result = self.object.launch(program, args)
+    end if
+
+    if result isa string then return Error.New("Shell.launch",result)
+    return result
+end function
+
+Shell.scp = function(file, target, remote)
+    err = expect_all([file, target], string)
+    if err != null then return TypeError.New("Shell.scp","string", typeof(err))
+    if remote.type != "shell" then return TypeError.New("Shell.scp","shell", typeof(remote))
+
+    test_file = self.File(file)
+    if is_error(test_file) then return test_file.stack("Shell.scp")
+    if not test_file.has_permission("r") then return PermissionError.New("Shell.scp","read")
+
+    folder = remote.host_computer.File(target)
+    if is_error(folder) then return folder.stack("Shell.scp")
+    if not folder.has_permission("w") then return PermissionError.New("Shell.scp","write")
+
+    // result = self.object.scp(file, target, remote)
+    result = null
+    if typeof(self.object) != "shell" then
+        result = self.object.put(file, target, remote.object)
+    else
+        result = scp(self.object, file, target, remote.object)
+    end if
+
+    if result == null then return Error.New("shell.scp", "Failed to copy file")
+    if result isa string then return Error.New("Shell.scp",result)
+    return result
+end function
+
+Shell.start_terminal = function()
+    start_terminal(self.object)
+end function
+
+Shell.ping = function(ip)
+    err = expect_all([ip], string)
+    if err != null then return TypeError.New("Shell.ping", typeof(ip))
+    result = ping(self.object, ip)
+    // result = self.object.ping(ip)
+
+    if result isa string then return Error.New("Shell.ping", result)
+
+    return result
+end function
+
+Shell.connect_service = function(ip, port, user, password, service)
+    err = expect_all([ip, user, password, service], string)
+    if err != null then return TypeError.New("Shell.connect_service", typeof(err))
+    if not port isa number then return TypError.New("Shell.connect_service", typeof(port))
+
+    result = connect_service(self.object, ip, port, user, password, service)
+    if result isa string then return Error.New("Shell.connect_service", result)
+    if result == null then return Error.New("Shell.connect_service", "read thing above, i don't receive it for some reason")
+    return Shell.New(result)
+end function

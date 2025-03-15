@@ -1,0 +1,620 @@
+import_code("../libs/metautils")
+import_code("../libs/utils")
+import_code("../kernel/toolkernel")
+
+
+// Util funcs
+
+ask_exploit = function(exlib, title, ip)
+    exploits = exlib.exploits_with_version()
+    tab_data = []
+
+    for exploit in exploits
+        data = exploit.data(ip)
+        tab_data.push([_global.kernel.color("$S;"+(len(tab_data)+1))] + data[3:])
+    end for
+
+    titles = [
+        "ID",
+        "Object",
+        "ObjPerms",
+        "Active",
+        "Users",
+        "Ports",
+        "Local",
+        "Subnet",
+        "Groups",
+        "Path",
+        "Dependency",
+        "Dep Version",
+    ]
+
+    res = tabulate_data(tab_data, titles)
+    if is_error(res) then return res.stack("exploit.host")
+
+    print("<size=200%>$P;"+title)
+    print(res.string)
+
+    if len(exploits) == 0 then print("$error;No exploits found")
+end function
+
+port_data = function(router, ports, local=false)
+    tab_data = []
+
+    for p in ports
+        info = router.port_info(p)
+        port_data = info.split(" ")
+        state = ["Open", "Closed"][p.is_closed and not local]
+
+        tab_data.push([p.port_number, state, port_data[0], port_data[1], p.get_lan_ip, "False"])
+    end for
+
+    return tab_data
+end function
+
+
+local_ports = function(router, host)
+    ports = router.device_ports(host)
+    if ports == null then return Error.New("scan.local_ports", "Unable to obtain ports")
+    if ports isa string and ports.is_match("unreachable") then return false
+    if ports isa string then return OsError.New("scan.local_ports", ports)
+
+    return port_data(router, ports, true)
+end function
+
+
+public_ports = function(router)
+    ports = router.used_ports
+    if ports == null then return Error.New("scan.local_ports", "Unable to obtain ports")
+    if ports isa string and ports.is_match("unreachable") then return false
+    if ports isa string then return OsError.New("scan.public_ports", ports)
+
+    return port_data(router, ports)
+end function
+
+
+scan_lan = function(router, devices)
+    type = function(ip)
+        r = get_router(ip) != null
+        s = get_switch(ip) != null
+        return ["computer", "router", "switch"][r+s]
+    end function
+
+    if devices == null then devices = {}
+
+    router_ip = router.local_ip
+    devices[router_ip] = type(router_ip)
+
+    for x in router.devices_lan_ip
+        ip_type = type(x)
+        if devices.hasIndex(x) then continue
+        devices[x] = ip_type
+
+        if ip_type != "computer" then
+            devices = devices + scan_lan(get_router(x), devices)
+        end if
+    end for
+
+    split_ip = router_ip.split("\.")
+    if split_ip[-1] != "1" and devices.hasIndex(split_ip.join(".") + ".1") then
+        for x in range(1, split_ip[-1].to_int)
+            ip = split_ip.join(".") + "." + x
+            devices[ip] = "unknown"
+        end for
+    end if
+
+    return devices
+end function
+
+// End util funcs
+
+scantool = Tool.New("scan", "1.3.8")
+scantool.short_description = "Scan ports and libraries for versions & exploits"
+scantool.long_description = "Scan ports and libraries for versions & exploits"
+
+
+
+// host
+
+main_args = [
+    Arg.New("host", "ip").Info("Host to scan"),
+    Kwarg.New("exploits", "bool").Alias("e").Info("Scan and try exploits (Will leave logs)"),
+    Kwarg.New("ports", "string").Alias("p").Info("Which ports to scan"),
+    Kwarg.New("subcomputers", "bool").Default(false).Alias("s").Info("Show subcomputers"),
+    Kwarg.New("no-ask", "bool").Alias("n").Default(false).Info("Don't ask for password elevation (Only works if --exploits is used)"),
+    Kwarg.New("local-hardware", "bool").Alias("h").Default(false).Info("Use local session hardware for scanning (Only works if --exploits is used)"),
+    Kwarg.New("skip-existing", "bool").Alias("k").Default(true).Info("Only scan exploits that aren't already known (Only works if --exploits is used)"),
+    Kwarg.New("list","bool").Alias("l").Info("Show exploits without enumerating (Ignored if --exploits is used)"),
+
+]
+
+main_func = function(a)
+    // Get data
+    if a.host == "localhost" or a.host == "127.0.0.1" then
+        if a.kernel.session.computer == null then return ObjectError.New("scan.main", "shell")
+        a.host = a.kernel.session.computer.local_ip
+    end if
+    
+    local = is_lan_ip(a.host)
+    router = get_router(a.host)
+    show_router_info = true
+
+    if not router and local then
+        show_router_info = false
+        router = get_router
+    end if
+
+    if router == null then return Error.New("Unable obtain router")
+
+    ports = null
+    if local then
+        ports = local_ports(router, a.host)
+    else
+        ports = public_ports(router)
+    end if
+    if ports == false then return OsError.New("scan.main", "Ip address is not reachable")
+
+    if ports isa Error then return ports.stack("scan.main")
+    if show_router_info then ports.insert(0,[0, "Open", "kernel_router", router.kernel_version, router.local_ip, "False"])
+
+    if a.ports != null then
+        scan_ports = []
+        for port in a.ports.split(",")
+            value = to_int(port)
+            if value isa string then return ParseTypeError.New("scan.main", "--ports", "List[ports]", "Invalid input")
+            scan_ports.push(value)
+        end for
+
+        result = []
+        for port in ports
+            if scan_ports.indexOf(port[0]) == null then continue
+            result.push(port)
+        end for
+        ports = result
+    end if
+
+    if a.exploits then
+        if a.kernel.session.metax == null then return ObjectError.New("scan.main", "metaxploit")
+        scanned = []
+        for port in ports
+            net = a.kernel.session.metax.net_use(a.host, port[0])
+            if net == null then 
+                print("$error;Failed to load port: $P;" + port[0] + " $error;, Skipping")
+                continue
+            end if
+
+            lib = dump_lib(net)
+            if scanned.indexOf(lib.lib_name + lib.version) != null then
+                print("$P;Skipping $S;" + lib.lib_name)
+                print("$T2;(Library scanned before)")
+                continue
+            else
+                scanned.push(lib.lib_name + lib.version)
+            end if
+
+            existing = ExploitLibrary.New(lib)
+            res = existing.load(a.kernel.sessions[0].computer)
+            if is_error(res) then return res.stack("scan.main")
+
+            result = null
+            if a["local-hardware"] then
+                result = full_scan(a.kernel.session.metax, lib, router, a["no-ask"], existing, a["skip-existing"])
+            else
+                result = full_scan(a.kernel.sessions[0].metax, lib, router, a["no-ask"], existing, a["skip-existing"])
+            end if
+            if is_error(result) then return result.stack("scan.main")
+
+            existing.merge(result)
+            existing.display(a.kernel, true, false, a.host)
+            
+            existing.save_exploits(a.kernel.sessions[0].computer)
+        end for
+    end if
+
+    for port in ports
+        lib = service_libs[port[2]]
+        version = port[3]
+        exlib = ExploitLibrary.New(lib, version)
+        err = exlib.load(a.kernel.sessions[0].computer)
+
+        if is_error(err) then return err.stack("scan.main")
+        
+        exploits = exlib.exploits_with_version(version)
+        in_db = exploits != []
+        port[-1] = ["False", "True"][in_db]
+
+        if a.list then
+            ask_exploit(exlib, lib, a.host)
+        end if
+    end for
+
+    tab_colors = a.kernel.color(["$P;", "$S;", "$P;", "$T2;", "$S;", "$T;"])
+    tab_result = tabulate_data(ports, ["Port", "State", "Service", "Version", "Lan", "InDb"], tab_colors)
+
+    // Display to screen
+
+    if show_router_info then
+        a.kernel.line("Router info", tab_result.length)
+        a.kernel.print("$P;Kernel $T;: $S;" + router.kernel_version)
+        a.kernel.print("$P;In db  $T;: $S;" + ports[0][-1])
+
+        if router.firewall_rules != [] then
+            print(" ")
+            a.kernel.print("$P;Router rules:")
+            a.kernel.print(router.firewall_rules.join(char(10)))
+        end if
+
+        if router.bssid_name and router.essid_name then
+            print(" ")
+            a.kernel.print("$P;BSSID $T;: $S;" + router.bssid_name)
+            a.kernel.print("$P;ESSID $T;: $S;" + router.essid_name)
+        end if
+        print(" ")
+    end if
+    
+    a.kernel.line("Scan result", tab_result.length)
+    print("$P;Host $T;: $S;" + a.host)
+    if ports != [] then
+        a.kernel.print(tab_result.string)
+    else
+        print("No open ports on host")
+    end if
+    print(" ")
+    if not show_router_info or not a.subcomputers then
+        a.kernel.line("", tab_result.length)
+        return
+    end if
+
+    a.kernel.line("Sub Computers", tab_result.length)
+    for ip in router.devices_lan_ip
+        print("$S;" + ip)
+    end for
+    a.kernel.line("", tab_result.length)
+end function
+
+main = scantool.main_command(main_args, @main_func)
+main.short_description = "Scan IP for open ports"
+main.long_description = "$P;Usage:
+$S;scan $string;192.168.0.1
+$S;scan $string;localhost
+$S;scan $string;123.456.789.0
+$S;scan $string;23.12.5.2 $bool;-l
+$S;scan $string;112.2.54.12 -p 80,21"
+
+
+
+// Lan
+
+lan_args = []
+
+lan_func = function(a)
+    if not a.kernel.session.router then return ObjectError.New("scan.lan", "router")
+    if not a.kernel.session == a.kernel.active_session then return KernelError.New("scan.lan","Cannot run lan scan on non-active system")
+
+    net_cols = [
+        "<#d33>",
+        "<#d73>",
+        "<#dc3>",
+        "<#3d3>",
+        "<#3dc>",
+        "<#9ea>",
+        "<#93c>",
+        "<#36d>",
+        "<#ddd>",
+        "<#4b3>",
+    ]
+    
+    type_cols = {}
+    type_cols.computer = "$T2;"
+    type_cols.router = "$P;"
+    type_cols.switch = "$S;"
+    type_cols.camera = "$status_active;"
+    type_cols.unknown = "$T;"
+
+    ips = scan_lan(get_router)
+    
+    tab_data = []
+    for x in ips
+        ip = x.key
+        type = x.value
+
+        subnet = ip.split("\.")[:-1].join(".")
+        subnet_id = sum(map_list(subnet, [@code]))
+        color = net_cols[subnet_id % net_cols.len]
+        ports = local_ports(get_router, ip)
+
+        camera = 0
+        for port in ports
+            add = false
+            if port[0] == 80 then
+                add = true
+            else if port[0] == 37777 then
+                add = true
+            end if
+            if add == true then
+                camera = camera + 1
+            end if
+        end for
+        if camera == 2 and type == "computer" then
+            type = "camera"
+        end if
+
+        port_data = []
+        type_col = a.kernel.color(type_cols[type])
+
+        if ports isa Error then
+            return ports.stack("scan.lan")
+        end if
+        for p in ports
+            if p[1] == "Open" then
+                port_data.push(p[0])
+            else if p[1] == "Filtered" then
+                port_data = ["Filtered"]
+            end if
+        end for
+
+        port_data = port_data.join(", ")
+        if port_data == "Filtered" then port_data = a.kernel.color("$T;Filtered")
+
+        tab_data.push([color + ip, type_col + type, port_data])
+    end for
+
+    result = tabulate_data(tab_data, ["IP", "Type", "Ports"], a.kernel.color(["$T;", "$T2;", "$P;"]))
+    a.kernel.line("Local network", result.length)
+    print(result.string)
+    a.kernel.line("", result.length)
+end function
+
+lan = scantool.command("lan", lan_args, @lan_func)
+lan.short_description = "Show all the local devices"
+lan.long_description = "$PUsage:
+$S;scan lan"
+
+
+
+// Libs
+
+libs_args = [
+    Kwarg.New("library", "string").Alias("l").Info("Library to scan"),
+    Kwarg.New("exploits", "bool").Alias("e").Info("Scan and try libraries for exploits (Will leave logs)"),
+    Kwarg.New("short", "bool").Alias("s").Default(false).Info("Show a shortened version of the result"),
+    Kwarg.New("full", "bool").Alias("f").Default(false).Info("Show all exploits for a library"),
+    Kwarg.New("no-ask", "bool").Alias("n").Default(false).Info("Don't ask for password elevation (Only works if --exploits is used)"),
+    Kwarg.New("local-hardware", "bool").Alias("h").Default(false).Info("Use local session hardware for scanning (Only works if --exploits is used)"),
+    Kwarg.New("skip-existing", "bool").Alias("k").Default(true).Info("Only scan exploits that aren't already known (Only works if --exploits is used)")
+]
+
+libs_func = function(a)
+    if a.kernel.session.metax == null then return ObjectError.New("scan.libs", "metaxploit")
+
+    libs = []
+    if a.library != null then
+        lib = a.kernel.session.metax.load(a.library)
+        if lib == null then
+            return ExploitError.New("scan.libs", "Library failed to load")
+        end if
+        libs.push(a.kernel.session.metax.load(a.library))
+    else
+        if a.kernel.session.file == null then return ObjectError.New("scan.libs", "file")
+
+        files = a.kernel.session.file.goto("/lib").get_files()
+        for file in files
+            r = a.kernel.session.metax.load(file.path)
+            if r == null then continue
+            libs.push(r)
+        end for
+    end if
+
+    for lib in libs
+        log(lib)
+        existing = ExploitLibrary.New(lib)
+        if is_error(existing) then return existing.stack("scan.libs")
+
+        res = existing.load(a.kernel.sessions[0].computer)
+        if is_error(res) then return res.stack("scan.libs")
+    
+        if not a.exploits then
+            existing.display(a.kernel, not a.full, a.short, a.kernel.session.lan)
+            print(" ")
+            continue
+        end if
+
+        if a.kernel.session.router == null then return ObjectError.New("scan.libs", "router")
+
+        if a["local-hardware"] then
+            result = full_scan(a.kernel.session.metax, lib, a.kernel.session.router, a["no-ask"], existing, a["skip-existing"])
+        else
+            result = full_scan(a.kernel.sessions[0].metax, lib, a.kernel.session.router, a["no-ask"], existing, a["skip-existing"])
+        end if
+        if is_error(result) then return result.stack("scan.libs")
+
+        existing.merge(result)
+        existing.display(a.kernel, not a.full, a.short, a.kernel.session.lan)
+
+        existing.save_exploits(a.kernel.sessions[0].computer)
+    end for
+end function
+
+libs = scantool.command("libs", libs_args, @libs_func)
+libs.short_description = "Scan local libraries"
+libs.long_description = "$P;Usage:
+$S;scan libs
+$S;scan libs $string;-l /lib/net.so
+$S;scan libs $bool;--exploits
+$S;scan libs $bool;--exploits --try
+$S;scan libs $bool;-e -t"
+
+
+
+// for
+
+for_args = [
+    Kwarg.New("max-iterations", "int").Default(100).Alias("i").Info("Maximum amout of ips to scan before giving up"),
+    Kwarg.New("library", "string").Alias("l").Info("What library/libraries to scan for"),
+    Kwarg.New("ports", "string").Alias("p").Info("What port(s) to scan for"),
+    Kwarg.New("in-db", "int").Default(0).Alias("d").Info("All scanned libraries/ports have to be in your exploit db"),
+    Kwarg.New("count", "int").Default(1).Alias("c").Info("How many results to be searching for"),
+    Kwarg.New("repeat", "bool").Default(1).Alias("r").Info("Allow libraries with the same version to show up"),
+]
+
+for_func = function(a)
+    log("repeat is set to " + ["False", "True"][a["repeat"]])
+    if a.library == null and a.ports == null then
+        return ParseError.New("scan.for", "Need at least one port or library to scan for. see 'help scan for' for more info")
+    end if
+
+    if a["max-iterations"] < 0 then return IdiotError.New("scan.for", "I cannot get negative scans for you, bubby")
+    if a.count < 0 then return IdiotError.New("scan.for", "I cannot get negative results for you, bubby")
+    if a.count == 0 and a["max-iterations"] == 0 then return KernelError.New("scan.for", "Cannot scan for infinite items")
+
+    if a.count == 0 then a.count = 999999999
+    if a["max-iterations"] == 0 then a["max-iterations"] = 99999
+
+    libraries = []
+    if a.library != null then
+        for x in a.library.split(",")
+            sep = x.split("@")
+            log(sep)
+            lib = null
+            ver = ""
+            if len(sep) > 2 then
+                return FormatError.New("scan.for", "library@version", x)
+            else if len(sep) == 2 then
+                lib = sep[0]
+                ver = sep[1]
+                if not ver.is_match("^\d+\.\d\.\d$") then 
+                    return FormatError.New("scan.for", "version", ver)
+                end if
+            else
+                lib = sep[0]
+            end if
+
+            if service_libs.hasIndex(lib) == null then
+                return IndexError.New("scan.for", lib)
+            end if
+
+            libraries.push([lib, ver])
+        end for
+        log(libraries)
+    end if
+
+    ports = []
+    if a.ports != null then
+        for x in a.ports.split(",")
+            if to_int(x) isa string then 
+                return FormatError.New("scan.for", "int", x)
+            end if
+            ports.push(to_int(x))
+        end for
+        log(ports)
+    end if
+    
+    result = []
+    found_libs = []
+    last_found = 0
+    found = 0
+    for iter in range(a["max-iterations"]-1)
+        if found != last_found or iter%round(a["max-iterations"]/100*10) == 0 then
+            _print(a.kernel.color("$T;" + iter + "/" + a["max-iterations"] + " $S;" + found + "/" + a.count))
+        end if
+        
+        last_found = found
+        if found >= a.count then break
+
+        ip = ""+random(1,255)+"."+random(0,255)+"."+random(0,255)+"."+random(0,255)
+        router = get_router(ip)
+        if router == null then continue
+
+        scanned = public_ports(router)
+        scanned.insert(0, [0, "Open", "kernel_router", router.kernel_version, router.local_ip, "False"])
+
+        ip_success = false
+        temp = []
+        for s in scanned
+            port = s[0]
+            if ports.indexOf(port) == null and ports != [] then continue
+
+            lib = s[2]
+            lib_found = false
+            lib_ver = ""
+            for x in libraries
+                if x[0] == lib then
+                    if x[1] != "" and s[3] == x[1] then
+                        lib_found = true
+                        lib_ver = x[1]
+                        break
+                    else if x[1] == "" then
+                        lib_found = true
+                        lib_ver = x[1]
+                        break
+                    end if
+                end if
+            end for
+
+            if not lib_found and a.library != null then continue
+
+            ver = s[3]
+
+            if lib_ver != "" and ver != lib_ver then continue
+
+            exlib = ExploitLibrary.New(service_libs[lib], ver)
+            exlib.load(a.kernel.sessions[0].computer)
+            indb = exlib.exploits_with_version(ver) != []
+
+            s[-1] = ["False", "True"][indb]
+            s[-2] = ip
+
+            if a["in-db"] == 1 and indb != true then continue
+            if a["in-db"] == 2 and indb != false then continue
+
+            if a["repeat"] == 0 then
+                sname = lib+"@"+ver
+                if found_libs.indexOf(sname) != null then 
+                    log("Same lib found, skipping ; " + sname )
+                    continue
+                end if
+                found_libs.push(sname)
+            end if
+            temp.push(s)
+            ip_success = true
+        end for
+        if not ip_success then continue
+        found = found + 1
+        result = result + temp
+        result.push([""])
+    end for
+
+    log(result)
+    tab = tabulate_data(result, ["Port", "State", "Service", "Version", "IP", "InDB"], a.kernel.color(["$P;", "$S;", "$P;", "$T2;", "$S;", "$P;"]))
+    print(tab.string)
+
+end function
+
+for_cmd = scantool.command("for", for_args, @for_func)
+for_cmd.short_description = "Scan random ip's until the search requirements are met"
+for_cmd.long_description  = "$P;Usage:
+
+$T2; <b>Library scanning 
+$T;Format:
+$P;name@version
+
+$T2; <b>Port scanning
+$T;Format:
+$P;num,num,num
+
+$T2; <b>Database checks
+$T;Format:
+$P; 0|1|2
+
+$S;0 = Any
+$S;1 = In db only
+$S;2 = Not in db only
+
+$T2; <b>Examples
+
+$P;scan for $string;-l ssh@1.0.2 $int;-p 22 $T;<< find 1 ip with ssh version 1.0.2 on port 22 and no checks for database
+$P;scan for $int;-p 80 -c 5 -d 1 $T;<< find 5 ips with http on port 80 that are all in your database"
+
+// Init
+
+scantool.init()

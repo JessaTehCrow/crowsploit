@@ -1,0 +1,423 @@
+parse_syntax = function(text, line_number=false)
+    functions = [
+        "File",
+        "abs",
+        "acos",
+        "active_net_card",
+        "active_user",
+        "add_repo",
+        "aircrack",
+        "aireplay",
+        "airmon",
+        "allow_import",
+        "amount_mined",
+        "apply_patch",
+        "asin",
+        "atan",
+        "bitAnd",
+        "bitOr",
+        "bitXor",
+        "bitwise",
+        "bssid_name",
+        "build",
+        "buy_coin",
+        "camera_link_system",
+        "cancel_pending_trade",
+        "ceil",
+        "change_password",
+        "char",
+        "check_password",
+        "check_upgrade",
+        "chmod",
+        "clear_screen",
+        "close_program",
+        "code",
+        "coin_price",
+        "command_info",
+        "connect_ethernet",
+        "connect_service",
+        "connect_wifi",
+        "copy",
+        "cos",
+        "create_folder",
+        "create_group",
+        "create_subwallet",
+        "create_user",
+        "create_wallet",
+        "current_date",
+        "current_path",
+        "debug_tools",
+        "decipher",
+        "del_repo",
+        "delete",
+        "delete_coin",
+        "delete_group",
+        "delete_mail",
+        "delete_subwallet",
+        "delete_user",
+        "device_ports",
+        "devices_lan_ip",
+        "dump_lib",
+        "essid_name",
+        "exit",
+        "fetch",
+        "firewall_rules",
+        "floor",
+        "format_columns",
+        "get_address",
+        "get_balance",
+        "get_balance_subwallet",
+        "get_coin",
+        "get_coin_name",
+        "get_content",
+        "get_creator_name",
+        "get_ctf",
+        "get_custom_object",
+        "get_cycle_mining",
+        "get_description",
+        "get_files",
+        "get_folders",
+        "get_global_offers",
+        "get_info",
+        "get_lan_ip",
+        "get_mail_content",
+        "get_mined_coins",
+        "get_name",
+        "get_num_conn_gateway",
+        "get_num_portforward",
+        "get_num_users",
+        "get_pending_trade",
+        "get_pin",
+        "get_ports",
+        "get_reward",
+        "get_router",
+        "get_shell",
+        "get_subwallet",
+        "get_subwallets",
+        "get_switch",
+        "get_template",
+        "get_user",
+        "group",
+        "groups",
+        "hasIndex",
+        "has_permission",
+        "hash",
+        "home_dir",
+        "host_computer",
+        "import_code",
+        "include_lib",
+        "indexOf",
+        "indexes",
+        "insert",
+        "install",
+        "install_service",
+        "is_any_active_user",
+        "is_binary",
+        "is_closed",
+        "is_folder",
+        "is_lan_ip",
+        "is_match",
+        "is_network_active",
+        "is_root_active_user",
+        "is_symlink",
+        "is_valid_ip",
+        "join",
+        "kernel_version",
+        "lan_ip",
+        "lastIndexOf",
+        "last_transaction",
+        "launch",
+        "launch_path",
+        "len",
+        "lib_name",
+        "list_coins",
+        "list_global_coins",
+        "load",
+        "local_ip",
+        "locate_vehicle",
+        "log",
+        "login_wallet",
+        "lower",
+        "mail_login",
+        "matches",
+        "md5",
+        "mining",
+        "model",
+        "move",
+        "name",
+        "net_use",
+        "network_devices",
+        "network_gateway",
+        "next_camera",
+        "nslookup",
+        "overflow",
+        "override_settings",
+        "owner",
+        "parent",
+        "parent_path",
+        "path",
+        "payload",
+        "permissions",
+        "pi",
+        "ping",
+        "ping_port",
+        "player_success",
+        "pop",
+        "port_info",
+        "port_number",
+        "prev_camera",
+        "print",
+        "program_path",
+        "public_ip",
+        "public_ip_pc",
+        "pull",
+        "push",
+        "range",
+        "read",
+        "remove",
+        "rename",
+        "replace",
+        "replace_regex",
+        "reset_ctf_password",
+        "reset_password",
+        "reset_password_coin",
+        "reverse",
+        "rnd",
+        "round",
+        "rshell_client",
+        "rshell_server",
+        "scan",
+        "scan_address",
+        "scan_debuglib",
+        "scp",
+        "search",
+        "sell_coin",
+        "send",
+        "set_address",
+        "set_alarm",
+        "set_content",
+        "set_cycle_mining",
+        "set_group",
+        "set_info",
+        "set_owner",
+        "set_reward",
+        "show",
+        "show_history",
+        "show_nodes",
+        "show_procs",
+        "shuffle",
+        "sign",
+        "sin",
+        "size",
+        "slice",
+        "smtp_user_list",
+        "sniffer",
+        "sort",
+        "split",
+        "sqrt",
+        "start_service",
+        "start_terminal",
+        "stop_service",
+        "str",
+        "sum",
+        "symlink",
+        "tan",
+        "time",
+        "to_int",
+        "touch",
+        "traffic_light_config",
+        "transaction",
+        "trim",
+        "typeof",
+        "unit_testing",
+        "update",
+        "upper",
+        "used_ports",
+        "user_bank_number",
+        "user_input",
+        "user_mail_address",
+        "val",
+        "values",
+        "version",
+        "wait",
+        "wallet_username",
+        "whois",
+        "wifi_networks",
+        "yield",
+    ]
+
+    classes = [
+        "string",
+        "funcRef",
+        "list",
+        "map",
+        "number",
+    ]
+
+    others =[
+        "break",
+        "continue",
+        "else",
+        "end",
+        "for",
+        "function",
+        "if",
+        "in",
+        "isa",
+        "new",
+        "null",
+        "then",
+        "repeat",
+        "return",
+        "while",
+        "and",
+        "or",
+        "not",
+        "true",
+        "false"
+    ]
+
+    func_colors = "<color=#D63F3F>"
+    class_colors = "<color=#50CA8D>"
+    other_colors = "<color=#935AB4>"
+    int_color = "<color=#5B89E0>"
+    string_color = "<color=#CC7A3B>"
+    bool_color = "<color=#4D87DF>"
+    comment_color = "<i><#555>"
+    nothing_color = "<#ccc>"
+
+    word_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_"
+    capitals = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    number_chars = "1234567890"
+
+    is_number = function(text)
+        for x in text
+            if number_chars.indexOf(x) == null then return false
+        end for
+        return true
+    end function
+
+    get_color = function(text, seperator, last_sep)
+        if is_number(text) then 
+            return int_color + text + nothing_color
+        else if functions.indexOf(text) != null then
+            return func_colors + text + nothing_color
+        else if classes.indexOf(text) != null then
+            return class_colors + text + nothing_color
+        else if others.indexOf(text) != null then
+            return other_colors + text + nothing_color
+        else if capitals.indexOf(text[0]) != null then
+            return class_colors + text + nothing_color
+        else if ["true", "false", "null"].indexOf(text) != null then
+            return bool_color + text + nothing_color
+        else if seperator == "(" then
+            return func_colors + text + nothing_color
+        else if last_sep == "." then 
+            return class_colors + text + nothing_color
+        else if last_sep == "@" then
+            return func_colors + text + nothing_color
+        end if
+        return text
+    end function
+
+    padding = function(num, width)
+        return " "*(width-len(str(num)))+num
+    end function
+
+    lines = text.split(char(10))
+    line_length = len(""+len(lines))
+    is_string = false
+    final = ""
+
+    for line in lines
+        is_comment = false
+        result = nothing_color
+        last_sep = ""
+        if is_string then
+            result = string_color
+        end if
+        if line_number then
+            result = "<mark=#22222288> " + " "*line_length + " <pos=0><#fff> " + padding(__line_idx+1, line_length) + " </mark></color>  <indent=70px>" + result
+        end if
+
+        last = ""
+        word = ""
+        
+        for chr in line + " "
+            // If it's a comment, basically just add it
+            if is_comment then 
+                result = result + chr
+                continue
+            end if
+
+            // If it's the end of a word, get its color and add it to the final output
+            if word_chars.indexOf(chr) == null and word != "" and not is_string then
+                result = result + get_color(word, chr, last_sep)
+                word = ""
+            end if
+
+            // get non-word seperators to determine what color it should be
+            if word_chars.indexOf(chr) == null then
+                last_sep = chr
+            end if
+
+            // Check if character matches the comment one
+            if chr == "/" and not is_string then
+                if last == "/" then 
+                    is_comment = true
+                    result = result + comment_color + "/" 
+                else
+                    last = "/"
+                    continue
+                end if
+                // If it wasn't a comment, add the character back to the output
+            else if last == "/" and chr != "/" and not is_string then
+                result = result + "/"
+            end if
+
+            // check if it matches "
+            if chr == """" then
+                // Initiate a string
+                if not is_string then
+                    is_string = true
+                    last = ""
+                    result = result + string_color + chr
+                    continue
+                else
+                    // if last character was also ", it's an escaped quote
+                    // (in this language, "" == \")
+                    if last == chr then
+                        last = ""
+                        result = result + chr*2
+                        continue
+                    else 
+                        last = chr
+                        continue
+                    end if
+                end if
+
+                // If last == " it's not longer a string
+            else if last == """" then
+                result = result + """" + nothing_color
+                is_string = false
+
+                // if current char != " just add it to the output
+            else if is_string then
+                result = result + chr
+                continue
+            end if
+
+            if word_chars.indexOf(chr) != null then 
+                word = word + chr
+            else
+                result = result + chr
+            end if
+
+            last = chr
+        end for
+
+        final = final + result + "</indent>" + char(10)
+    end for
+
+    return final
+end function

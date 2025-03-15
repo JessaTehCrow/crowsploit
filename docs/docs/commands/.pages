@@ -1,0 +1,7 @@
+nav:
+    - system
+    - session
+    - apt-get
+    - alias
+    - exploit
+    - scan

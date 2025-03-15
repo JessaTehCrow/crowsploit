@@ -1,0 +1,5 @@
+# Ignore greybel folder
+build/
+
+# Ignore web generated docs
+docs/site/

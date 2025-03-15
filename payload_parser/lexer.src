@@ -1,0 +1,240 @@
+import_code("./tokens")
+
+is_alpha = function(c)
+    if c isa list then
+        for chr in c
+            if not is_alpha(c) then return false
+        end for
+        return true
+    end if
+    return (c >= "a" and c <= "z") or (c >= "A" and c <= "Z")
+end function
+
+is_number = function(c)
+    if c isa list then
+        for chr in c
+            if not is_number(c) then return false
+        end for
+        return true
+    end if
+    return c >= "0" and c <= "9"
+end function
+
+is_alphanum = function(c)
+    if c isa list then
+        for chr in c 
+            if not is_alphanum(chr) then return false
+        end for
+        return true
+    end if
+    return is_alpha(c) or is_number(c)
+end function
+
+parse_string = function(s)
+    valid = null
+    temp = s[0]
+    backs = false
+    quote = s[0]
+    finished = true
+
+    for c in s[1:]
+        if " )}],.".indexOf(c) != null and valid then break
+        if valid then valid = false
+
+        if c == quote and not backs and valid != false then
+            valid = true
+        else if c == "\" then
+            backs = not backs
+            if backs == 0 then
+                temp = temp + "\\"
+            end if
+            continue
+        else if backs then
+            temp = temp + "\"
+            backs = false
+        end if
+        
+        temp = temp + c
+    end for
+
+    token = null
+    if not valid then
+        token = Token.init(temp, "UNKNOWN")
+    else
+        token = Token.init(temp, "STRING")
+    end if
+
+    return token
+end function
+
+parse_number = function(s)
+    temp = ""
+    float = false
+    valid = true
+
+    for c in s
+        if is_number(c) then
+            temp = temp + c
+            continue
+        else if c == "." and not float then
+            temp = temp + "."
+            float = true
+            continue
+        else if c == " " then
+            break
+        end if
+        valid = false
+        temp = temp + c
+    end for
+
+    if valid then
+        type = ["INT", "FLOAT"][float]
+        return Token.init(temp, type)
+    end if
+    return Token.init(temp, "UNKNOWN")
+end function
+
+parse_word = function(s)
+    temp = ""
+
+    for c in s
+        if is_alphanum(c) or c == "_" then
+            temp = temp + c
+        else
+            break
+        end if
+    end for
+
+    if tokens.hasIndex(temp) then
+        return Token.init(temp, tokens[temp])
+    else
+        return Token.init(temp, "IDENTIFIER")
+    end if
+end function
+
+parse_symbol = function(s)
+    temp = ""
+    for c in s
+        if is_alphanum(c) then break
+        if c == " " then break
+        temp = temp + c
+    end for
+
+    if tokens.hasIndex(temp) then
+        return Token.init(temp, tokens[temp])
+    else if tokens.hasIndex(temp[0]) then
+        return Token.init(temp[0], tokens[temp[0]])
+    else
+        return Token.init(temp, "UNKNOWN")
+    end if
+end function
+
+parse_placeholder = function(s)
+    valid = false
+    temp = s[0]
+
+    for c in s[1:]
+        if c == "}" then
+            temp = temp + "}"
+            valid = true
+            break
+        else if not is_alphanum(c) then
+            break
+        else 
+            temp = temp + c
+        end if
+    end for
+
+    if valid and is_alpha(temp[1]) then
+        return Token.init(temp, "PLACEHOLDER")
+    else if valid then
+        return Token.init(temp, "UNKNOWN")
+    end if
+    return parse_symbol(s)
+end function
+
+parse_argument = function(s)
+    temp = ""
+    for c in s
+        if c == " " then break
+        temp = temp + c
+    end for
+    return Token.init(temp, "ARGUMENT")
+end function
+
+Lexer = {}
+
+Lexer.init = function(src)
+    l = new self
+    l.src = src + char(10)
+    l.lines = l.src.split(char(10))
+    return l
+end function
+
+Lexer.next = function(step)
+    self.index = self.index + step
+    if self.index >= len(self.src) then
+        self.chr = null
+    else
+        self.chr = self.src[self.index]
+    end if
+end function
+
+Lexer.get_tokens = function()
+    tokens = []
+    
+    for line in self.lines
+        chr_idx = 0
+        line_tokens = []
+        has_command = false
+
+        while chr_idx < len(line)
+            chr = line[chr_idx]
+            rest = line[chr_idx:]
+
+            result = null
+            
+            if chr == " " or chr == char(10) then
+                chr_idx = chr_idx + 1
+                continue
+
+            else if """'".indexOf(chr) != null then
+                result = parse_string(rest)
+
+            else if chr == "{" then
+                result = parse_placeholder(rest)
+            
+            else if has_command then
+                result = parse_argument(rest)
+
+            else if is_number(chr) then
+                result = parse_number(rest)
+
+            else if is_alpha(chr) then
+                result = parse_word(rest)
+
+            else if not is_alphanum(chr) then
+                result = parse_symbol(rest)
+            end if
+
+            if result.type == "COMMENT" then
+                result.value = rest
+            else if result.type == "COMMAND_MARKER" then
+                has_command = true
+            else if has_command and result.type != "PLACEHOLDER" then
+                result.type = "ARGUMENT"
+            end if
+
+            result.line = __line_idx
+            result.first = chr_idx
+            result.last = chr_idx + len(result.value)
+            line_tokens.push(result)
+
+            chr_idx = chr_idx + len(result.value)
+        end while
+
+        tokens = tokens + line_tokens
+    end for
+
+    return tokens
+end function

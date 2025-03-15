@@ -1,0 +1,22 @@
+import_code("../kernel/toolkernel")
+
+// Define new tool
+mytool = Tool.New("test", "1.0.0")
+
+mytool.settings = settings
+
+echo_args = [
+    Arg.New("argname", "string").Info("Description"),
+    Kwarg.New("kwargname", "int").Default(32).Alias("k").Info("description")
+]
+
+echo_func = function(a)
+    a.kernel.run_command("echo " + a.argname, false)
+    print(a.kernel.stdout)
+end function
+
+clearcmd = mytool.command("echo", echo_args, @echo_func)
+clearcmd.short_description = "Small example tool"
+clearcmd.long_description = "Small example tool. but long description"
+
+mytool.init()

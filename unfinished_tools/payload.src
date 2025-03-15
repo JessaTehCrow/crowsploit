@@ -1,0 +1,240 @@
+import_code("../kernel/toolkernel")
+import_code("../libs/utils")
+
+// Define new tool
+payload_tool = Tool.New("payload", "0.0.1")
+
+
+PayloadError = new Error
+PayloadError.New = function(name, line_num, line_text, message, expectation)
+    error = new self
+    error.stacktrace = []
+    error.message = []
+    error.message.push(type_col + "(PayloadError) " + text_col + name + " [Line " + line_num + "] : " + message)
+    error.message.push("    <#f00><u><#aaa>" + uncolor_string(line_text))
+    error.message.push(type_col + "Expected")
+    error.message.push(text_col + "    " + expectation)
+
+    error.message = error.message.join(char(10))
+    return error
+end function
+
+PayloadError.trace = function()
+    temp = self.stacktrace.values
+    // temp.push(self.message)
+    return text_col + temp.join(" <b><#766>>></b> " + text_col) + char(10) + self.message
+end function
+
+PayloadParseError = new PayloadError
+PayloadParseError.New = function(name, line_num, line_text, message)
+    error = new self
+    error.stacktrace = []
+    error.message = []
+    error.message.push(type_col + "(IndentError) " + text_col + name + " [Line " + line_num + "] : " + message)
+    error.message.push("    <#f00><u><#aaa>" + uncolor_string(line_text))
+    return error
+end function
+
+
+
+// payload parser
+
+formats = {
+    "requires" : ["^@requires (shell|computer|file|active|root)$", "requires (shell|computer|file|active|root)"],
+    "param":["^@param ""\w+"" (string|int|float|bool|ip)$", "@param ""name"" (string|int|float|bool|ip) "],
+    "echo" : ["^echo \S+.*$", "echo value|$variable|command"],
+    "log" : ["^log \S+.*$", "log value|$variable"],
+    "assign" : ["^\$\w+\s*=\s*\S+.*$", "$name = command | value"],
+    "check" : ["^check \$\w+$", "check \$variable"]
+}
+
+string_parse = function(line)
+end function
+
+launch_command = function(command, kernel, _globals)
+    temp = command
+    for v in _globals 
+        temp = temp.replace("\$"+v, _globals[v])
+    end for
+
+    result = kernel.run_command(temp, false)
+    if result == false then
+        return kernel.last_error
+    else
+        return kernel.stdout
+    end if
+end function
+
+get_value = function(text, kernel, _globals)
+    if text.is_match("^\d+\.\d+$") then
+        return text.val
+    else if text.is_match("^\d+$") then
+        return to_int(val)
+    else if text.is_match("^(true|false)$") then
+        return val == "true"
+    else if text[0] == """" then
+        return string_parse(text)
+    else
+        return launch_command(text, kernel, _globals)
+    end if
+end function
+
+
+funcs = {}
+funcs.echo = function(line, kernel, _globals)
+    value = line.value
+    index = line.line
+
+    if not value.is_match(formats["echo"][0]) then
+        return PayloadError.New("payload.echo", index, line.value, "Invalid echo", formats["echo"][1])
+    end if
+
+    if _globals.hasIndex(value[1:]) then
+        print(_globals[value[1:]])
+    else if value.is_match("""wed""") then
+        print(value[1:-1])
+    else
+        print(launch_command(value))
+    end if
+end function
+
+funcs.log = function(line, kernel, _globals)
+    value = line.value
+    index = line.line
+
+    if not value.is_match(formats["log"][0]) then
+        return PayloadError.New("payload.log", index, line.value, "Invalid log", formats["log"][1])
+    end if
+
+    if a.kernel.DEBUG then
+        funcs.echo(line, kernel, _globals)
+    end if
+end function
+
+funcs.assign = function(line, kernel, _globals)
+    index = line.line
+    
+    variable = line.split("=")[0].trim
+    value = line.split("=")[1].trim
+
+    result = get_value(value, kernel, _globals)
+    if result isa PayloadError then return result.stack("funcs.assign")
+
+    _globals[variable] = get_value(value, kernel, _globals)
+end function
+
+funcs.check = function(line, kernel, _globals)
+    index = line.line
+    value = line.value
+
+    if not value.is_match(formats["check"][0]) then
+        return PayloadError.New("payload.check", index, value, "Invalid check call", formats["check"][1])
+    end if
+
+    variable = value.split(" ")[-1][1:]
+    if not _globals.hasIndex(variable) then
+        return PayloadParseError.New("payload.check", index, value, "Unknown variable $" + variable)
+    end if
+
+    if is_error(_globals[variable]) then
+        return _globals[variable]
+    end if
+end function
+
+Line = {}
+Line.New = function(value, line)
+    l = new self
+    l.value = value
+    l.line = null
+    return l
+end function
+
+Line.execute = function(kernel, _globals)
+    v = self.value
+    result = null
+    if v.is_match("^echo") then
+        result = funcs.echo(self.value, kernel, _globals)
+    else if v.is_match("^log") then
+        result = funcs.log(self.value, kernel, _globals)
+    else if v.is_match("^\$\w+\s*=") then
+        result = funcs.assign(self.value, kernel, _globals)
+    else if v.is_match("^check") then
+        result = funcs.check(self.value, kernel, _globals)
+    else
+        return PayloadParseError.New("line.execute", self.line, self.value)
+    end if
+    if is_error(result) then return result.stack("payload.line.execute")
+end function
+
+
+Code = {}
+Code.New = function(kernel)
+    c = new self
+    c.lines = []
+    c.kernel = kernel
+    c._globals = {}
+    return c
+end function
+
+Code.execute = function()
+    for line in self.lines
+        result = line.execute()
+    end for
+end function
+
+
+parse_payload = function(content)
+    lines = []
+    for line in content
+        if line.is_match("^\\") then continue
+    end for
+end function
+
+
+get_params = function(content)
+    _params = {}
+    _requires = []
+
+    for line in content
+        if line.is_match("^@param") then
+            sep = line.split(" ")
+            _params[sep[1][1:-1]] = sep[2]
+
+        else if line.is_match("^@requires") then
+            sep = line.split(" ")
+            _requires.push(sep[1])
+        end if
+    end for
+
+    return [_params, _requires]
+end function
+
+
+// full requirements
+
+run_args = [
+    Arg.New("file", "string").Info("Description"),
+    RestArg.New()
+]
+
+run_func = function(a)
+    ses = a.kernel.session
+    f = ses.file.get_file(a.file)
+
+    if is_error(f) then return f.stack("payload.run")
+    if not f.has_permission("r") then return PermissionError.New("payload.run", "read")
+
+    content = f.get_content().split(char(10))
+
+    _globals = {}
+
+    result = get_params(content)
+    if is_error(result) then return result.stack("payload.run")
+    _params = result[0]
+    _requires = result[1]
+
+end function
+
+runcmd = payload_tool.main_command(run_args, @run_func)
+
+payload_tool.init()

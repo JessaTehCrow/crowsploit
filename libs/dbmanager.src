@@ -1,0 +1,170 @@
+import_code("./error")
+import_code("./typehandler")
+
+map.slice = function(left,right)
+    err = expect_all([left, right], number)
+    if err != null then return TypeError.New("slice","int", typeof(err))
+
+    result = {}
+    keys = self.indexes
+    for x in keys[left:right]
+        result[x] = self[x]
+    end for
+    return result
+end function
+
+repr = function(obj)
+    type = typeof(@obj)
+
+    if type == "string" then
+        return """"+ obj.replace("""", """""") +""""
+
+    else if type == "number" then
+        return str(obj)
+
+    else if type == "list" then
+        result = []
+        for x in obj
+            value = repr(@x)
+            if value == false then continue
+            result.push(value)
+        end for
+        return "[" + result.join(",") +"]"
+
+    else if type == "map" then
+        result = []
+        for key in obj.indexes
+            keyname = repr(key)
+            keyvalue = repr(@obj[key])
+
+            // Invalid string value so don't bother adding
+            if keyname == 0 or keyvalue == 0 then continue
+            result.push(keyname + ":" + keyvalue)
+        end for
+        return "{" + result.join(",") + "}"
+    else if type == "null" then
+        return "null"
+    end if
+    return false
+end function
+
+_get_strings = function(data)
+    result = []
+    sets = ceil(len(str(data)) / 150000)
+    splits = ceil(len(data) / sets)
+
+    for x in range(0,sets-1)
+        result.push(repr(data.slice(splits*x, splits*(x+1))))
+    end for
+    return result
+end function
+
+_Database = {}
+_Database.tables = {}
+_Database.name = "crowdb"
+
+_Database.new_table = function(name)
+    self.tables[name] = {}
+    return self.tables[name]
+end function
+
+_Database.get_table = function(name, create=true)
+    if self.tables.indexes.indexOf(name) != null then
+        return self.tables[name]
+    else if create then
+        return self.new_table(name)
+    end if
+end function
+
+_Database._get_contents = function(silent=true)
+    _print = @print
+    print = function(msg)
+        if not silent then _print(msg)
+    end function
+
+    __db_contents = []
+    if self.tables.len == 0 then return []
+
+    for key in self.tables.indexes
+        print("Saving table: " + key)
+        data = @self.tables[key]
+        if typeof(data) == "function" then continue
+        
+        raw_contents = _get_strings(data)
+        new_contents = []
+
+        for content in raw_contents
+            new_contents.push("__crow_db[""" + self.name + """]["""+key+"""] = __crow_db["""+ self.name +"""]["""+key+"""] + " + content)
+        end for
+        __db_contents = __db_contents + new_contents
+    end for
+    
+    __db_contents[0] = "__crow_db["""+ self.name +"""]["""+key+"""] = {}" + char(10) + __db_contents[0]
+
+    return __db_contents
+end function
+
+_Database.save = function(target, filename="crowdb", silent=true)
+    _print = @print
+    print = function(msg)
+        if not silent then _print(msg)
+    end function
+    contents = self._get_contents(silent)
+
+    if target == null then target = current_path
+    comp = get_shell.host_computer 
+    mkfile = function(path, name, content)
+        comp.touch(path, name)
+        f = comp.File(path + "/" + name)
+        f.set_content(content)
+        return f
+    end function
+
+    _db_source = "get_custom_object[""__crow_db""] = {}" + char(10)
+    _db_source = _db_source + "__crow_db = get_custom_object[""__crow_db""]" + char(10)
+    _db_source = _db_source + "__crow_db["""+self.name+"""] = {}" + char(10)
+    temp_file_name = "superrandomdbtempfilename_"
+    src_files = []
+
+    if comp.File(target).has_permission("w") == false then 
+        return "No write permissions in target directory"
+    end if
+
+    files = []
+    for i in range(0, contents.len-1) 
+        if contents.len == 0 then break
+
+        fname = temp_file_name+i
+        fpath = target + "/" + fname
+        files.push(mkfile(target, fname, contents[i]))
+        _db_source = _db_source + char(10) + "i" + "mport_code(""" + fpath + """)"
+    end for
+
+    cfile = mkfile(target, filename+".src", _db_source)
+
+    print("Saving database '"+self.name+"' to: " + target + "/" + filename)
+    res = get_shell.build(target + "/" + filename + ".src", target, true)
+    if res != "" then print(res)
+    cfile.delete()
+    for file in files 
+        file.delete()
+    end for
+end function
+
+_Database.load = function(filepath)
+    shell = get_shell
+    comp = shell.host_computer
+    if comp.File(filepath) == null then return "Invalid filepath"
+    shell.launch(filepath)
+
+    custom_obj = get_custom_object
+    if custom_obj.indexes.indexOf("__crow_db") == null then return "Failed to load database"
+    if custom_obj["__crow_db"].indexes.indexOf(self.name) == null then return "Database not found"
+    self.tables = custom_obj["__crow_db"][self.name]
+end function
+
+Database = function (name)
+    result = new _Database
+    result.name = name
+    return result
+end function

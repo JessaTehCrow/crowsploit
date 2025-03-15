@@ -1,0 +1,49 @@
+keywords = [
+    "return",
+    "if",
+    "else",
+    "or",
+    "and",
+    "not",
+    "elif",
+    "function",
+    "break"
+]
+
+symbols = "} { | : ? [ ] \ ; . , ! @ # $ % ^ & ( ) ~ `".split(" ")
+
+operators = "- + / * >= <= == < >".split(" ")
+
+tokens = {}
+tokens["="] = "ASSIGNMENT"
+tokens[">>"] = "COMMAND_MARKER"
+tokens["//"] = "COMMENT"
+tokens["false"] = "BOOL"
+tokens["true"] = "BOOL"
+
+for t in operators
+    tokens[t] = "OPERATOR"
+end for
+for t in keywords
+    tokens[t] = "KEYWORD"
+end for
+for t in symbols 
+    tokens[t] = "SYMBOL"
+end for
+
+Token = {}
+Token.value = null
+Token.type = null
+Token.line = 0
+Token.first = 0
+Token.last = 0
+
+Token.init = function(value, type, line, first, last)
+    t = new self
+    t.value = value
+    t.type = type
+    t.line = line
+    t.first = first
+    t.last = last
+    return t
+end function
