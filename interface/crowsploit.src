@@ -1,6 +1,5 @@
 import_code("../kernel/mainkernel")
 import_code("../libs/proxyextension")
-import_code("../libs/dbmanager")
 import_code("../libs/utils")
 
 if program_path == "/etc/crow/tools/crowsploit" then exit("<#f00>crowsploit detected running as a tool. Quitting loop")
@@ -162,6 +161,7 @@ else
 
     loaded = session.load_libs(kernel.settings.library.path)
 
+    // Find and copy apt in /lib
     if session.apt == null then
         file = session.file.get_file("/lib/aptclient.so")
         if not is_error(file) then file.copy(kernel.settings.library.path, "aptclient.so")
@@ -170,6 +170,31 @@ else
         session.apt = apt
     end if
 
+    // Check / ask for hackshop ip
+    if session.apt and session.apt.search("metaxploit.so").is_match("(in any repository$|refresh the file$)") then
+        res = confirmation_prompt("No hackshops in sources.txt for apt. Do you want to add one?")
+        if res then
+            hackshop = null
+
+            kernel.print("$T2;Searching a hackshop...")
+            while hackshop == null
+                router = get_router(kernel.env.RAND_IP)
+                if router == null then continue
+                for x in router.used_ports
+                    if x.port_number != 1542 then continue
+                    hackshop = router.public_ip
+                    break
+                end for
+            end while
+
+            session.apt.add_repo(hackshop, 1542)
+            session.apt.update()
+
+            kernel.print("$S;Added repository from ip: $P;" + hackshop)
+        end if
+    end if
+
+    // Install missing
     if len(loaded) != 3 and kernel.settings.library.auto_install == "true" and not is_error(loaded) then
         if not session.apt then 
             kernel.print("$error;Aptclient not present in "+kernel.settings.library.path+", unable to install libraries")
@@ -184,7 +209,8 @@ else
         end if
     end if
 
-    if session.apt and kernel.settings.library.auto_update_meta == "true" and loaded.indexOf("metaxploit.so") != null then
+    // Update metaxploit
+    if session.apt and kernel.settings.library.auto_update_meta == "true" then
         check = session.apt.check_upgrade(kernel.settings.library.path + "/metaxploit.so")
 
         if check isa string then 

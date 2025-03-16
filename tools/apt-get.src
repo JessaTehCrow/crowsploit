@@ -77,7 +77,7 @@ apt_install_args = [
     Arg.New("library", "string").Info("Library to install"),
     Kwarg.New("path", "string").Alias("p").Info("Path to install to")
 ]
-
+    
 apt_install_func = function(a)
     session = a.kernel.session
     if not session.apt then return ObjectError.New("aptget.install", "apt")
