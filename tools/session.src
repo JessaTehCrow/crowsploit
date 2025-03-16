@@ -8,7 +8,7 @@ import_code("../kernel/toolkernel")
 
 
 
-ses_tool = Tool.New("session", "1.5.0")
+ses_tool = Tool.New("session", "1.5.1")
 
 ses_tool.short_description = "Session manager"
 ses_tool.long_description = "Manage your sessions and swap between them"
@@ -208,7 +208,7 @@ $P;session use $int;session_id"
 
 activate_args = [
     Kwarg.New("crypto", "bool").Default(false).Alias("c").Info("Also jump with crypto"),
-    Kwarg.New("interface-only", "bool").Default(false).Alias("i").Info("Only jump with interface")
+    Kwarg.New("nolibs", "bool").Default(false).Alias("n").Info("Only jump with interface")
 ]
 
 activate_func = function(a)
@@ -246,10 +246,14 @@ activate_func = function(a)
         return a.kernel
     end function
 
-    if a.crypto then
-        current.shell.launch(destination + "/crowsploit", "crypto")
-    else
+    args = []
+    if a.crypto then args.push("crypto")
+    if a.nolibs then args.push("nolibs")
+
+    if args == [] then
         current.shell.launch(destination + "/crowsploit")
+    else
+        current.shell.launch(destination + "/crowsploit", args.join(" "))
     end if
 
     if a.kernel.active_session == current and a.kernel.keep_session != false then
@@ -342,6 +346,46 @@ $T2;user, comp_name, wan, lan
 
 $P;session set $string;user root
 $P;session set $string;wan 12.12.12.12"
+
+
+// loadlib
+
+loadlib_args = [
+    Arg.New("library", "string").Info("Library file or folder to load")
+]
+
+loadlib_func = function(a)
+    if a.kernel.session != a.kernel.active_session then
+        return OsError.New("session.loadlib", "Session must be active session for loading libraries")
+    end if
+
+    obj = a.kernel.session.file.get_path(a.library)
+    if is_error(obj) then return obj.stack("session.loadlib")
+
+    if obj.is_folder then
+        loaded = a.kernel.session.load_libs(obj.path)
+        for x in loaded
+            print("$S;Loaded " + x[:-3])
+        end for
+        print("$P;Loaded " + len(loaded) + " libraries")
+    else if obj.is_file then
+        loaded  = a.kernel.session.load_lib(obj.path)
+        if loaded then
+            print("$S;Loaded " + obj.name[:-3])
+        else
+            print("$error;Failed to load library")
+        end if
+    end if
+end function
+
+loadlib_cmd = ses_tool.command("loadlib", loadlib_args, @loadlib_func)
+loadlib_cmd.short_description = "Load libraries from the session"
+loadlib_cmd.long_description = "Load libraries from the computer you're currently on, without having to upload them yourself
+
+$P;Usage:
+$P;session $S;loadlib $lsfolder;/lib
+$P;session $S;loadlib $lsbinary;/lib/metaxploit.so"
+
 
 // Initialize tool stuff
 ses_tool.init()

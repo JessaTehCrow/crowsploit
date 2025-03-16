@@ -163,10 +163,12 @@ Kernel.parse_command = function(text)
     parsed = parse_input(text, false, true)
 
     for x in parsed
-        if x == "&&" then
+        if x.trim == "&&" then
+            pipes[-1] = pipes[-1].join(" ")
             commands.push(pipes)
+            pipes = [[]]
 
-        else if x == "|" then
+        else if x.trim == "|" then
             pipes[-1] = pipes[-1].join(" ")
             pipes.push([])
 
@@ -198,7 +200,7 @@ Kernel.parse_command = function(text)
 
                     if typeof(@result) == "function" then
                         temp[__t_idx] = result()
-                    else if @result isa string then
+                    else if @result isa string and EvalType.New(result).type == "string" then
                         temp[__t_idx] = "'"+self.env[env_val].replace("'", "\'") + "'"
                     else
                         temp[__t_idx] = self.env[env_val]
@@ -266,6 +268,12 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
     prev_silent = self.silent
     self.silent = silent
     good_result = true
+
+    if self.DEBUG then
+        e = []
+        print(commands.string)
+        print(commands.parsed)
+    end if
 
     for command in commands.parsed
         self.piped = command.len > 1

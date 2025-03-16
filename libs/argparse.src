@@ -122,6 +122,8 @@ parse_input = function(text, evaluate=false, keep_quotes=false)
             out.push(temp)
             temp = ""
             continue
+        else if x == " " and not quote then
+            continue
         end if
 
         // If it's not special, just add it
