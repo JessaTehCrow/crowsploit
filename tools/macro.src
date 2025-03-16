@@ -252,21 +252,25 @@ Macro.run = function(kernel, args=[])
         // [parsed_value, datatype]
         //      "true" -> [1, "bool"]
         //      "23.13" => [23.13, "float"]
-        temp = string_value_type(arg)
+        temp = EvalType.New(arg)
 
         // Remap value types if they can be shared
-        if x.type == "string" then temp = [arg, "string"]
-        if x.type == "float" and temp[1] == "int" then temp[1] = "float"
+        if x.type == "string" then 
+            temp.eval_value = temp.value
+            temp.type = "string"
+        end if
+
+        if x.type == "float" and temp.type == "int" then temp.type = "float"
 
         log(x)
         log(temp)
 
         // If types don't match
-        if x.type != temp[1] then
+        if x.type != temp.type then
             return MacroError.New("macro.run", "Invalid argument. Expected "+x.type+" got " + arg)
         end if
 
-        kernel.env[x.name] = temp[0]
+        kernel.env[x.name] = temp.eval_value
     end for
 
     for line in self.commands

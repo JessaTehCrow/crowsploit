@@ -79,24 +79,14 @@ max = function(a,b)
 end function
 
 
-enumerate = function(array)
-    if not array isa list and not array isa string then return TypeError.New("enumerate","list", array)
-    result = {}
-
-    for x in array
-        result[__x_idx] = x
-    end for
-    return result
-end function
-
 
 simple_hash = function(text)
     chars = "AaBbCcDdEeFfGgHhJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz0123456789"
     hash_val = md5(text)
     result = ""
     
-    for x in enumerate(text)
-        seed = code(hash_val[x.key%hash_val.len]) + code(x.value) + x.key + chars.len
+    for x in text
+        seed = code(hash_val[__x_idx%hash_val.len]) + code(x) + __x_idx + chars.len
         result = result + chars[seed%chars.len]
     end for
     return result
@@ -215,10 +205,10 @@ tabulate_data = function(data, titles, data_colors, title_colors, spaces=3)
     // Tabulator extra functions
     get_line = function(items, lengths, colors)
         result = ""
-        for item in enumerate(items)
-            col = colors[item.key%colors.len]
-            value = str(item.value)
-            local_spaces = lengths[item.key] - unformat_string(value).len
+        for item in items
+            col = colors[__item_idx%colors.len]
+            value = str(item)
+            local_spaces = lengths[__item_idx] - unformat_string(value).len
             result = result + col + value + " "*(local_spaces+spaces)
         end for
         return result
@@ -230,11 +220,11 @@ tabulate_data = function(data, titles, data_colors, title_colors, spaces=3)
         longest.push(len(title))
     end for
 
-    // enumerate longest line
+    // find longest line
     for items in data
-        for item in enumerate(items)
-            if item.key >= titles.len then break
-            longest[item.key] = max(longest[item.key], unformat_string(str(item.value)).len)
+        for item in items
+            if __item_idx >= titles.len then break
+            longest[__item_idx] = max(longest[__item_idx], unformat_string(str(item)).len)
         end for
     end for
 

@@ -201,9 +201,9 @@ Command.call = function(kernel, args)
     command_args = parsed.kwargs
 
     if parsed.args != [] then
-        for x in enumerate(parsed.args)
-            arg = self.args.args[x.key]
-            command_args[arg.name] = x.value
+        for x in parsed.args
+            arg = self.args.args[__x_idx]
+            command_args[arg.name] = x
         end for
     end if
 
@@ -304,7 +304,7 @@ Tool._command = function(name, fargs, main=false)
         else if ["int", "string", "bool", "float", "ip"].indexOf(x.type) == null then
             return CommandError.New("Tool._command", name, self.name,"Invalid argument type '"+x.type+"'. Should be: bool, float, int, string or ip")
 
-        else if x.default != null and ((string_value_type(str(x.default))[1] != x.type) and (x.type == "bool" and (x.default != 0 and x.default != 1))) then
+        else if x.default != null and ((EvalType.New(str(x.default)).type != x.type) and (x.type == "bool" and (x.default != 0 and x.default != 1))) then
             return CommandError.New("Tool._command", name, self.name, "Argument default for '"+x.name+"' does not match argument type. Expected '" + x.type + "' got '"+str(x.default)+"'")
 
         else if x.alias != null and not x.alias isa string then

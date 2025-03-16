@@ -108,54 +108,29 @@ end function
 
 Kernel.parse_command = function(text)
     commands = []
-    pipes = [""]
+    pipes = [[]]
     
     quote = null
     last = null
     backs = 0
 
-    for x in text
-        if backs and last != "\" then
-            backs = 0
-            pipes[-1] = pipes[-1][:-1] + "\" + pipes[-1][-1]
+    // Parse input, and keep quotes
+    parsed = parse_input(text, false, true)
+
+    for x in parsed
+        if x == "&&" then
+            commands.push(pipes)
+
+        else if x == "|" then
+            pipes[-1] = pipes[-1].join(" ")
+            pipes.push([])
+
+        else
+            pipes[-1].push(x)
         end if
-
-        if x == "\" and quote != null then
-            backs = (backs + 1) % 2
-            if not backs then
-                pipes[-1] = pipes[-1] + "\"
-            end if
-            last = "\"
-            continue
-
-        else if x == "'" or x == """" then
-            if quote == x and backs == 0 then
-                quote = null
-            else if quote == null then
-                quote = x
-            end if
-
-        else if x == "|" and quote == null and backs == 0 then
-            pipes.push("")
-            continue
-
-        else if x == "&" and quote == null then
-            if last == "&" then
-                commands.push(pipes)
-                pipes = [""]
-                last = null
-            else
-                last = "&"
-            end if
-
-            continue
-        else if x != "&" and last == "&" and quote == null then
-            pipes[-1] = pipes[-1] + last
-        end if
-
-        pipes[-1] = pipes[-1] + x
-        last = x
     end for
+
+    pipes[-1] = pipes[-1].join(" ")
 
     if pipes[-1] == "" then
         pipes.pop()
@@ -164,9 +139,10 @@ Kernel.parse_command = function(text)
     if pipes[0] != "" or pipes.len > 1 then commands.push(pipes)
     
     has_history = false
-    for command in enumerate(commands)
-        for pipe in enumerate(command.value)
-            val = pipe.value.trim
+    for command in commands
+        for pipe in command
+            print(pipe)
+            val = pipe.trim
             temp = val.split(" ")
             
             // Env variable parsing
@@ -189,7 +165,7 @@ Kernel.parse_command = function(text)
 
             val = temp.join(" ")
 
-            commands[command.key][pipe.key] = val
+            commands[__command_idx][__pipe_idx] = val
             cmd = val.split(" ")[0]
 
             // Check for history
@@ -201,7 +177,7 @@ Kernel.parse_command = function(text)
                 part = parts[0]
 
                 if part == "^" then
-                    commands[command.key][pipe.key] = val.replace("\^", self.session.history[-1])
+                    commands[__command_idx][__pipe_idx] = val.replace("\^", self.session.history[-1])
                     has_history = true
                     continue
                 end if
@@ -209,12 +185,11 @@ Kernel.parse_command = function(text)
                 history_index = part[1:].to_int
                 if self.session.history.len <= history_index then continue
                 has_history = true
-                commands[command.key][pipe.key] = val.replace("\"+part, self.session.history[-(history_index+1)])
+                commands[__command_idx][__pipe_idx] = val.replace("\"+part, self.session.history[-(history_index+1)])
             
             // Check for aliases
             else if self.settings.hasIndex("alias") and self.settings.alias.hasIndex(cmd) then
-                commands[command.key][pipe.key] = self.settings.alias[cmd] + " " + val.split(" ")[1:].join(" ")
-                // commands[command.key][pipe.key] = self.settings.alias[val]
+                commands[__command_idx][__pipe_idx] = self.settings.alias[cmd] + " " + val.split(" ")[1:].join(" ")
                 has_history = true
             end if
         end for
@@ -255,8 +230,9 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
         self.last_error = null
         had_success = false
         
-        for pipe in enumerate(command)
-            parts = smart_split(pipe.value)
+        for pipe in command
+            parts = parse_input(pipe, true)
+
             if len(parts) == 0 then continue
 
             cmd = parts[0].value
@@ -283,7 +259,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 break
             end if
 
-            if pipe.key == 0 then
+            if __pipe_idx == 0 then
                 // sep = parse_smart_split(parts[1:])
                 result = cmd_obj.call(self, parts[1:])
 
@@ -298,13 +274,14 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 end if
             else
                 was_piped = self.piped
-                if pipe.key == command.len - 1 then self.piped = false
+                if __pipe_idx == command.len - 1 then self.piped = false
 
                 self.old_stdout = self.stdout.values
                 self.stdout = []
 
                 for x in self.old_stdout
-                    parts_2 = smart_split(unformat_string(x.trim))
+                    parts_2 = parse_input(unformat_string(x.trim), true)
+
                     result = cmd_obj.call(self, parts[1:] + parts_2)
                     if not is_error(result) then 
                         had_success = true

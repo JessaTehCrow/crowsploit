@@ -1,106 +1,153 @@
-string_value_type = function(text)
-    if not text isa string then return TypeError.New("string_value_type", "string", typeof(text))
-    if text.is_match("^\d+\.\d+$") then
-        return [text.val, "float"]
+EvalType = {}
+EvalType.New = function(text)
+    p = new self
+    
+    p.value = text
+    p.quoted = false
+    p.type = null
+    p.eval_value = null
 
-    else if is_valid_ip(text) or text == "localhost" then
-        return [text, "ip"]
+    p.evaluate()
 
-    else if text.is_match("^\d+$") then
-        return [text.to_int, "int"]
+    return p
+end function
 
-    else if text.is_match("^(true|false|1|0)$") then
-        return [text.is_match("^(true|1)$"), "bool"]
+EvalType.evaluate = function()
+    if self.value.is_match("^\d+\.\d+$") then
+        self.eval_value = self.value.val
+        self.type = "float"
+
+    else if is_valid_ip(self.value) or self.value == "localhost" then
+        self.eval_value = self.value
+        self.type = "ip"
+
+    else if self.value.is_match("^\d+$") then
+        self.eval_value = self.value.to_int
+        self.type = "int"
+
+    else if self.value.is_match("^(true|false|1|0)$") then
+        self.eval_value = self.value.is_match("^(true|1)$")
+        self.type = "bool"
+        
+    else
+        // first & last char of value
+        stringcheck = self.value[:1]+self.value[-1:]
+        if stringcheck == "''" or stringcheck == """""" then
+            self.eval_value = self.value[1:-1]
+            self.quoted = true
+        else
+            self.eval_value = self.value
+        end if
+
+        self.type = "string"
     end if
-
-    return [text, "string"]
 end function
 
 
-smart_split = function(text)
-    Part = {}
-    Part.New = function()
-        p = new self
-        p.quoted = false
-        p.type = null
-        p.value = ""
-        p.eval_value = null
+parse_input = function(text, evaluate=false, keep_quotes=false)
+    if evaluate then keep_quotes = true
 
-        return p
-    end function
-
-    Part.add_char = function(c)
-        self.value = self.value + c
-    end function
-
+    out = []
+    temp = ""
+    quote = null
     backs = false
-    parts = []
-    parts.push(Part.New())
 
-    quote = ""
+    temp_last = null
+    for x in text
+        last = temp_last
+        temp_last = x
 
-    for c in text
-        // Check for escape chars
-        if c == "\" then
+        // Check if escape was actually used, otherwise add before last character
+        if last != "\" and backs then
+            temp = temp[:-1] + "\" + temp[-1]
+            backs = false
+        end if
+
+        // Check if escape character is active 
+        if x == "\" then
             backs = not backs
+
+            // If escape character is instantly canceled afterwards
+            // Add to result
             if backs == false then
-                parts[-1].add_char(c)
+                temp = temp + "\"
             end if
             continue
         end if
 
-        if c == """" or c == "'" then
-            if quote == "" and parts[-1].value == "" and not backs then
-                parts[-1].quoted = true
-                quote = c
-                continue
-
-            else if c == quote and not backs then
-                quote = ""
-                parts.push(Part.New())
-                continue
-
-            else if backs then
+        // Parse quotation / string inputs
+        if x == "'" or x == """" then
+            // Ignore all quotes if escaped
+            if backs then
                 backs = false
-                parts[-1].add_char(c)
+                temp = temp + x
+                continue
+            end if
+
+            // if quote not registered yet, start new string
+            if quote == null then
+                quote = x
+
+                if temp != "" then
+                    out.push(temp)
+                end if
+
+                temp = ""
+                if keep_quotes then
+                    temp = x
+                end if
+
+                continue
+
+            // If quote char isn't the current active one,
+            // treat it as normal character
+            else if quote != null and quote != x then
+                temp = temp + x
+                continue
+
+            // If quote char is the current active one,
+            // And not escaped, then close string
+            else
+                if keep_quotes then temp = temp + quote
+                quote = null
+                out.push(temp)
+                temp = ""
                 continue
             end if
         end if
-
-        if backs and c != "\" then
-            backs = false
-            parts[-1].add_char("\")
+        
+        // Seperations
+        if x == " " and temp != "" and not quote then 
+            out.push(temp)
+            temp = ""
+            continue
         end if
 
-        if c == " " and quote == "" then
-            if parts[-1].value == "" then continue
-            
-            parts.push(Part.New())
-        else
-            parts[-1].add_char(c)
-        end if
+        // If it's not special, just add it
+        temp = temp + x
     end for
 
-    if parts[-1].value == "" then
-        parts.pop()
-    end if
+    if temp != "" then out.push(temp)
 
-    for p in parts
-        res = string_value_type(p.value)
-        p.eval_value = res[0]
-        p.type = res[1]
+    if not evaluate then return out
+
+    eval_out = []
+
+    for x in out
+        eval_out.push(EvalType.New(x))
     end for
 
-    return parts
+    return eval_out
 end function
 
 
-parse_smart_split = function(smart)
+eval_parsed_input = function(parsed)
     result = []
-    for x in smart
-        parsed_value = string_value_type(x)
-        if parsed_value isa Error then return parsed_value.stack("parse_smart_split")
+    
+    for x in parsed
+        parsed_value = EvalType.New(x)
         result.push(parsed_value)
     end for
+
     return result
 end function

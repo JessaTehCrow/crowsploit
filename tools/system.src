@@ -354,8 +354,8 @@ history_function = function(a)
     if a.kernel.session.history == [] then return
 
     history = a.kernel.session.history[-a.limit:]
-    for x in enumerate(history)
-        print("$T2;"+(history.len-1-x.key) + "  $P;" + x.value)
+    for x in history
+        print("$T2;"+(history.len-1-__x_idx) + "  $P;" + x)
     end for
 end function
 
