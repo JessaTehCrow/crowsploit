@@ -79,32 +79,20 @@ else if hasIndex(custom_obj, "kernel") then
     end if
 
     session.path = program_path 
-    session.load_lib("/lib/crypto.so")
-    session.load_lib("/lib/metaxploit.so")
-    session.load_lib("/lib/aptclient.so")
     session.file = session.file.goto(current_path)
     
     destination = current_path
 
     res = active.shell.scp(active.meta_dir, destination, session.shell)
-    if not is_error(res) then
-        kernel.print("$S;Loaded metaxploit")
-        session.load_lib(destination + "/metaxploit.so")
-    end if
-
+    res = active.shell.scp(active.apt_dir, destination, session.shell)
     if params == ["crypto"] then
         res = active.shell.scp(active.crypto_dir, destination, session.shell)
-        if not is_error(res) then
-            kernel.print("$S;Loaded crypto")
-            session.load_lib(destination + "/crypto.so")
-        end if
     end if
 
-    res = active.shell.scp(active.apt_dir, destination, session.shell)
-    if not is_error(res) then
-        kernel.print("$S;Loaded Apt")
-        session.load_lib(destination + "/aptclient.so")
-    end if
+    loaded = session.load_libs(destination)
+    for x in loaded
+        kernel.print("$S;Loaded " + x[:-3])
+    end for
 
     kernel.active_session = session
     kernel.active_sessions.push(session)
