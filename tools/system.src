@@ -275,7 +275,7 @@ cat_function = function(a)
         pfile = a.kernel.session.file
 
         log("Finding file to create source")
-        things = pfile.goto("/").find_permission("rw", true)
+        things = pfile.goto("/").find_permission("w", true)
         target = null
         for thing in things
             target = thing

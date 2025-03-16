@@ -62,7 +62,7 @@ end function
 File.tree = function(recursive=false, max_depth=15, depth=0)
     if depth >= max_depth then return []
 
-    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_name","bool", typeof(recursive))
+    if recursive != 0 and recursive != 1 then return TypeError.New("File.tree","bool", typeof(recursive))
     current = self
     result = []
 
@@ -110,7 +110,7 @@ end function
 
 File.find_user = function(user, recursive=false)
     if not user isa string then return TypeError.New("File.find_user","string", typeof(user))
-    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_name","bool", typeof(recursive))
+    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_user","bool", typeof(recursive))
 
     result = []
     for x in self.tree(recursive)
@@ -123,7 +123,7 @@ end function
 
 File.find_type = function(type, recursive=false)
     if not type isa string then return TypeError.New("File.find_type","string", typeof(type))
-    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_name","bool", typeof(recursive))
+    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_type","bool", typeof(recursive))
     result = []
     for x in self.tree(recursive)
         if x.is_folder and type == "folder" then
@@ -140,7 +140,7 @@ end function
 
 File.find_group = function(group, recursive=false)
     if not group isa string then return TypeError.New("File.find_group","string", typeof(group))
-    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_name","bool", typeof(recursive))
+    if recursive != 0 and recursive != 1 then return TypeError.New("File.find_group","bool", typeof(recursive))
 
     result = []
     for x in self.tree(recursive)
@@ -245,6 +245,60 @@ File.get_all = function()
     end for
 
     return result
+end function
+
+
+File.slient_rm = function() //returns error | true
+
+    if self.is_folder and not self.is_symlink then
+    self.move(self.path,"anyname")
+    return 1
+    end if
+    root = self.goto("/")
+    if is_error(root) then return root
+    folders = root.find_type("folder",true)
+    readfold = null
+    writefold = null
+    samefold = false
+    allFolderSizes = []
+    for folder in folders
+        if folder.has_permission("rw") then
+            allFolderSizes.push({"index": __folder_idx, "value" :folder.size})
+            samefold = true
+        end if
+    end for
+
+    if samefold == false then
+
+        for folder in folders
+            if writefold == null and folder.has_permission("w") then writefold = folder
+            if folder.has_permission("r") then allFolderSizes.push({"index": __folder_idx, "value" :folder.size})
+        end for
+
+    end if
+
+    allFolderSizes = allFolderSizes.sort("value")
+
+    if allFolderSizes.len == 0 then return OsError.New("File.slient_rm", "Cannot find readable folder to copy")
+    
+    
+    if samefold then
+        writefold = folders[allFolderSizes[0].index]
+    
+    end if
+
+    if writefold == null then return OsError.New("File.slient_rm", "Cannot find writable folder to copy into")
+    readfold = folders[allFolderSizes[0].index]
+
+    readfold.copy(writefold.path,"lolpath101")
+    if not readfold.has_permission("w") then
+    curown = writefold.owner
+    writefold.set_owner(self.get_user(),true)
+    end if
+    readfold = self.goto(writefold.path+"/lolpath101")
+    self.move(writefold.path+"/lolpath101",self.name)
+    readfold.move(readfold.path,readfold.name)
+    return 1
 end function
 
 
