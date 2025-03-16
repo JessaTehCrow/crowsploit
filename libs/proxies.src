@@ -64,13 +64,14 @@ File.has_permission = function(perm)
 end function
 
 File.chmod = function(perm, recursive=false)
-    if not self.has_permission("w") then return PermissionError.New("File.set_permission","write")
+    //if not self.has_permission("w") then return PermissionError.New("File.set_permission","write")
     if not perm isa string then return TypeError.New("File.set_permission","string", typeof(perm))
 
     if not perm.is_match("^[oug][+-](?!.*(.).*\1)[rwx]{1,3}$") then
         return FormatError.New("File.set_permission","[oug][+-][rwx]")
     end if
-    self.object.chmod(perm, recursive)
+    result = self.object.chmod(perm, recursive)
+    if result == "permission denied" then return PermissionError.New("File.set_permission","write or owner")
 end function
 
 File.delete = function()
@@ -149,7 +150,7 @@ File.set_content = function(content)
 end function
 
 File.set_group = function(group, recursive)
-    //if not self.has_permission("w") then return PermissionError.New("File.set_group","write")
+    if not self.has_permission("w") then return PermissionError.New("File.set_group","write")
     result = self.object.set_group(group, recursive)
     if result == "Permission denied" then return PermissionError.New("File.set_group","write")
     if result == "" then return
@@ -157,7 +158,7 @@ File.set_group = function(group, recursive)
 end function
 
 File.set_owner = function(owner, recursive)
-    //if not self.has_permission("w") then return PermissionError.New("File.set_owner","write")
+    if not self.has_permission("w") then return PermissionError.New("File.set_owner","write")
     result = self.object.set_owner(owner, recursive)
     if result == "Permission denied" then return PermissionError.New("File.set_group","write")
     if result == "" then return
