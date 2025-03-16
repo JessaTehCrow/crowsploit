@@ -49,6 +49,12 @@ settings.set("alias", {
     "la":"ls -la",
 })
 
+settings.set("library", {
+    "path" : "/etc/crow/libs",
+    "auto_update_meta" : "true",
+    "auto_install" : "true"
+})
+
 mytool.settings = settings
 
 
@@ -826,7 +832,7 @@ copy_func = function(a)
         filename = new_path.name
         new_path = new_path.parent
     else if is_error(new_path) then
-        new_path = ses_file.goto(p.folder)
+        new_path = p.folder
         filename = p.name
     end if
     
@@ -837,11 +843,12 @@ copy_func = function(a)
         filename = a.target.split("/")[-1]
     end if
     
-    if is_error(new_path) then return new_path.stack("system.cp")
-    if not new_path.has_permission("w") then return PermissionError.New("system.cp", "write")
+    // if is_error(new_path) then return new_path.stack("system.cp")
+    // if not new_path.has_permission("w") then return PermissionError.New("system.cp", "write")
     if filename.len >= 128 then return OsError.New("system.cp", "Filename cannot be above 128 characters")
 
-    dir = new_path.path
+    dir = new_path
+    // dir = new_path.path
     
     err = target.copy(dir, filename)
     if is_error(err) then return err.stack("system.cp")
@@ -1738,31 +1745,6 @@ remlog.short_description = "Corrupt the log"
 remlog.long_description = "$P;Usage:
 $P;system remlog"
 
-
-
-// // env
-
-// env_func = function(a)
-//     tab_data = []
-//     for item in a.kernel.env
-//         tab_data.push([item.key, item.value])
-//     end for
-
-//     titles = ["Env Key", "Value"]
-
-//     res = tabulate_data(tab_data, titles, [a.kernel.color("$P;"), a.kernel.color("$S;")])
-//     if is_error(res) then return res.stack("system.env")
-
-//     print(res.string)
-// end function
-
-// env = mytool.command("env", [], @env_func)
-// env.short_description = "Show environment variables"
-// env.long_description = "$P;Usage:
-// $P;system env"
-
-
-
 // symlink
 
 symlink_args = [
@@ -1849,32 +1831,6 @@ reformat.short_description = "Reformat input data to be used as you wish"
 reformat.long_description = "$P;Usage:
 $T2;echo 'test:1:2:3' | $P;rf $string;':' '{0} {1} {2} {3}' $T;>> 'test 1 2 3'
 $T2;crack 'root:4337fb150cbc24bd1842fb3b8f828a6c' | $P;rf $string;':' '-u ""{0}"" -p ""{1}""' --raw | system ssh 1.2.3.4"
-
-
-// repeat
-
-// repeat_args = [
-//     Arg.New("amount", "int").Info("How many times to repeat"),
-//     Arg.New("command", "string").Info("What command to repeat"),
-//     Kwarg.New("wait", "float").Info("How long to wait between attempts")
-// ]
-
-// repeat_func = function(a)
-//     if a.wait < 0.01 then return Error.New("system.repeat", "Cannot wait less than 0.01 per attempt")
-//     if a.wait > 300 then return Error.New("system.repeat", "Cannot wait longer than 300 per attempt")
-//     for x in range(0, a.amount)
-//         a.kernel.run_command(a.command, false)
-//         if a.wait != null then
-//             wait(a.wait)
-//         end if
-//     end for
-// end function
-
-// repeat_cmd = mytool.command("repeat", repeat_args, @repeat_func)
-// repeat_cmd.short_description = "Repeat command N times"
-// repeat_cmd.long_description =  "Repeat commands multiple times"
-
-
 
 // write
 

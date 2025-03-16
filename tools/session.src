@@ -123,26 +123,16 @@ reset_func = function(a)
         session.lan = comp.local_ip
     end if
 
-    new_path = null
-    user = a.kernel.session.user
-    log(user)
-    if user == "root" then
-        new_path = "/root"
-    else
-        new_path = "/home/" + user
-    end if
-    new_path = new_path + "/.crowrc"
-
     r = session.load_lib("/lib/crypto.so")
-    if r != null then print("$S;Loaded crypto")
+    if r then print("$S;Loaded crypto")
 
     r = session.load_lib("/lib/metaxploit.so")
-    if r != null then print("$S;Loaded metax")
+    if r then print("$S;Loaded metax")
 
     r = session.load_lib("/lib/aptclient.so")
-    if r != null then print("$S;Loaded aptclient")
+    if r then print("$S;Loaded aptclient")
 
-    r = a.kernel.load_settings(new_path)
+    r = a.kernel.load_settings(a.kernel.session.homepath + "/.crowrc")
     if not is_error(r) then print("$S;Loaded settings")
 
     session.file.goto(current_path)
@@ -223,7 +213,7 @@ activate_args = [
 
 activate_func = function(a)
     if a.kernel.session.shell == null then return ObjectError.New("session.activate", "shell")
-    active = a.kernel.active_session
+    active = a.kernel.sessions[0]
     crowsploit = active.path
 
     current = a.kernel.session

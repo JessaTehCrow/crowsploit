@@ -21,7 +21,7 @@ File.copy = function(path, name)
     err = expect_all([path, name], string)
     if err != null then return TypeError.New("File.copy","string", err)
     result = self.object.copy(path, name)
-    if err isa string then return Error.New("File.copy",result)
+    if result isa string then return Error.New("File.copy",result)
 end function
 
 File.is_file = function()

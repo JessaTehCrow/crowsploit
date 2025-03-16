@@ -75,6 +75,14 @@ input file     = -
 database location = /etc/crow/exdb
 
 
+///////////////////////
+// Library directory //
+
+library path = /etc/crow/libs
+library auto_update_meta = true
+library auto_install = true
+
+
 /////////////
 // Aliases //
 alias c = clear
@@ -461,13 +469,13 @@ Kernel.load_settings = function(path="/etc/crow/data/settings.txt")
             continue
         end if
 
-        catagory = setting_vars[0]
+        category = setting_vars[0]
         key = setting_vars[1]
         value = data[1:].join("=").trim
 
-        if out.indexes.indexOf(catagory) == null then out[catagory] = {}
+        if out.indexes.indexOf(category) == null then out[category] = {}
 
-        out[catagory][key] = value
+        out[category][key] = value
     end for
 
     self.raw_settings = raw_settings
