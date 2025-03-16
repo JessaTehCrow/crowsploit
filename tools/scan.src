@@ -108,11 +108,9 @@ end function
 
 // End util funcs
 
-scantool = Tool.New("scan", "1.3.8")
+scantool = Tool.New("scan", "1.3.9")
 scantool.short_description = "Scan ports and libraries for versions & exploits"
 scantool.long_description = "Scan ports and libraries for versions & exploits"
-
-
 
 // host
 
@@ -125,7 +123,6 @@ main_args = [
     Kwarg.New("local-hardware", "bool").Alias("h").Default(false).Info("Use local session hardware for scanning (Only works if --exploits is used)"),
     Kwarg.New("skip-existing", "bool").Alias("k").Default(true).Info("Only scan exploits that aren't already known (Only works if --exploits is used)"),
     Kwarg.New("list","bool").Alias("l").Info("Show exploits without enumerating (Ignored if --exploits is used)"),
-
 ]
 
 main_func = function(a)

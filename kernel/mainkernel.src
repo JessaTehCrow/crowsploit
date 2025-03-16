@@ -75,7 +75,7 @@ alias sessions = session list"
 Kernel = {}
 Kernel.DEBUG = false
 Kernel.nightly = false
-Kernel.version = "2.16.2"
+Kernel.version = "2.17.0"
 Kernel.keep_session = true
 
 Kernel.sessions = []
@@ -141,7 +141,6 @@ Kernel.parse_command = function(text)
     has_history = false
     for command in commands
         for pipe in command
-            print(pipe)
             val = pipe.trim
             temp = val.split(" ")
             
@@ -496,6 +495,7 @@ Kernel.get_prompt = function()
     return self.color(raw_prompt)
 end function
 
+
 // Kernel API functions for tools
 Kernel.color = function(object)
     if not object isa list then
@@ -529,6 +529,7 @@ Kernel.print = function(msg, clear)
     if not self.piped and not self.silent then print(self.color(msg), clear)
 end function
 
+
 Kernel.get_session = function(session_id)
     for x in self.sessions
         if x.id == session_id then
@@ -536,6 +537,7 @@ Kernel.get_session = function(session_id)
         end if
     end for
 end function
+
 
 Kernel.line = function(title, length)
     sep = floor((length - title.len - 4)/2)

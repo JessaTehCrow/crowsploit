@@ -401,3 +401,15 @@ confirmation_prompt = function(msg)
         print("<#f47>Please input (y)es or (n)o")
     end while
 end function
+
+
+// Deprecated, but here for backwards compat
+enumerate = function(array)
+    if not array isa list and not array isa string then return TypeError.New("enumerate","list", array)
+    result = {}
+
+    for x in array
+        result[__x_idx] = x
+    end for
+    return result
+end function

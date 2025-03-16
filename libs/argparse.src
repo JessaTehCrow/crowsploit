@@ -12,6 +12,7 @@ EvalType.New = function(text)
     return p
 end function
 
+
 EvalType.evaluate = function()
     if self.value.is_match("^\d+\.\d+$") then
         self.eval_value = self.value.val
