@@ -8,7 +8,7 @@ import_code("../kernel/toolkernel")
 
 
 
-ses_tool = Tool.New("session", "1.4.4")
+ses_tool = Tool.New("session", "1.5.0")
 
 ses_tool.short_description = "Session manager"
 ses_tool.long_description = "Manage your sessions and swap between them"

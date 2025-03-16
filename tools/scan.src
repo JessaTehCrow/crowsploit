@@ -108,7 +108,7 @@ end function
 
 // End util funcs
 
-scantool = Tool.New("scan", "1.3.9")
+scantool = Tool.New("scan", "1.4.0")
 scantool.short_description = "Scan ports and libraries for versions & exploits"
 scantool.long_description = "Scan ports and libraries for versions & exploits"
 
