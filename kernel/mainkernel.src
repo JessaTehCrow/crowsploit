@@ -8,7 +8,7 @@ SETTINGS_DEFAULT = "// Format:
 
 // Categories and keys cannot have spaces
 
-/////////////////
+////////////////
 //// Colors ////
 
 // primary color
@@ -55,10 +55,12 @@ color status_none   = <#669>
 color session       = <#669>
 color ip_prompt     = <#d44>
 
-// User prompt
+/////////////////
+// User prompt //
 input prompt = <voffset=2em> </voffset><pos=0><size=85%><voffset=1.4em>$S;$type $status $session $ip</voffset><pos=0></size>$T;($pwd) $P;$usr$T;@$S;$comp $T2;$suffix$input;
 
-// Input sufixes
+///////////////////
+// Input sufixes //
 // example: (pwd) user@pc > 
 // example: (pwd) user@pc : 
 // example: (pwd) user@pc - 
@@ -67,7 +69,14 @@ input shell    = >
 input computer = :
 input file     = -
 
-// Aliases
+//////////////
+// Database //
+
+database location = /etc/crow/exdb
+
+
+/////////////
+// Aliases //
 alias c = clear
 alias la = ls -la
 alias sessions = session list"
@@ -75,7 +84,7 @@ alias sessions = session list"
 Kernel = {}
 Kernel.DEBUG = false
 Kernel.nightly = false
-Kernel.version = "2.17.0"
+Kernel.version = "2.17.1"
 Kernel.keep_session = true
 
 Kernel.sessions = []
@@ -103,6 +112,34 @@ Kernel.new_session = function(session)
     session.id = self.session_count
     self.session_count = self.session_count + 1
     self.sessions.push(session)
+end function
+
+
+Kernel.use_session = function(session)
+    self.session = session
+
+    self.env.CURRENT = session.id
+    self.env.HOME = function(); return session.homepath; end function
+    self.env.PWD = function(); return session.file.path; end function
+    self.env.WAN = function(); return session.wan; end function
+    self.env.LAN = function(); return session.lan; end function
+
+    self.env.USER = function(); return session.user; end function
+    self.env.COMP = function(); return session.comp_name; end function
+
+    if session.computer != null then
+        self.env.WAN = function(); return session.computer.public_ip; end function
+        self.env.LAN = function(); return session.computer.local_ip; end function
+    end if
+end function
+
+
+Kernel.get_session = function(session_id)
+    for x in self.sessions
+        if x.id == session_id then
+            return x
+        end if
+    end for
 end function
 
 
@@ -241,7 +278,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
             if self.DEBUG then
                 e = []
                 for p in parts
-                    e.push(p.value)
+                    e.push(p.eval_value)
                 end for
                 print(e)
             end if
@@ -530,15 +567,6 @@ Kernel.print = function(msg, clear)
 end function
 
 
-Kernel.get_session = function(session_id)
-    for x in self.sessions
-        if x.id == session_id then
-            return x
-        end if
-    end for
-end function
-
-
 Kernel.line = function(title, length)
     sep = floor((length - title.len - 4)/2)
     if title == "" then 
@@ -548,6 +576,8 @@ Kernel.line = function(title, length)
     end if
 end function
 
+
+// Environment functions
 
 Kernel.env.RAND_IP = function()
     return ""+random(1,255)+"."+random(0,255)+"."+random(0,255)+"."+random(0,255)

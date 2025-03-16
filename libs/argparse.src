@@ -29,7 +29,7 @@ EvalType.evaluate = function()
     else if self.value.is_match("^(true|false|1|0)$") then
         self.eval_value = self.value.is_match("^(true|1)$")
         self.type = "bool"
-        
+
     else
         // first & last char of value
         stringcheck = self.value[:1]+self.value[-1:]

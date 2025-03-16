@@ -136,7 +136,7 @@ else
     kernel.active_session = session
     kernel.active_sessions.push(session)
 
-    kernel.session = session
+    kernel.use_session(session)
     user = active_user
     user_settings = "/home/" + user
     if user == "root" then

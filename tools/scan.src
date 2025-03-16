@@ -190,7 +190,7 @@ main_func = function(a)
             end if
 
             existing = ExploitLibrary.New(lib)
-            res = existing.load(a.kernel.sessions[0].computer)
+            res = existing.load(a.kernel.sessions[0].computer, get_db_path(a.kernel))
             if is_error(res) then return res.stack("scan.main")
 
             result = null
@@ -212,7 +212,7 @@ main_func = function(a)
         lib = service_libs[port[2]]
         version = port[3]
         exlib = ExploitLibrary.New(lib, version)
-        err = exlib.load(a.kernel.sessions[0].computer)
+        err = exlib.load(a.kernel.sessions[0].computer, get_db_path(a.kernel))
 
         if is_error(err) then return err.stack("scan.main")
         
@@ -407,7 +407,7 @@ libs_func = function(a)
         existing = ExploitLibrary.New(lib)
         if is_error(existing) then return existing.stack("scan.libs")
 
-        res = existing.load(a.kernel.sessions[0].computer)
+        res = existing.load(a.kernel.sessions[0].computer, get_db_path(a.kernel))
         if is_error(res) then return res.stack("scan.libs")
     
         if not a.exploits then
@@ -555,7 +555,7 @@ for_func = function(a)
             if lib_ver != "" and ver != lib_ver then continue
 
             exlib = ExploitLibrary.New(service_libs[lib], ver)
-            exlib.load(a.kernel.sessions[0].computer)
+            exlib.load(a.kernel.sessions[0].computer, get_db_path(a.kernel))
             indb = exlib.exploits_with_version(ver) != []
 
             s[-1] = ["False", "True"][indb]

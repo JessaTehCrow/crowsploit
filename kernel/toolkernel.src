@@ -156,7 +156,12 @@ Command._parse_args = function(raw)
         else
             // Arg parsing
             if self.has_rest and parsed_args.len >= self.args.args.len then
-                rest.push(x.value)
+                if type == "string" then
+                    rest.push(value)
+                else
+                    rest.push(x.value)
+                end if
+
                 continue
             
             else if parsed_args.len >= self.args.args.len then 
@@ -229,7 +234,7 @@ Tool = {}
 
 Tool.name = "CrowTool"
 Tool.version = "1.0.0"
-Tool.tool_kernel = "1.2.1"
+Tool.tool_kernel = "1.2.2"
 Tool.has_main = false
 Tool.loaded_commands = 0
 Tool.total_commands  = 0

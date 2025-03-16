@@ -94,3 +94,12 @@ Session.overwrite = function(session)
     self.wan = session.wan
     self.lan = session.lan
 end function
+
+Session.homepath = function()
+    user = self.user
+    home_path = "/home/" + user
+    if user == "root" then
+        home_path = "/root"
+    end if
+    return home_path
+end function

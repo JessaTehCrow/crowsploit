@@ -104,8 +104,6 @@ service_libs.unknown = "unknown"
 service_libs.smartappliance = "libsmartappliance.so"
 service_libs.trafficnet = "libtrafficnet.so"
 
-db_path = "/var/exdb/"
-
 obj_colors = {
     "Unknown" : "<#444>Unknown",
     "File" : "<#68f>File",
@@ -352,7 +350,9 @@ ExploitLibrary.serialize = function()
 end function
 
 
-ExploitLibrary.load = function(computer)
+ExploitLibrary.load = function(computer,db_path="/etc/crow/exdb/")
+    if db_path[-1] != "/" then db_path = db_path + "/"
+
     if typeof(computer) != "map" then return ParseTypeError.New("ExploitLibrary.load_lib", "computer", "Computer", typeof(computer))
     dir = db_path + self.name + "/" + self.version
     result = computer.File(dir)
@@ -397,7 +397,8 @@ ExploitLibrary.load = function(computer)
 end function
 
 
-ExploitLibrary.save_exploits = function(computer)
+ExploitLibrary.save_exploits = function(computer, db_path="/etc/crow/exdb/")
+    if db_path[-1] != "/" then db_path = db_path + "/"
     if computer == null then return ParseTypeError.New("ExploitLibrary.save_exploits", "computer", "computer", typeof(computer))
     dir = db_path + self.name + "/"
     filename = self.version
@@ -656,4 +657,14 @@ full_scan = function(metax, library, router, silent=false, existing=null, skip_e
     end for
 
     return exploits
+end function
+
+
+get_db_path = function(kernel, temp=false)
+    dir = kernel.settings.database.location
+    if temp then
+        dir = kernel.settings.database.temp_location
+    end if
+
+    return dir.replace("\$home", kernel.sessions[0].homepath)
 end function

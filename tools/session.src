@@ -146,7 +146,7 @@ reset_func = function(a)
     if not is_error(r) then print("$S;Loaded settings")
 
     session.file.goto(current_path)
-    a.kernel.session = session
+    a.kernel.use_session(session)
     
     list_sessions(a)
 end function
@@ -205,8 +205,7 @@ use_func = function(a)
         sesinfo(ses, a.kernel.active_session, ses, a.kernel.active_sessions)
     end if
 
-    a.kernel.session = ses
-    a.kernel.env.CURRENT = ses.id
+    a.kernel.use_session(ses)
 end function
 
 use = ses_tool.command("use", use_args, @use_func)

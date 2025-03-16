@@ -1281,7 +1281,7 @@ ftp_func = function(a)
     print("$T;ID:$P;"+ses.id)
 
     if not a.stay then
-        a.kernel.session = ses
+        a.kernel.use_session(ses)
         a.kernel.run_command("session", false)
     end if
 end function
@@ -1339,7 +1339,7 @@ ssh_func = function(a)
     print("$S;"+ ses.user +"$T;@$S;"+ ses.comp_name)
     print("$T;ID:$P;"+ses.id)
     if not a.stay then
-        a.kernel.session = ses
+        a.kernel.use_session(ses)
         a.kernel.run_command("session", false)
     end if
 end function
