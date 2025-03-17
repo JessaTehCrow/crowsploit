@@ -216,8 +216,8 @@ else
         else if check then
             result = session.apt.install("metaxploit.so", kernel.settings.library.path)
             
-            if result == null then kernel.print("$error;Failed to install " + x)
-            if result != "" and result != 1 then kernel.print("$error;Failed to install "+x+" : " + result)
+            if result == null then kernel.print("$error;Failed to install metaxploit.so")
+            if result != "" and result != 1 then kernel.print("$error;Failed to install metaxploit.so : " + result)
         end if
     end if
 
