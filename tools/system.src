@@ -1037,19 +1037,80 @@ chmod_args = [
 ]
 
 chmod_func = function(a)
+    binary = function(n)
+	    b = []
+	    while n > 0
+		    b.push(n % 2)
+		    n = floor(n / 2)
+	    end while
+	    while b.len < 3
+		    b.push(0)
+	    end while
+	    b.reverse
+	    return b
+    end function
     ses_file = a.kernel.session.file
     p = Path.New(ses_file.path)
     p.change(a.file)
 
     target = ses_file.get_path(p.path)
 
-    if is_error(target) then return target.stack("system.chown")
-    if not target.has_permission("rw") then return PermissionError.New("system.chown", "write")
-    
-    err = target.chmod(a.option, a.recursive)
-    if is_error(err) then return err
+    if is_error(target) then return target.stack("system.chmod")
+    if not target.has_permission("w") then return PermissionError.New("system.chmod", "write")
+        
 
-    print("$T;Set new permissions to $P;" + target.permissions)
+	perms = a.option
+	queries = []
+	if perms.indexOf("+") != null then
+		u = perms.split("\+")[0]
+		p = perms.split("\+")[1]
+		if u == "" then u = "ugo"
+		if p == "" then p = "wrx"
+		for i in u
+            for j in p
+                queries = queries.push(i+"+"+j)	
+            end for
+		end for
+	else if perms.indexOf("-") != null then
+		u = perms.split("-")[0]
+		p = perms.split("-")[1]
+		if u == "" then u = "ugo"
+		if p == "" then p = "wrx"
+		for i in u
+            for j in p
+                queries = queries.push(i+"-"+j)	
+            end for
+		end for
+	else if typeof(perms.to_int) == "number" and perms.len == 3 then
+		u = perms[0].to_int
+		g = perms[1].to_int
+		o = perms[2].to_int
+		repl = {1:"+",0:"-"}
+		b = [binary(u),binary(g),binary(o)]
+		queries = queries + ["u"+repl[b[0][0]]+"r","u"+repl[b[0][1]]+"w","u"+repl[b[0][2]]+"x"]
+		queries = queries + ["g"+repl[b[1][0]]+"r","g"+repl[b[1][1]]+"w","g"+repl[b[1][2]]+"x"]
+		queries = queries + ["o"+repl[b[2][0]]+"r","o"+repl[b[2][1]]+"w","o"+repl[b[2][2]]+"x"]
+	else if perms.indexOf("=") != null then
+		u = perms.split("=")[0]
+		p = perms.split("=")[1]
+		if u == "" or p == "" then 
+			print("Invalid permissions given")
+			return
+		end if
+		for i in u
+            		for j in p
+				queries = queries.push(i+"-"+"rwx")
+                		queries = queries.push(i+"+"+j)	
+           		end for
+		end for
+	else
+		print("Invalid permissions given")
+	end if
+	for q in queries
+		err = target.chmod(q, a.recursive)
+        if is_error(err) then return err
+	end for
+    return true
 end function
 
 chmod = mytool.standalone_command("chmod", chmod_args, @chmod_func)
