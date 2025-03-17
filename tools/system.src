@@ -1689,6 +1689,9 @@ whois_func = function(a)
     print("$T2;Admin  $T;:$P;" + admin)
     print("$T2;E-Mail $T;:$P;" + email)
     print("$T2;Phone  $T;:$P;" + phone)
+    if res.is_match("Neurobox") then
+        print("$T;Neurobox system")
+    end if
 end function
 
 whois_cmd = mytool.standalone_command("whois", whois_args, @whois_func)
