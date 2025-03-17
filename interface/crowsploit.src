@@ -134,14 +134,10 @@ else
     error = kernel.load_settings(session.homepath + "/.crowrc")
     if is_error(error) then
         print("<#e05>Missing settings")
-        user_settings = "/home/" + user
-        if user == "root" then
-            user_settings = "/root"
-        end if
-        print("<#e05>Creating settings in : " + user_settings + "/.crowrc")
-        touch_err = comp.touch(user_settings, ".crowrc", SETTINGS_DEFAULT)
+        print("<#e05>Creating settings in : " + session.homepath + "/.crowrc")
+        touch_err = comp.touch(session.homepath, ".crowrc", SETTINGS_DEFAULT)
         if touch_err then print(touch_err.message)
-        error = kernel.load_settings(user_settings + "/.crowrc")
+        error = kernel.load_settings(session.homepath + "/.crowrc")
     end if
     if is_error(error) then exit(error.message)
 
