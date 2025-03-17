@@ -1,6 +1,7 @@
-import_code("../kernel/toolkernel")
-import_code("../libs/utils")
-import_code("../libs/argparse")
+import_code("../kernel/devtools")
+// import_code("../kernel/toolkernel")
+// import_code("../libs/utils")
+// import_code("../libs/argparse")
 
 debug_tool = Tool.New("debug", "1.0.0")
 debug_tool.short_description = "Debug the kernell WOOOOOO"
@@ -133,6 +134,8 @@ Repl.list = function(args)
     last = Repl._pwd.tree[-1]
 
     if @last isa map then
+        if len(@last) > 1000 and not confirmation_prompt("More than 1000 entries. Show anyway?") then return
+        
         longest = 0
         for x in last.indexes
             strval = ""+@x
@@ -144,6 +147,8 @@ Repl.list = function(args)
             print(" "*spaces + color_map.default + @x.key + color_map.default + " : " + color_map.get_color(@x.value) + typeof(@x.value))
         end for
     else if @last isa list then
+        if len(@last) > 1000 and not confirmation_prompt("More than 1000 entries. Show anyway?") then return
+
         for x in last
             print(color_map.number + __x_idx + color_map.default + " : " + color_map.get_color(@x) + typeof(@x))
         end for
@@ -255,7 +260,7 @@ Repl.del = function(args)
     if not res then return
 
     obtype = typeof(@Repl._pwd.tree[-2])
-    
+
     if obtype == "list" then
         index = to_int(Repl._pwd.path[-1])    
     else if obtype == "map" then

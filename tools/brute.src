@@ -296,7 +296,7 @@ hash_func = function(a)
         result = a.kernel.password_list[hash]
     end if
 
-    if result == null then return KernelError.New("brute.hash", "Hash not found in the password dictionary")
+    if result == null then return Error.New("brute.hash", "Hash not found in the password dictionary")
     
     if user != null then
         print("$P;" + user + "$T; : $S;" + result)
@@ -349,6 +349,134 @@ $P;$HASH$ $T2;will be replaced by the md5 of the password
 $P;Usage:
 $P;brute $S;run $string;'su root $PWD$'
 $P;brute $S;run $string;'ssh root@192.168.0.1 -p $PWD$'"
+
+
+// sudo
+
+sudo_args = [
+    OptionalArg.New("user", "string").Default("root").Info("User to bruteforce"),
+    Kwarg.New("create-session","bool").Default(true).Alias("s").Info("Create session after crack"),
+    Kwarg.New("overwrite-session", "bool").Default(false).Alias("o").Info("Overwrite on success (only if --session is used)"),
+]
+
+sudo_func = function(a)
+    r = check_generated(a.kernel)
+    if is_error(r) then return r.stack("brute.main")
+    if not a.kernel.hasIndex("password_list") then
+        load_passwords(a.kernel)
+    end if
+
+    if a.kernel.session != a.kernel.active_session then return KernelError.New("brute.sudo", "Session must be the active session")
+
+    username = a.user
+    for password in a.kernel.password_list.values
+        shell = get_shell(username, password)
+        if shell == null then continue
+
+        print("$P;" + a.user + "$T; : " + "$S;" + password + " $T;: " + md5(password))
+
+        if not a["create-session"] then return
+
+        ses = Session.New(Shell.New(shell))
+        if is_error(ses) then return ses.stack("brute.sudo")
+
+        if a["overwrite-session"] then
+            a.kernel.session.overwrite(ses)
+            a.kernel.run_command("session", false)
+        else
+            a.kernel.new_session(ses)
+            a.kernel.run_command("session use " + ses.id, false)
+        end if
+        
+        return
+    end for
+
+    return Error.New("brute.sudo", "Password not cracked. Attempted"+len(a.kernel.password_list)+" passwords")
+end function
+
+sudo_cmd = brute_tool.command("sudo", sudo_args, @sudo_func)
+sudo_cmd.short_description = "Use dictionary attack against sudo"
+sudo_cmd.long_description  = "$P;Usage:
+$P;brute sudo
+$P;brute sudo $string;Username $bool;--overwrite-session"
+
+
+// service
+
+service_args = [
+    Arg.New("host", "ip").Info("Host to bruteforce"),
+    OptionalArg.New("user", "string").Default("root").Info("User to attempt"),
+    Kwarg.New("service", "string").Default("ssh").Alias("s").Info("Service to connect to"),
+    Kwarg.New("port", "int").Alias("p").Default(22).Info("Port to connect to"),
+]
+
+service_func = function(a)
+    r = check_generated(a.kernel)
+    if is_error(r) then return r.stack("brute.main")
+    if not a.kernel.hasIndex("password_list") then
+        load_passwords(a.kernel)
+    end if
+    if a.kernel.session.shell == null then return ObjectError.New("brute.service", "shell")
+
+    res = confirmation_prompt("This will take a <b>LONG</b> time. Are you sure you want to continue?")
+    if not res then return
+
+    for pass in a.kernel.password_list.values
+        res = a.kernel.session.shell.object.connect_service(a.host, a.port, a.user, pass, a.service)
+
+        if res == null then continue
+        if res isa string then return Error.New("brute.service", res)
+
+        if typeof(res) == "shell" then
+            shell = Shell.New(res)
+            session = Session.New(shell)
+            a.kernel.new_session(session)
+            a.kernel.run_command("session use" + session.id, false)
+            return
+        end if
+    end for
+    return Error.New("brute.service", "Password not cracked. Attempted"+len(a.kernel.password_list)+" passwords")
+end function
+
+service_cmd = brute_tool.command("service", service_args, @service_func)
+service_cmd.short_description = "Use dictionary attack against ssh/ftp services"
+service_cmd.long_description  = "$P;Usage:
+$P;brute service $ip;192.168.0.2 $int;-p 22 $string;--service ssh
+$P;brute service $ip;192.168.0.2 $int;-p 21 $string;--service ftp --user someuser
+$P;brute service $ip;192.168.0.2 $string;-s ssh
+$P;brute service $ip;192.168.0.2 $string'-u 'someuser'"
+
+
+// Mail
+
+mail_args = [
+    Arg.New("address", "string").Info("Mail to attack")
+]
+
+mail_func = function(a)
+    r = check_generated(a.kernel)
+    if is_error(r) then return r.stack("brute.main")
+    if not a.kernel.hasIndex("password_list") then
+        load_passwords(a.kernel)
+    end if
+    if not a.address.is_match("\w+@\w+\.(com|org|net|info)") then return Error.New("brute.mail", "Invalid mail format")
+
+    res = confirmation_prompt("This will take a <b>LONG</b> time. Are you sure you want to continue?")
+    if not res then return
+
+    for x in a.kernel.password_list.values
+        res = mail_login(a.address, x)
+        if not typeof(res) == "metaMail" then continue
+
+        print("$P;Password found for $T2;" + a.address + " $T; : $S;" + x + "$T; : " + md5(x))
+    end for
+    return Error.New("brute.mail", "Password not cracked. Attempted"+len(a.kernel.password_list)+" passwords")
+end function
+
+mail_cmd = brute_tool.command("mail", mail_args, @mail_func)
+mail_cmd.short_description = "Use dictionary attack against a mail address"
+mail_cmd.long_description  = "$P;Usage:
+$P;brute mail $string;some@mail.com"
 
 // init
 
