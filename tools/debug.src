@@ -1,3 +1,324 @@
 import_code("../kernel/toolkernel")
+import_code("../libs/utils")
+import_code("../libs/argparse")
 
-// Soon to be debug tool
+debug_tool = Tool.New("debug", "1.0.0")
+debug_tool.short_description = "Debug the kernell WOOOOOO"
+debug_tool.long_description  = "Look into the kernel stuffs"
+
+color_map = {}
+color_map.default = "$T2;"
+color_map.string = "$string;"
+color_map.number    = "$int;"
+color_map.map    = "$lssymlink;"
+color_map.list   = "$bool;"
+color_map["function"] = "$lscode;"
+color_map.get_color = function(ob)
+    if color_map.hasIndex(typeof(@ob)) then return color_map[typeof(@ob)]
+    return color_map.default
+end function
+
+Pwd = {}
+Pwd.tree = null
+Pwd.path = null
+
+Pwd.New = function(root)
+    p = new self
+    p.tree = [root]
+    p.path = ["a"]
+    return p
+end function
+
+Pwd.get_input = function()
+    result = ["<#aaa>("]
+
+    for x in self.tree
+        result.push(color_map.get_color(@x)+self.path[__x_idx]+"<#aaa>.")
+    end for
+
+    result[-1] = result[-1][:-1]
+    result.push(") <b><#888>:</b> ")
+    return result.join("")
+end function
+
+Pwd.go = function(next)
+    if @self.tree[-1] isa map then
+        if not self.tree[-1].hasIndex(next) then return "Key not found : " + next
+        self.tree.push(self.tree[-1][next])
+        self.path.push(next)
+        return true
+
+    else if @self.tree[-1] isa list then
+        if not to_int(next) isa number then return "Input not a number : " + next
+        index = to_int(next)
+        if len(self.tree[-1]) <= index then return "Index out of range (0-"+len(self.tree[-1])+")"
+
+        self.tree.push(self.tree[-1][index])
+        self.path.push(next)
+        return true
+
+    else    
+        return "Type " + typeof(@self.tree[-1]) + " cannot be indexed."
+    end if
+end function
+
+ask_type = function()
+    types = ["string", "bool", "int", "float", "map", "list"]
+    prompt = ""
+    for x in types
+        prompt = prompt + "$T;[$int;"+(__x_idx+1)+"$T;]$string;"+x + "   "
+    end for
+
+    print(prompt)
+
+    result = select_prompt("Select type: ", types, true)
+
+    return result
+end function
+
+get_type_value = function(type)
+    if type == "map" then return {}
+    if type == "list" then return []
+
+    result = null
+    while true 
+        result = user_input(_global.kernel.color("$"+type+";>> $input;"))
+        if result == "" then return
+
+        result = EvalType.New(result)
+        if result.type == type then return result.eval_value
+        if type == "string" then return result.value
+
+        print("$error;Input does not match " + type)
+    end while
+end function
+
+check_type = function(ob)
+    if @ob isa string then return "string"
+    if @ob isa map then return "map"
+    if @ob isa list then return "list"
+    if typeof(@ob) == "function" then return "function"
+    if @ob isa number then
+        if ob == 0 or ob == 1 then return ["bool", "int"]
+        if ob%1 != 0 then return "float"
+        if ob > 1 or ob < 0 then return "int"
+    end if
+end function
+
+// Repl commands
+
+Repl = {}
+Repl._pwd = null
+
+Repl._help = {
+    "list": [],
+    "clear": [],
+    "help": [],
+    "exit": [],
+    "set" : [],
+    "set": [],
+    "new": [],
+    "del": [],
+    "back": ["count"],
+    "use": ["index"],
+}
+
+Repl.help = function(args)
+    for x in Repl._help
+        print("$P;"+x.key + "  " + color_map.default + x.value.join(", "))
+    end for
+end function
+
+Repl.list = function(args)
+    last = Repl._pwd.tree[-1]
+
+    if @last isa map then
+        longest = 0
+        for x in last.indexes
+            strval = ""+@x
+            if len(strval) > longest then longest = len(strval)
+        end for
+
+        for x in last
+            spaces = longest - len(""+@x.key)
+            print(" "*spaces + color_map.default + @x.key + color_map.default + " : " + color_map.get_color(@x.value) + typeof(@x.value))
+        end for
+    else if @last isa list then
+        for x in last
+            print(color_map.number + __x_idx + color_map.default + " : " + color_map.get_color(@x) + typeof(@x))
+        end for
+    else
+        print(color_map.default + uncolor_string(""+@last))
+    end if
+end function
+
+Repl.clear = function(args)
+    clear_screen()
+end function
+
+Repl.back = function(args)
+    count = 1
+    if len(args) > 0 then
+        count = args[0].to_int
+    end if
+    if len(Repl._pwd.tree) == 1 then return
+    if count isa string then return "Not a number : " + args[0]
+    
+    for x in range(count-1)
+        if len(Repl._pwd.tree) == 1 then break
+        Repl._pwd.tree.pop
+        Repl._pwd.path.pop
+    end for
+end function
+
+Repl.use = function(args)
+    if len(args) == 0 then return "$error;Not enough arguments provided"
+    parts = args.join(" ").split("\.")
+
+    for part in parts
+        result = Repl._pwd.go(part)
+        if not result isa string then continue
+        print("$error;"+result)
+    end for
+end function
+
+Repl.set = function(args)
+    type = ask_type
+    if type == null then return
+    cur_type = check_type(@Repl._pwd.tree[-1])
+
+    log(cur_type)
+
+    if (cur_type isa string and type != cur_type) or (cur_type isa list and cur_type.indexOf(type) == null) then
+        res = confirmation_prompt("Value type doesn't match existing type. Overwriting may cause catastrophic errors. Continue anyway?")
+        if not res then return
+    end if
+
+    val = get_type_value(type)
+
+    if val == null then return
+
+    Repl._pwd.tree[-2][Repl._pwd.path[-1]] = val
+    Repl._pwd.tree.pop
+    Repl._pwd.tree.push(val)
+end function
+
+Repl["new"] = function(args)
+    index = null
+    value = null
+    obtype = typeof(@Repl._pwd.tree[-1])
+
+    if @Repl._pwd.tree[-1] isa map then
+        index = user_input(_global.kernel.color("$P;Index name: $string;"))
+        if index == "" then return
+        index = index
+
+    else if @Repl._pwd.tree[-1] isa list then
+        temp = null
+        while not temp isa number
+            print("$T;<i>Use 'last' to add append</i>")
+            temp = user_input(_global.kernel.color("$int;Index : "))
+            temp = to_int(temp)
+        end while
+
+        if temp == "last" then
+            index = last
+        else
+            ob_len = len(Repl._pwd.tree[-1])
+            if temp >= ob_len or temp < 0 then return "Out of index (0-"+ob_len-1+")"
+            index = temp
+        end if
+
+    else
+        return "Type " + obtype + " does not have indexes"
+    end if
+
+    type = ask_type()
+    if type == null then return
+
+    value = get_type_value(type)
+    if value == null then return
+
+    if index == "last" and obtype == "list" then
+        Repl._pwd.tree[-1].push(value)
+
+    else if obtype == "list" then
+        Repl._pwd.tree[-1].insert(index, value)
+
+    else
+        Repl._pwd.tree[-1][index] = value
+    end if
+end function
+
+Repl.del = function(args)
+    res = confirmation_prompt("Deleting ANY object, could be catastrophic to crowsploit. Continue anyway?")
+    if not res then return
+
+    obtype = typeof(@Repl._pwd.tree[-2])
+    
+    if obtype == "list" then
+        index = to_int(Repl._pwd.path[-1])    
+    else if obtype == "map" then
+        index = Repl._pwd.path[-1]
+    end if
+    
+    Repl._pwd.tree[-2].remove(index)
+    Repl.back([])
+end function
+
+// End Repl commands
+
+main_args = [
+    OptionalArg.New("index", "string").Info("Index to check")
+]
+main_func = function(a)
+    if a.index == null then 
+        print(a)
+    else
+        sep = a.index.split("\.")
+        temp = a
+        for x in sep
+            if not temp.hasIndex(x) then return KernelError.New("debug.main", "Index not found in " + typeof(temp))
+            temp = temp[x]
+        end for
+        print(temp)
+    end if
+end function
+
+main_cmd = debug_tool.main_command(main_args, @main_func)
+
+// Repl
+
+repl_args = []
+
+repl_func = function(a)
+    tree = Pwd.New(a)
+    Repl._pwd = tree
+
+    while true
+        print(" ")
+        cmd = user_input(a.kernel.color(tree.get_input))
+        if cmd == "exit" then break
+        if cmd == "" then continue
+
+        command = cmd.split(" ")[0]
+
+        if not Repl.hasIndex(command) then
+            print("$error;Command not found, use $T2;help $error;for a list of commands")
+            continue
+        else if typeof(@Repl[command]) != "function" then
+            print("$error;Invalid command, use $T2;help $error;for a list of commands")
+            continue
+        end if
+
+        args = cmd.split(" ")[1:]
+        callable = @Repl[command]
+        result = callable(args)
+
+        if result isa string then print(result)
+    end while
+end function
+
+repl_cmd = debug_tool.command("repl", repl_args, @repl_func)
+
+debug_tool.init()
