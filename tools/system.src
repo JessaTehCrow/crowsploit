@@ -877,7 +877,7 @@ rm_func = function(a)
     target = ses_file.get_path(a.path)
     if is_error(target) then return target.stack("system.rm")
     p = Path.New(target.path)
-    if not target.parent.has_permission("w") then return PermissionError.New("system.rm", "writef")
+    if not target.parent.has_permission("w") then return PermissionError.New("system.rm", "write")
     if target.is_folder and not a.recursive then return OsError.New("system.rm", "Unable to remove folder. Use --recursive to delete entire folder")
     if p.is_parent_of(ses_file.path) then return OsError.New("system.rm", "Cannot remove folder you are inside of")
 
