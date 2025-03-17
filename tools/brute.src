@@ -250,6 +250,42 @@ main_cmd.long_description = "$P;Usage:
 $P;brute"
 
 
+// find
+
+find_args = [
+    Arg.New("query", "string").Info("Hash or password to search in list")
+]
+
+find_func = function(a)
+    r = check_generated(a.kernel)
+    if is_error(r) then return r.stack("brute.main")
+    if not a.kernel.hasIndex("password_list") then
+        load_passwords(a.kernel)
+    end if
+
+    list = a.kernel.password_list.values
+    other = a.kernel.password_list.indexes
+    if a.query.trim.is_match("^[1234567890abcedf]{32}$") then
+        list = a.kernel.password_list.indexes
+        other = a.kernel.password_list.values
+    end if   
+    
+    for x in list
+        log(x)
+        if x != a.query then continue
+        print("$P;Query found at index $T2;" + __x_idx)
+        print("$T;" + x + " : " + "$S;" + other[__x_idx])
+        return
+    end for
+    return Error.New("brute.find", "Password/Hash not found in list")
+end function
+
+find_cmd = brute_tool.command("find", find_args, @find_func)
+find_cmd.short_description = "Find a password / hash in the password list"
+find_cmd.long_description  = "$P;Usage:
+$P;brute find $string;Password
+$P;brute find $string;3909d71d90c0b1b8cc6c19f0434abfa3"
+
 // reload
 
 reload_args = []
@@ -391,7 +427,7 @@ sudo_func = function(a)
         return
     end for
 
-    return Error.New("brute.sudo", "Password not cracked. Attempted"+len(a.kernel.password_list)+" passwords")
+    return Error.New("brute.sudo", "Password not cracked. Attempted "+len(a.kernel.password_list)+" passwords")
 end function
 
 sudo_cmd = brute_tool.command("sudo", sudo_args, @sudo_func)
@@ -431,11 +467,11 @@ service_func = function(a)
             shell = Shell.New(res)
             session = Session.New(shell)
             a.kernel.new_session(session)
-            a.kernel.run_command("session use" + session.id, false)
+            a.kernel.run_command("session use " + session.id, false)
             return
         end if
     end for
-    return Error.New("brute.service", "Password not cracked. Attempted"+len(a.kernel.password_list)+" passwords")
+    return Error.New("brute.service", "Password not cracked. Attempted "+len(a.kernel.password_list)+" passwords")
 end function
 
 service_cmd = brute_tool.command("service", service_args, @service_func)
@@ -461,16 +497,21 @@ mail_func = function(a)
     end if
     if not a.address.is_match("\w+@\w+\.(com|org|net|info)") then return Error.New("brute.mail", "Invalid mail format")
 
-    res = confirmation_prompt("This will take a <b>LONG</b> time. Are you sure you want to continue?")
+    res = confirmation_prompt("This can take a long time. Continue?")
     if not res then return
 
+    list_len = len(a.kernel.password_list)
     for x in a.kernel.password_list.values
         res = mail_login(a.address, x)
-        if not typeof(res) == "metaMail" then continue
+        if __x_idx%10000 == 0 then 
+            print("$P;"+ __x_idx + " / " + list_len)
+        end if
+        if not typeof(res) == "MetaMail" then continue
 
-        print("$P;Password found for $T2;" + a.address + " $T; : $S;" + x + "$T; : " + md5(x))
+        print("$P;Password found for $T2;" + a.address + "$T; : $S;" + x + "$T; : " + md5(x))
+        return
     end for
-    return Error.New("brute.mail", "Password not cracked. Attempted"+len(a.kernel.password_list)+" passwords")
+    return Error.New("brute.mail", "Password not cracked. Attempted "+list_len+" passwords")
 end function
 
 mail_cmd = brute_tool.command("mail", mail_args, @mail_func)
