@@ -113,6 +113,7 @@ Kernel.stdout = []
 Kernel.last_error = null
 Kernel.raw_piped = false
 Kernel.piped = false
+Kernel.quit_pipe = false
 Kernel.silent = false
 
 
@@ -280,9 +281,11 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
         self.old_stdout = self.stdout.values
         self.stdout = []
         self.last_error = null
+        self.quit_pipe = false
         had_success = false
-        
+
         for pipe in command
+            if self.quit_pipe then break
             parts = parse_input(pipe, true)
 
             if len(parts) == 0 then continue
