@@ -72,7 +72,7 @@ File.tree = function(recursive=false, max_depth=15, depth=0)
 
     for x in current.get_all
         result.push(x)
-        if x.is_folder and recursive then
+        if x.is_folder and recursive and not x.is_symlink then
             result = result + x.tree(recursive, max_depth, depth+1)
         end if
     end for
@@ -159,7 +159,7 @@ File.goto = function(target)
     while temp.path != "/"
         temp = temp.parent
     end while
-
+    if target == "/" then return temp
     for s in p.slices
         folders = temp.get_folders
         found = false
