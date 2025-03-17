@@ -1118,6 +1118,14 @@ chmod.short_description = "Change file permissions"
 chmod.long_description = "$T;Format: $S; [oug][-+][rwx]
 
 $P;Usage:
+$S;chmod $string;777 file.txt
+$S;chmod $string;432 file.txt
+$S;chmod $string;o+w file.txt
+$S;chmod $string;o+ file.txt
+$S;chmod $string;+ file.txt
+$S;chmod $string;uo+x file.txt
+$S;chmod $string;uo+xw file.txt
+$S;chmod $string;o=rw file.txt
 $S;chmod $string;o-rwx file.txt
 $S;chmod $string;g-w file.txt
 $S;chmod $string;u-rw file.txt"
