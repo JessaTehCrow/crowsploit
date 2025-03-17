@@ -769,7 +769,7 @@ mv_func = function(a)
     target = ses_file.get_path(a.path)
     if is_error(target) then return target.stack("system.mv")
     p = Path.New(target.path)
-    if not target.has_permission("rw") then return PermissionError.New("system.mv", "read & write")
+    if not target.parent.has_permission("w") then return PermissionError.New("system.mv", "write")
     if p.is_parent_of(ses_file.path) then return OsError.New("system.rm", "Cannot remove folder you are inside of")
     old_name = target.name
     filename = target.name
@@ -818,15 +818,14 @@ copy_func = function(a)
     ses_file = a.kernel.session.file
 
     target = ses_file.get_path(a.file)
+
     if is_error(target) then return target.stack("system.cp")
-    if not target.has_permission("rw") and a.file != "/" then return PermissionError.New("system.cp", "read & write")
+    if not target.has_permission("r") and a.file != "/" then return PermissionError.New("system.cp", "read")
 
     old_name = target.name
     filename = target.name
-    
     p = Path.New(ses_file.path)
     p.change(a.target)
-
     new_path = ses_file.get_path(p.path)
     if not is_error(new_path) and not new_path.is_folder then
         filename = new_path.name
@@ -834,22 +833,22 @@ copy_func = function(a)
     else if is_error(new_path) then
         new_path = p.folder
         filename = p.name
+    else if new_path.is_folder then
+        new_path = new_path.path
     end if
-    
     if is_error(new_path) then
         if a.target.count("\/") == 0 then
-            new_path = ses_file
+            new_path = ses_file.path
         end if
         filename = a.target.split("/")[-1]
     end if
-    
+    //if typeof(new_path) != "string" then new_path = new_path.path
     // if is_error(new_path) then return new_path.stack("system.cp")
     // if not new_path.has_permission("w") then return PermissionError.New("system.cp", "write")
     if filename.len >= 128 then return OsError.New("system.cp", "Filename cannot be above 128 characters")
 
     dir = new_path
-    // dir = new_path.path
-    
+    //dir = new_path.path
     err = target.copy(dir, filename)
     if is_error(err) then return err.stack("system.cp")
     if err isa string then return Error.New(err)
@@ -878,7 +877,7 @@ rm_func = function(a)
     target = ses_file.get_path(a.path)
     if is_error(target) then return target.stack("system.rm")
     p = Path.New(target.path)
-    if not target.has_permission("rw") then return PermissionError.New("system.rm", "write")
+    if not target.parent.has_permission("w") then return PermissionError.New("system.rm", "writef")
     if target.is_folder and not a.recursive then return OsError.New("system.rm", "Unable to remove folder. Use --recursive to delete entire folder")
     if p.is_parent_of(ses_file.path) then return OsError.New("system.rm", "Cannot remove folder you are inside of")
 
@@ -1843,7 +1842,8 @@ write_function = function(a)
     file = a.kernel.session.file.get_file(a.target)
     if is_error(file) then return file.stack("system.write")
     if not file.is_file then return OsError.New("system.write", "Cannot write to non-file")
-    if not file.has_permission("rw") then PermissionError.New("system.write", "Read / Write")
+    if not file.has_permission("r") then return PermissionError.New("system.write", "Read / Write")
+    if not file.parent.has_permission("w") then return PermissionError.New("system.write", "Read / Write")
 
     content = file.get_content()
 
