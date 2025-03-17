@@ -113,6 +113,7 @@ Kernel.stdout = []
 Kernel.last_error = null
 Kernel.raw_piped = false
 Kernel.piped = false
+Kernel.quit_pipe = false
 Kernel.silent = false
 
 
@@ -163,10 +164,12 @@ Kernel.parse_command = function(text)
     parsed = parse_input(text, false, true)
 
     for x in parsed
-        if x == "&&" then
+        if x.trim == "&&" then
+            pipes[-1] = pipes[-1].join(" ")
             commands.push(pipes)
+            pipes = [[]]
 
-        else if x == "|" then
+        else if x.trim == "|" then
             pipes[-1] = pipes[-1].join(" ")
             pipes.push([])
 
@@ -198,7 +201,7 @@ Kernel.parse_command = function(text)
 
                     if typeof(@result) == "function" then
                         temp[__t_idx] = result()
-                    else if @result isa string then
+                    else if @result isa string and EvalType.New(result).type == "string" then
                         temp[__t_idx] = "'"+self.env[env_val].replace("'", "\'") + "'"
                     else
                         temp[__t_idx] = self.env[env_val]
@@ -267,14 +270,22 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
     self.silent = silent
     good_result = true
 
+    if self.DEBUG then
+        e = []
+        print(commands.string)
+        print(commands.parsed)
+    end if
+
     for command in commands.parsed
         self.piped = command.len > 1
         self.old_stdout = self.stdout.values
         self.stdout = []
         self.last_error = null
+        self.quit_pipe = false
         had_success = false
-        
+
         for pipe in command
+            if self.quit_pipe then break
             parts = parse_input(pipe, true)
 
             if len(parts) == 0 then continue

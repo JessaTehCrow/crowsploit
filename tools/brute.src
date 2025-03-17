@@ -1,0 +1,524 @@
+import_code("../kernel/toolkernel")
+import_code("../libs/passlist")
+
+brute_tool = Tool.New("brute", "1.0.0")
+brute_tool.short_description = "Use a dictionary attack to crack passwords"
+brute_tool.long_description = "Use a dictionary attack to crack passwords"
+
+settings = Settings.init()
+settings.set("brute", {
+    "list_directory" : "/etc/crow/plist"
+})
+
+brute_tool.settings = settings
+
+// Password generator
+// Thank you 5hell / delta :3
+
+//Copyright (c) 2022 jhook777
+//
+//Permission is hereby granted, free of charge, to any person obtaining a copy
+//of this software and associated documentation files (the "Software"), to deal
+//in the Software without restriction, including without limitation the rights
+//to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//copies of the Software, and to permit persons to whom the Software is
+//furnished to do so, subject to the following conditions:
+//
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+//
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//SOFTWARE.
+
+PasswordGenerator={}
+
+PasswordGenerator.capitalize=function(password)
+    if password.len<2 then return password.upper
+    return password[0].upper+password[1:].lower
+end function
+
+PasswordGenerator.strip=function(t,password)
+    if not t then return ""
+
+    for b in range(0,t.len-1)
+        if password.indexOf(t[b])==null then break
+    end for
+
+    if password.indexOf(t[b])>=0 then return ""
+    
+    for e in range(-1,-1*t.len)
+        if password.indexOf(t[e])==null then break
+    end for
+
+    if e==-1 then return t[b:]
+    return t[b:e+1]
+end function
+
+PasswordGenerator.init=function(samples)
+    self.source=[]
+    self.c={}
+    self.sourceamples = samples[0:]
+    for password in samples
+        password=password.trim.upper
+        if password.len>3 then self.source.push(password) // length limiter here
+    end for
+    for password in self.source
+        for i in range(0,password.len-4)
+        k=password[i:i+3] // limiter
+        if self.c.hasIndex(k) then
+            if self.c[k].indexOf(password[i+3])==null then self.c[k].push(password[i+3]) // limiter
+        else
+            self.c[k]=[password[i+3]] // limiter
+        end if
+        end for
+    end for
+end function
+
+PasswordGenerator.AllPasswords=function()
+    result={}
+    for password in self.source
+        for i in range(0,password.len-4)
+        self.result(password.len,password[i:i+3],result) // limiter
+        end for
+    end for
+    table={}
+    for password in result.indexes
+        if password.indexOf(" ")>=0 then
+            n=password.split(" ")
+            i=n.indexOf("")
+            while i>=0
+                n.remove(i)
+                i=n.indexOf("",i-1)
+            end while
+            if n then
+                for i in range(0,n.len-1)
+                    n[i]=self.capitalize(n[i])
+                end for
+            end if
+            password=n.join(" ")
+        else
+            password=self.capitalize(password)
+        end if
+        if password.len<5 then continue
+        a=password[0]
+        b=password[1]
+        if a.lower==b or "hrl'aeiou".indexOf(b)==null and "AEIOUS".indexOf(a)==null and ["Ch","Mc"].indexOf(a+b)==null then password=self.capitalize(password[1:])
+        password=self.strip(password,"'-")
+        table[password]=1
+    end for
+    result={}
+    for p in table.indexes
+        if p.len > 3 then 
+            table[p[:3]] = 1
+            table[p[-3:]] = 1
+        end if
+        if p.len > 4 then
+            table[p[:4]] = 1
+            table[p[-4:]] = 1
+        end if
+        if p.len > 5 then
+            table[p[:5]] = 1
+            table[p[-5:]] = 1
+        end if
+    end for
+    for w in self.sourceamples
+        table[w] = 1
+    end for
+    for p in table.indexes
+        table[self.capitalize(p)] = 1
+    end for
+    return table.indexes
+end function
+
+PasswordGenerator.result=function(l,password,table)
+    c=password[password.len-3:]
+    if self.c.hasIndex(c) and password.len<l then
+        for c in self.c[c]
+            self.result(l,password+c,table)
+        end for
+    else
+        table[password]=1
+    end if
+end function
+
+
+// Util functions
+
+generate_list = function(destination, computer)
+    dest = computer.File(destination)
+    
+    if is_error(dest) then
+        p = Path.New(destination)
+        computer.create_folder(p.folder, p.name)
+
+        dest = computer.File(destination)
+        if is_error(dest) then return dest.stack("brute.generate_list")
+    end if
+
+    if not dest.has_permission("w") then
+        return OsError.New("brute.generate_list", "Unable to generate list, missing write permission on " + dest)
+    end if
+
+    PasswordGenerator.init(passlist)
+
+    passwords = PasswordGenerator.AllPasswords()
+    log("Woah")
+    pass_count = len(passwords)
+    joined = passwords.join(char(10))
+
+    results = []
+    max_chars = 159000
+
+    last_index = 0
+    while last_index < len(joined) 
+        sep = joined[last_index:last_index+max_chars]
+        if last_index+len(sep) != len(joined) then
+            sep = sep[:sep.lastIndexOf(char(10))]
+        end if
+        last_index = last_index + len(sep)
+        results.push(sep)
+    end while
+
+    for x in results
+        fname = "passlist_" + __x_idx
+        r = computer.touch(dest.path, fname, x)
+        if is_error(r) then return r.stack("brute.generate_list")
+    end for
+
+    print("$S;Generated $P;" + pass_count + "$S; passwords.")
+    print("$S;Seperated into $P;" + (__x_idx+1) + "$S; files")
+end function
+
+check_generated = function(kernel)
+    home = kernel.sessions[0]
+
+    brute_dir = home.file.goto(kernel.settings.brute.list_directory)
+
+    if not is_error(brute_dir) and brute_dir.get_files.len != 0 then return true
+
+    res = confirmation_prompt("No passwords found. Generate passwords now?")
+    if not res then return false
+
+    return generate_list(kernel.settings.brute.list_directory, home.computer)
+end function
+
+load_passwords = function(kernel)
+    kernel.password_list = {}
+
+    home = kernel.sessions[0]
+
+    folder = home.file.goto(kernel.settings.brute.list_directory)
+    if is_error(folder) then return folder.stack("brute.load_passwords")
+
+    files = folder.get_files()
+    for file in files
+        content = file.get_content()
+        if is_error(content) then return content.stack("brute.load_passwords")
+
+        passwords = content.split(char(10))
+        for password in passwords
+            kernel.password_list[md5(password)] = password
+            if password.lower != password then
+                kernel.password_list[md5(password.lower)] = password.lower
+            end if
+        end for
+    end for
+end function
+
+// Main
+
+main_args = []
+
+main_func = function(a)
+    r = check_generated(a.kernel)
+    if is_error(r) then return r.stack("brute.main")
+    if not a.kernel.hasIndex("password_list") then
+        load_passwords(a.kernel)
+    end if
+
+    print("$P;" + a.kernel.password_list.len + "$S; Passwords loaded")    
+end function
+
+main_cmd = brute_tool.main_command(main_args, @main_func)
+main_cmd.short_description = "Show how many passwords are currently loaded"
+main_cmd.long_description = "$P;Usage:
+$P;brute"
+
+
+// find
+
+find_args = [
+    Arg.New("query", "string").Info("Hash or password to search in list")
+]
+
+find_func = function(a)
+    r = check_generated(a.kernel)
+    if is_error(r) then return r.stack("brute.main")
+    if not a.kernel.hasIndex("password_list") then
+        load_passwords(a.kernel)
+    end if
+
+    list = a.kernel.password_list.values
+    other = a.kernel.password_list.indexes
+    if a.query.trim.is_match("^[1234567890abcedf]{32}$") then
+        list = a.kernel.password_list.indexes
+        other = a.kernel.password_list.values
+    end if   
+    
+    for x in list
+        log(x)
+        if x != a.query then continue
+        print("$P;Query found at index $T2;" + __x_idx)
+        print("$T;" + x + " : " + "$S;" + other[__x_idx])
+        return
+    end for
+    return Error.New("brute.find", "Password/Hash not found in list")
+end function
+
+find_cmd = brute_tool.command("find", find_args, @find_func)
+find_cmd.short_description = "Find a password / hash in the password list"
+find_cmd.long_description  = "$P;Usage:
+$P;brute find $string;Password
+$P;brute find $string;3909d71d90c0b1b8cc6c19f0434abfa3"
+
+// reload
+
+reload_args = []
+
+reload_func = function(a)
+    load_passwords(a.kernel)
+    print("$S;Loaded $P;" + a.kernel.password_list.len + "$S; passwords into memory")
+end function
+
+reload_command = brute_tool.command("reload", reload_args, @reload_func)
+reload_command.short_description = "Reload passwords into memory"
+reload_command.long_description = "$P;Usage:
+$P;brute $S;reload"
+
+
+// Hash
+
+hash_args = [
+    Arg.New("hash", "string").Info("Hash to crack")
+]
+
+hash_func = function(a)
+    r = check_generated(a.kernel)
+    if is_error(r) then return r.stack("brute.main")
+    if not a.kernel.hasIndex("password_list") then
+        load_passwords(a.kernel)
+    end if
+
+    user = null
+    hash = a.hash
+
+    if a.hash.trim.is_match("^\w+:[1234567890abcdef]{32}$") then
+        sep = a.hash.split(":")
+        user = sep[0]
+        hash = sep[1]
+    end if
+
+    if not hash.is_match("^[1234567890abcdef]{32}$") then
+        return Error.New("brute.hash", "Invalid hash specified")
+    end if
+
+    result = null
+    if a.kernel.password_list.hasIndex(hash) then
+        result = a.kernel.password_list[hash]
+    end if
+
+    if result == null then return Error.New("brute.hash", "Hash not found in the password dictionary")
+    
+    if user != null then
+        print("$P;" + user + "$T; : $S;" + result)
+    else
+        print("$S;" + result)    
+    end if
+end function
+
+hash_cmd = brute_tool.command("hash", hash_args, @hash_func)
+hash_cmd.short_description = "Do a dictionary attack against a hash"
+hash_cmd.long_description  = "$P;Usage:
+$P;brute $S;hash $string;3603149ea3af7fede010774a47dec0c5
+$P;brute $S;hash $string;root:3603149ea3af7fede010774a47dec0c5"
+
+// run
+
+run_args = [
+    Arg.New("command", "string").Info("Command to run with list")
+]
+
+run_func = function(a)
+    r = check_generated(a.kernel)
+    if is_error(r) then return r.stack("brute.main")
+    if not a.kernel.hasIndex("password_list") then
+        load_passwords(a.kernel)
+    end if
+
+    for x in a.kernel.password_list
+        cmd = a.command.replace("\$PWD\$", x.value).replace("\$HASH\$", x.key)
+        log(cmd)
+        res = a.kernel.run_command(cmd, false, true)
+        if res then
+            _print(a.kernel.stdout.join(char(10)))
+            break
+        end if
+    end for
+end function
+
+try_cmd = brute_tool.command("run", run_args, @run_func)
+try_cmd.short_description = "Run until command is successful"
+try_cmd.long_description  = "Run through all passwords, and only quit until command ran was successful
+
+$T2;Use $P;$HASH$ $T2;and $P;$PWD$$T2; as templates for the command
+
+$P;$PWD$ $T2;will be replaced by the plain text password
+$P;$HASH$ $T2;will be replaced by the md5 of the password
+
+<b>$error;NOTE: THIS WILL TAKE A LOOOONG TIME</b>
+
+$P;Usage:
+$P;brute $S;run $string;'su root $PWD$'
+$P;brute $S;run $string;'ssh root@192.168.0.1 -p $PWD$'"
+
+
+// sudo
+
+sudo_args = [
+    OptionalArg.New("user", "string").Default("root").Info("User to bruteforce"),
+    Kwarg.New("create-session","bool").Default(true).Alias("s").Info("Create session after crack"),
+    Kwarg.New("overwrite-session", "bool").Default(false).Alias("o").Info("Overwrite on success (only if --session is used)"),
+]
+
+sudo_func = function(a)
+    r = check_generated(a.kernel)
+    if is_error(r) then return r.stack("brute.main")
+    if not a.kernel.hasIndex("password_list") then
+        load_passwords(a.kernel)
+    end if
+
+    if a.kernel.session != a.kernel.active_session then return KernelError.New("brute.sudo", "Session must be the active session")
+
+    username = a.user
+    for password in a.kernel.password_list.values
+        shell = get_shell(username, password)
+        if shell == null then continue
+
+        print("$P;" + a.user + "$T; : " + "$S;" + password + " $T;: " + md5(password))
+
+        if not a["create-session"] then return
+
+        ses = Session.New(Shell.New(shell))
+        if is_error(ses) then return ses.stack("brute.sudo")
+
+        if a["overwrite-session"] then
+            a.kernel.session.overwrite(ses)
+            a.kernel.run_command("session", false)
+        else
+            a.kernel.new_session(ses)
+            a.kernel.run_command("session use " + ses.id, false)
+        end if
+        
+        return
+    end for
+
+    return Error.New("brute.sudo", "Password not cracked. Attempted "+len(a.kernel.password_list)+" passwords")
+end function
+
+sudo_cmd = brute_tool.command("sudo", sudo_args, @sudo_func)
+sudo_cmd.short_description = "Use dictionary attack against sudo"
+sudo_cmd.long_description  = "$P;Usage:
+$P;brute sudo
+$P;brute sudo $string;Username $bool;--overwrite-session"
+
+
+// service
+
+service_args = [
+    Arg.New("host", "ip").Info("Host to bruteforce"),
+    OptionalArg.New("user", "string").Default("root").Info("User to attempt"),
+    Kwarg.New("service", "string").Default("ssh").Alias("s").Info("Service to connect to"),
+    Kwarg.New("port", "int").Alias("p").Default(22).Info("Port to connect to"),
+]
+
+service_func = function(a)
+    r = check_generated(a.kernel)
+    if is_error(r) then return r.stack("brute.main")
+    if not a.kernel.hasIndex("password_list") then
+        load_passwords(a.kernel)
+    end if
+    if a.kernel.session.shell == null then return ObjectError.New("brute.service", "shell")
+
+    res = confirmation_prompt("This will take a <b>LONG</b> time. Are you sure you want to continue?")
+    if not res then return
+
+    for pass in a.kernel.password_list.values
+        res = a.kernel.session.shell.object.connect_service(a.host, a.port, a.user, pass, a.service)
+
+        if res == null then continue
+        if res isa string then return Error.New("brute.service", res)
+
+        if typeof(res) == "shell" then
+            shell = Shell.New(res)
+            session = Session.New(shell)
+            a.kernel.new_session(session)
+            a.kernel.run_command("session use " + session.id, false)
+            return
+        end if
+    end for
+    return Error.New("brute.service", "Password not cracked. Attempted "+len(a.kernel.password_list)+" passwords")
+end function
+
+service_cmd = brute_tool.command("service", service_args, @service_func)
+service_cmd.short_description = "Use dictionary attack against ssh/ftp services"
+service_cmd.long_description  = "$P;Usage:
+$P;brute service $ip;192.168.0.2 $int;-p 22 $string;--service ssh
+$P;brute service $ip;192.168.0.2 $int;-p 21 $string;--service ftp --user someuser
+$P;brute service $ip;192.168.0.2 $string;-s ssh
+$P;brute service $ip;192.168.0.2 $string'-u 'someuser'"
+
+
+// Mail
+
+mail_args = [
+    Arg.New("address", "string").Info("Mail to attack")
+]
+
+mail_func = function(a)
+    r = check_generated(a.kernel)
+    if is_error(r) then return r.stack("brute.main")
+    if not a.kernel.hasIndex("password_list") then
+        load_passwords(a.kernel)
+    end if
+    if not a.address.is_match("\w+@\w+\.(com|org|net|info)") then return Error.New("brute.mail", "Invalid mail format")
+
+    res = confirmation_prompt("This can take a long time. Continue?")
+    if not res then return
+
+    list_len = len(a.kernel.password_list)
+    for x in a.kernel.password_list.values
+        res = mail_login(a.address, x)
+        if __x_idx%10000 == 0 then 
+            print("$P;"+ __x_idx + " / " + list_len)
+        end if
+        if not typeof(res) == "MetaMail" then continue
+
+        print("$P;Password found for $T2;" + a.address + "$T; : $S;" + x + "$T; : " + md5(x))
+        return
+    end for
+    return Error.New("brute.mail", "Password not cracked. Attempted "+list_len+" passwords")
+end function
+
+mail_cmd = brute_tool.command("mail", mail_args, @mail_func)
+mail_cmd.short_description = "Use dictionary attack against a mail address"
+mail_cmd.long_description  = "$P;Usage:
+$P;brute mail $string;some@mail.com"
+
+// init
+
+brute_tool.init()
