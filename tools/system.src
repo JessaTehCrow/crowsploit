@@ -1110,6 +1110,7 @@ chmod_func = function(a)
 		err = target.chmod(q, a.recursive)
         if is_error(err) then return err
 	end for
+    print("$T;Set new permissions to $P;" + target.permissions)
     return true
 end function
 
