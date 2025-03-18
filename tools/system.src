@@ -477,7 +477,7 @@ cd_func = function(a)
     log(new_path)
     new_path = file.goto(new_path)
     if is_error(new_path) then return new_path.stack("system.cd")
-    if new_path.is_symlink and new_path.is_deleted then return OsError.New("system.cd", "Folder deleted or corrupted. Failed to change into directory")
+    if new_path.is_symlink and new_path.status then return OsError.New("system.cd", "Folder deleted or corrupted. Failed to change into directory")
 
     a.kernel.session.file = new_path
 end function
