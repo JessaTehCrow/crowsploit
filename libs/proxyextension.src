@@ -302,6 +302,12 @@ File.slient_rm = function() //returns error | true
 end function
 
 
+File.is_deleted = function()
+if self.object == null or self.owner == null then return true
+return false
+end function
+
+
 Computer.get_user = function()
     root = self.File("/")
     writables = root.find_permission("w", true)
