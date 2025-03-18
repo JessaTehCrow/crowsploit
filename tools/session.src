@@ -8,7 +8,7 @@ import_code("../kernel/toolkernel")
 
 
 
-ses_tool = Tool.New("session", "1.5.1")
+ses_tool = Tool.New("session", "1.5.2")
 
 ses_tool.short_description = "Session manager"
 ses_tool.long_description = "Manage your sessions and swap between them"
@@ -368,10 +368,10 @@ loadlib_func = function(a)
             print("$S;Loaded " + x[:-3])
         end for
         print("$P;Loaded " + len(loaded) + " libraries")
-    else if obj.is_file then
+    else if obj.is_binary then
         loaded  = a.kernel.session.load_lib(obj.path)
         if loaded then
-            print("$S;Loaded " + obj.name[:-3])
+            print("$S;Loaded " + obj.name)
         else
             print("$error;Failed to load library")
         end if
