@@ -1098,8 +1098,8 @@ chmod_func = function(a)
 			return
 		end if
 		for i in u
+            queries = queries.push(i+"-"+"rwx")
             		for j in p
-				queries = queries.push(i+"-"+"rwx")
                 		queries = queries.push(i+"+"+j)	
            		end for
 		end for
