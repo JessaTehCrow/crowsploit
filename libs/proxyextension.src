@@ -303,8 +303,8 @@ end function
 
 
 File.is_deleted = function()
-if self.object == null or self.owner == null then return true
-return false
+    if self.object == null or self.object.owner == null then return true
+    return false
 end function
 
 
