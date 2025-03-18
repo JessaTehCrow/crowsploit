@@ -110,10 +110,6 @@ end function
 
 
 Session.homepath = function()
-    user = self.user
-    home_path = "/home/" + user
-    if user == "root" then
-        home_path = "/root"
-    end if
-    return home_path
+    if self.user == "root" then return "/root"
+    return "/home/" + self.user
 end function

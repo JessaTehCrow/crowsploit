@@ -51,14 +51,130 @@ kernel = null
 shell = Shell.New(get_shell)
 comp = shell.host_computer
 
+update_libs = function(kernel, session, path)
+    // Check if lib folder exists, otherwise, make it exist (mood tbh)
+    if is_error(session.file.goto(path)) then
+        p = Path.New(path)
+        res = session.computer.create_folder(p.folder, p.name)
+        if is_error(res) then kernel.print("$error;No permission to create folder: /etc/crow/libs")
+    end if
+
+    loaded = session.load_libs(path)
+
+    // Find and copy apt in /lib
+    if session.apt == null then
+        file = session.file.get_file("/lib/aptclient.so")
+        if not is_error(file) then file.copy(path, "aptclient.so")
+
+        apt = include_lib(path + "/aptclient.so")
+        session.apt = apt
+    end if
+
+    // Check / ask for hackshop ip
+    if session.apt and session.apt.search("metaxploit.so").is_match("(in any repository$|refresh the file$)") then
+        res = confirmation_prompt("No hackshops in sources.txt for apt. Do you want to add one?")
+        if res then
+            hackshop = null
+
+            kernel.print("$T2;Searching a hackshop...")
+            while hackshop == null
+                router = get_router(kernel.env.RAND_IP)
+                if router == null then continue
+                for x in router.used_ports
+                    if x.port_number != 1542 then continue
+                    hackshop = router.public_ip
+                    break
+                end for
+            end while
+
+            session.apt.add_repo(hackshop, 1542)
+            session.apt.update()
+
+            kernel.print("$S;Added repository from ip: $P;" + hackshop)
+        end if
+    end if
+
+    // Install missing
+    if len(loaded) != 3 and kernel.settings.library.auto_install == "true" and not is_error(loaded) then
+        if not session.apt then 
+            kernel.print("$error;Aptclient not present in "+path+", unable to install libraries")
+        else
+            for x in ["metaxploit.so", "crypto.so"] 
+                if loaded.indexOf(x) != null then continue
+
+                result = session.apt.install(x, path)
+                if result == null then kernel.print("$error;Failed to install " + x)
+                if result != "" and result != 1 then kernel.print("$error;Failed to install "+x+" : " + result)
+            end for
+        end if
+    end if
+
+    // Update metaxploit
+    if session.apt and kernel.settings.library.auto_update_meta == "true" then
+        check = session.apt.check_upgrade(path + "/metaxploit.so")
+
+        if check isa string then 
+            kernel.print("$error;Failed to check for update : " + check)
+
+        else if check then
+            result = session.apt.install("metaxploit.so", path)
+            
+            if result == null then kernel.print("$error;Failed to install metaxploit.so")
+            if result != "" and result != 1 then kernel.print("$error;Failed to install metaxploit.so : " + result)
+        end if
+    end if
+end function
+
 kernel_setup = function()
+    ses = Session.New(shell)
+
     e = comp.create_folder("/etc", "crow")
+    print("<#4fa>Created folder <#4af>/etc/crow")
     if is_error(e) then return e
+    
     e = comp.create_folder("/etc/crow", "tools")
     if is_error(e) then return e
-
     print("<#4fa>Created folder <#4af>/etc/crow/tools")
-    print("<#999>Move the <#4af>system<#999> tool into the <#4af>/etc/crow/tools<#999> folder and restart crowsploit")
+    
+    e = comp.create_folder("/etc/crow", "libs")
+    if is_error(e) then return e
+    print("<#4fa>Created folder <#4af>/etc/crow/libs")
+
+    e = comp.create_folder("/etc/crow", "exdb")
+    if is_error(e) then return e
+    print("<#4fa>Created folder <#4af>/etc/crow/exdb")
+
+    e = comp.create_folder("/etc/crow", "exdb")
+    if is_error(e) then return e
+    print("<#4fa>Created folder <#4af>/etc/crow/macros")
+
+    e = comp.touch(ses.homepath, ".crowrc", SETTINGS_DEFAULT)
+    if is_error(e) then return e
+    print("<#4fa>Created file <#4af>" + ses.homepath + "/.crowrc")
+
+    if program_path.is_match("^\/home\/\w+\/crowsploit$") then
+        sep = program_path.split("/")
+        owner = sep[2]
+        folder = "/home/" + owner
+
+        e = comp.touch(folder, ".crowrc", SETTINGS_DEFAULT)
+        if is_error(e) then return e
+        f = comp.File(folder+"/.crowrc")
+        f.set_owner(owner)
+        f.set_group(owner)
+        print("<#4fa>Created file <#4af>" + folder + "/.crowrc")
+    end if
+
+    print(char(10) + "<#888>Setting up library path")
+
+    kernel = new Kernel
+    kernel.new_session(ses)
+    kernel.use_session(ses)
+    kernel.active_session = ses
+
+    kernel.load_settings(ses.homepath + "/.crowrc")
+
+    update_libs(kernel, ses, "/etc/crow/libs")
 end function
 
 if hasIndex(custom_obj, "kernel") and params == ["main"] then
@@ -113,15 +229,15 @@ else if params == ["setup"] then
         print(e.trace())
     else
         print("<#4fa>Setup complete")
+        print("<#999>Move the <#4af>system<#999> and <#4af>exploit<#999> tools into the <#4af>/etc/crow/tools<#999> folder and restart crowsploit")
     end if
     exit()
 else
     kernel = new Kernel
     session = Session.New(shell)
     session.user = active_user
-    if comp.is_network_active then
-        session.router = get_router
-    end if
+    if comp.is_network_active then session.router = get_router
+
     session.path = launch_path
     session.file = session.file.goto(current_path)
 
@@ -150,76 +266,7 @@ else
         }
     end if
 
-    // Check if lib folder exists, otherwise, make it exist (mood tbh)
-    if is_error(session.file.goto(kernel.settings.library.path)) then
-        res = session.computer.create_folder("/etc/crow", "libs")
-        if is_error(res) then kernel.print("$error;No permission to create folder: /etc/crow/libs")
-    end if
-
-    loaded = session.load_libs(kernel.settings.library.path)
-
-    // Find and copy apt in /lib
-    if session.apt == null then
-        file = session.file.get_file("/lib/aptclient.so")
-        if not is_error(file) then file.copy(kernel.settings.library.path, "aptclient.so")
-
-        apt = include_lib(kernel.settings.library.path + "/aptclient.so")
-        session.apt = apt
-    end if
-
-    // Check / ask for hackshop ip
-    if session.apt and session.apt.search("metaxploit.so").is_match("(in any repository$|refresh the file$)") then
-        res = confirmation_prompt("No hackshops in sources.txt for apt. Do you want to add one?")
-        if res then
-            hackshop = null
-
-            kernel.print("$T2;Searching a hackshop...")
-            while hackshop == null
-                router = get_router(kernel.env.RAND_IP)
-                if router == null then continue
-                for x in router.used_ports
-                    if x.port_number != 1542 then continue
-                    hackshop = router.public_ip
-                    break
-                end for
-            end while
-
-            session.apt.add_repo(hackshop, 1542)
-            session.apt.update()
-
-            kernel.print("$S;Added repository from ip: $P;" + hackshop)
-        end if
-    end if
-
-    // Install missing
-    if len(loaded) != 3 and kernel.settings.library.auto_install == "true" and not is_error(loaded) then
-        if not session.apt then 
-            kernel.print("$error;Aptclient not present in "+kernel.settings.library.path+", unable to install libraries")
-        else
-            for x in ["metaxploit.so", "crypto.so"] 
-                if loaded.indexOf(x) != null then continue
-
-                result = session.apt.install(x, kernel.settings.library.path)
-                if result == null then kernel.print("$error;Failed to install " + x)
-                if result != "" and result != 1 then kernel.print("$error;Failed to install "+x+" : " + result)
-            end for
-        end if
-    end if
-
-    // Update metaxploit
-    if session.apt and kernel.settings.library.auto_update_meta == "true" then
-        check = session.apt.check_upgrade(kernel.settings.library.path + "/metaxploit.so")
-
-        if check isa string then 
-            kernel.print("$error;Failed to check for update : " + check)
-
-        else if check then
-            result = session.apt.install("metaxploit.so", kernel.settings.library.path)
-            
-            if result == null then kernel.print("$error;Failed to install metaxploit.so")
-            if result != "" and result != 1 then kernel.print("$error;Failed to install metaxploit.so : " + result)
-        end if
-    end if
+    update_libs(kernel, session, kernel.settings.library.path)
 
     session.load_libs(kernel.settings.library.path)
 

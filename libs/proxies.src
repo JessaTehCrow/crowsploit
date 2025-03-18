@@ -46,7 +46,7 @@ File.file_type = function()
     if self.is_symlink then return "symlink"
     if self.is_folder then return "folder"
     if self.is_binary then return "binary"
-    if self.is_file and self.object.name.is_match(".+\.src") then return "code"
+    if self.is_file and self.name.is_match(".+\.src") then return "code"
     if self.is_file then return "file"
 end function
 
@@ -157,7 +157,7 @@ File.set_content = function(content)
     if result isa string then return Error.New("File.set_content",result)
 end function
 
-File.set_group = function(group, recursive)
+File.set_group = function(group, recursive=false)
     if not self.has_permission("w") then return PermissionError.New("File.set_group","write")
     result = self.object.set_group(group, recursive)
     if result == "Permission denied" then return PermissionError.New("File.set_group","write")
@@ -165,7 +165,7 @@ File.set_group = function(group, recursive)
     if result isa string then return Error.New("File.set_group", result)
 end function
 
-File.set_owner = function(owner, recursive)
+File.set_owner = function(owner, recursive=false)
     if not self.has_permission("w") then return PermissionError.New("File.set_owner","write")
     result = self.object.set_owner(owner, recursive)
     if result == "Permission denied" then return PermissionError.New("File.set_group","write")

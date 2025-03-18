@@ -3,3 +3,7 @@ build/
 
 # Ignore web generated docs
 docs/site/
+
+# Ignore temporary / developer tools
+
+temp_tools/
