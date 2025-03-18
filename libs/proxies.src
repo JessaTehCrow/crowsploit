@@ -55,6 +55,7 @@ File.permissions = function()
 end function
 
 File.has_permission = function(perm)
+    if self.permissions == null then return true
     if not perm isa string then return TypeError.New("File.has_permission","string", typeof(perm))
     if not perm.is_match("^(?!.*(.).*\1)[rwx]{1,3}$") then return FormatError.New("File.has_permission","rwx", perm)
     for x in perm
@@ -76,7 +77,8 @@ end function
 
 File.delete = function()
     if not self.parent.has_permission("w") then return PermissionError.New("File.delete","write")
-    self.object.delete
+    err = self.object.delete
+    if err isa string then return Error.New("File.delete", err)
 end function
 
 File.get_content = function()
@@ -109,6 +111,8 @@ File.get_files = function()
 end function
 
 File.group = function()
+    o = self.object.group
+    if o == null then return "null"
     return self.object.group
 end function
 
@@ -122,10 +126,14 @@ File.move = function(path, name)
 end function
 
 File.name = function()
+    o = self.object.name
+    if o == null then return "null"
     return self.object.name
 end function
 
 File.owner = function()
+    o = self.object.owner
+    if o == null then return "null"
     return self.object.owner
 end function
 
