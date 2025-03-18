@@ -302,7 +302,7 @@ File.slient_rm = function() //returns error | true
 end function
 
 
-File.is_deleted = function()
+File.status = function()
 if self.object == null or self.object.owner == null then
      if File.is_symlink then return true else return true+1
 end if
