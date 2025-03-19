@@ -144,7 +144,7 @@ kernel_setup = function()
     if is_error(e) then return e
     print("<#4fa>Created folder <#4af>/etc/crow/exdb")
 
-    e = comp.create_folder("/etc/crow", "exdb")
+    e = comp.create_folder("/etc/crow", "macros")
     if is_error(e) then return e
     print("<#4fa>Created folder <#4af>/etc/crow/macros")
 

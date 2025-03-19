@@ -114,9 +114,12 @@ Command._parse_args = function(raw)
             if not is_bool and command_kwarg.type == "bool" then
                 last_kwarg = null
             else
+                if type != command_kwarg.type then log(type + " | " + command_kwarg.type + " : " + value)
                 if type != "string" and command_kwarg.type == "string" and value != null then 
                     value = x.value
                     type = "string"
+                else if type == "string" and command_kwarg.type == "ip" and is_valid_ip(value) then
+                    type = "ip"
                 end if
 
                 if is_bool and command_kwarg.type == "bool" then type = "bool"
@@ -169,9 +172,12 @@ Command._parse_args = function(raw)
 
             end if
             arg = self.args.args[parsed_args.len]
+            if type != arg.type then log(type + " | " + arg.type + " : " + value)
             if type != "string" and arg.type == "string" and value != null then 
                 value = x.value
                 type = "string"
+            else if type == "string" and arg.type == "ip" and is_valid_ip(value) then
+                type = "ip"
             end if
 
             if arg.type == "float" and type == "int" then type = "float"

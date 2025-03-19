@@ -1186,13 +1186,20 @@ $S;system iwlist"
 // Kill
 
 kill_args = [
-    Arg.New("process", "string").Info("Process to kill. Either name or PID")
+    Arg.New("process", "string").Info("Process to kill. Either name or PID"),
+    Kwarg.New("yes", "bool").Alias("y").Info("Don't ask, just terminate")
 ]
 
 kill_func = function(a)
     if a.kernel.session.computer == null then return ObjectError.New("scan.kill", "computer")
     comp = a.kernel.session.computer
     raw_procs = comp.show_procs
+
+    protected = [
+        "dsession",
+        "Xorg",
+        "Kernel_task",
+    ]
 
     procs = []
     tab_data = []
@@ -1204,7 +1211,11 @@ kill_func = function(a)
         mem = data[3]
         cmd = data[4]
 
-        if pid == a.process or cmd.indexOf(a.process) != null then
+        if a.process == "*" or pid == a.process or cmd.indexOf(a.process) != null then
+            if protected.indexOf(cmd) != null then 
+                print("$error;Skipping protected process " + cmd)
+                continue
+            end if
             tab_data.push([usr, pid, cpu, mem, cmd])
             procs.push(pid)
         end if
@@ -1220,7 +1231,7 @@ kill_func = function(a)
     a.kernel.line("", result.length)
 
     uinp = ":3"
-    while ["y", "n", "yes", "no"].indexOf(uinp.lower()) == null
+    while ["y", "n", "yes", "no"].indexOf(uinp.lower()) == null and not a.yes
         uinp = user_input(a.kernel.color("$P;Kill $S;<b>" + procs.len + "</b> $P;processes? $T;(y/n)$T2; :$input; "))
     end while
     if ["n", "no"].indexOf(uinp.lower()) != null then return
@@ -2072,6 +2083,47 @@ rename_cmd.short_description = "Rename a file or folder"
 rename_cmd.long_description  = "$P;Usage:
 $P;system rename $string;/etc/passwd passnt
 $P;system rename $string;/var/system.log lognt"
+
+// passgen
+
+passgen_args = [
+    OptionalArg.New("format", "string").Default("aA0").Info("What format to generate passwords too"),
+    Kwarg.New("length", "int").Alias("l").Default(15).Info("Length of password to generate")
+]
+
+passgen_func = function(a)
+    formats = {
+        "a": "abcdefghijklmnopqrstuvwxyz",
+        "A": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        "0": "0123456789"
+    }
+
+    choice = ""
+    for x in a.format 
+        if not formats.hasIndex(x) then return FormatError.New("system.passgen", "a | A | 0", a.format)
+        choice = choice + formats[x]
+    end for
+
+    if len(choice) == 0 then return Error.New("system.passgen", "Format cannot be empty")
+
+    result = ""
+    for x in range(a.length-1)
+        result = result + choice[floor(rnd()*len(choice))]
+    end for
+    print("$S;" + result)
+end function
+
+passgen_cmd = mytool.command("passgen", passgen_args, @passgen_func)
+passgen_cmd.short_description = "Generate a password"
+passgen_cmd.long_description  = "$P;Formats:
+$S;a $T;: $string;abcdefghijklmnopqrstuvwxyz
+$S;A $T;: $string;ABCDEFGHIJKLMNOPQRSTUVWXYZ
+$S;0 $T;: $string;0123456789
+
+$P;Usage:
+$P;passgen -l 5 $T;> ab3D0
+$P;passgen a 10 $T;> fbqorfhaix
+$P;passgen 0 10 $T;> 7781945292"
 
 // init
 

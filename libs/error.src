@@ -83,7 +83,7 @@ ParseTypeError = new Error
 ParseTypeError.New = function(name, argname, type, got)
     error = new self
     error.stacktrace = []
-    error.message = type_col + "(ParseError) " + text_col + name + " Argument '"+argname+"' should be '" + type + "' got '" + got + "'"
+    error.message = type_col + "(ParseTypeError) " + text_col + name + " Argument '"+argname+"' should be '" + type + "' got '" + got + "'"
     return error
 end function
 
@@ -91,7 +91,7 @@ ParseKwargError = new Error
 ParseKwargError.New = function(name, arg, value)
     error = new self
     error.stacktrace = []
-    error.message = type_col + "(ParseError) " + text_col+name+" Does not have '"+arg+"' kwarg " + value
+    error.message = type_col + "(ParseKwargError) " + text_col+name+" Does not have '"+arg+"' kwarg " + value
     return error
 end function
 
