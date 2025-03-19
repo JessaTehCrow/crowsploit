@@ -301,13 +301,16 @@ File.slient_rm = function() //returns error | true
     return 1
 end function
 
-
+// @description a return value of 0 = FileOK
+// @description a return value of 1 = BrokenSymlink
+// @description a return value of 2 = FileDeleted
+//@returns {0|1|2}
 File.status = function()
-if self.object == null then return true+1
+if self.object == null then return 2
 if self.object.owner == null then 
-     if self.is_symlink then return true else return true+1
+     if self.is_symlink then return 1 else return 2
 end if
-return false
+return 0
 end function
 
 
