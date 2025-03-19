@@ -47,6 +47,6 @@ sniff_cmd.long_description = "$P;Usage:
 $P;sniff
 $P;sniff $string;-s
 $P;sniff $string;-f 3 $S;<= Points to session #3
-$P;rshell client $string;-t 3 $T;<= Points to session #3"
+"
 
 sniff.init()
