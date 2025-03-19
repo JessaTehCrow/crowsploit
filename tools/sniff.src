@@ -1,0 +1,52 @@
+import_code("../kernel/devtools")
+sniff = Tool.New("sniff", "1.0.0")
+
+sniff.short_description = "Sniff for incoming and outgoing connections"
+sniff.long_description =  "Sniff for incoming and outgoing connections"
+
+
+sniff_args = [
+    Kwarg.New("save", "bool").Alias("s").Default(0).Info("Save sniffed connection encode.src"),
+    Kwarg.New("from", "int").Alias("f").Info("What session to sniff from"),
+    
+]
+
+sniff_func = function(a)
+    session = a.kernel.active_session
+    if a["from"] != null then
+        session = null
+        for x in a.kernel.sessions
+            if x.id == a["from"] then
+                session = x
+            end if
+        end for
+
+    end if
+    if session == null then return OsError.New("sniff", "Session with id '"+a["from"]+"' not found")
+    if session.metax == null then return ObjectError.New("sniff","Metaxploit")
+    print("$P;sniffing from session "+session.id+"...")
+    result = session.metax.sniffer(a.save)
+    if result == null then return Error.New("metax.sniffer","Could not start sniff. Unknown Error")
+    imp = result.split("\n")[2:-1]
+    source = unformat_string(imp[0].split(":")[1].trim.replace(" ",""))
+    dest = unformat_string(imp[1].split(":")[1].trim.replace(" ",""))
+    pro = unformat_string(imp[2].split(":")[1].trim.replace(" ",""))
+    user = unformat_string(imp[3].split(":")[1].trim.replace(" ",""))
+    pass = unformat_string(imp[4])
+    if is_lan_ip(source) and not dest == session.computer.local_ip then dir = "Outgoing" else dir = "Incoming"
+    encstat = "encrypted"
+    if pass.indexOf("encrypted") == null then encstat = "plain"
+    print(dir+" data captured.")
+    print(source+" -> "+user+"@"+dest+":"+pro)
+    print("password("+encstat+") = "+pass.split(":")[1][1:])
+end function
+
+sniff_cmd = sniff.main_command(sniff_args, @sniff_func)
+sniff_cmd.short_description = "sniffs connections"
+sniff_cmd.long_description = "$P;Usage:
+$P;sniff
+$P;sniff $string;-s
+$P;sniff $string;-f 3 $S;<= Points to session #3
+$P;rshell client $string;-t 3 $T;<= Points to session #3"
+
+sniff.init()
