@@ -89,10 +89,41 @@ alias c = clear
 alias la = ls -la
 alias sessions = session list"
 
+// Kernel command class
+
+KernelCommand = {}
+KernelCommand.New = function(pipes)
+    c = new self
+
+    c.length = len(pipes)
+    c.pipes = pipes
+    c.silent = false
+
+    return c
+end function
+
+KernelCommand.fetch = function()
+    piped = (len(self.pipes) == 1 and self.length > 1) or (len(self.pipes) > 1 and len(self.pipes) != self.length)
+    silent = len(self.pipes) > 1 or self.silent
+
+    return {
+        "command":self.pipes.pull,
+        "silent":silent,
+        "piped":piped
+    }
+end function
+
+KernelCommand.finished = function()
+    return len(self.pipes) == 0
+end function
+
+
+// Kernel
+
 Kernel = {}
-Kernel.DEBUG = false
+Kernel.DEBUG = true
 Kernel.nightly = false
-Kernel.version = "2.17.1"
+Kernel.version = "2.18.0"
 Kernel.keep_session = true
 
 Kernel.sessions = []
@@ -115,6 +146,15 @@ Kernel.raw_piped = false
 Kernel.piped = false
 Kernel.quit_pipe = false
 Kernel.silent = false
+Kernel.execution_chain = []
+
+// [["cat /etc/passwd", "grep ""root""", "crack"], ["echo hi"]]
+
+// Kernel.execution_chain = [
+//     [{"length":3, "commands":["cat /etc/passwd", "grep root", "crack"]}],
+//     [{"length":1, "commands":["echo hi"]}]
+// ]
+// cat /etc/passwd | grep 'root' | crack && echo hi
 
 
 Kernel.new_session = function(session)
@@ -258,7 +298,102 @@ Kernel.parse_command = function(text)
 end function
 
 
+Kernel.run_chain = function(depth)
+    ran = 0
+    while (ran != depth or depth == null) and len(self.execution_chain) > 0
+        if self.quit_pipe then
+            self.execution_chain.pull
+            self.quit_pipe = false
+            ran = ran + 1
+            continue
+        end if
+
+        raw_object = self.execution_chain[0]
+        raw_command = raw_object.fetch
+
+        if raw_object.finished then self.execution_chain.pull
+        if self.DEBUG then print(raw_command)
+
+        self.old_stdout = self.stdout.values
+        self.stdout = []
+
+        self.last_error = null
+
+        parts = parse_input(raw_command.command, true)
+        if len(parts) == 0 then continue
+
+        command = parts[0].value
+        command_object = null
+
+        if self.DEBUG then
+            e = []
+            for p in parts
+                e.push(p.eval_value)
+            end for
+            print(e)
+        end if
+
+        if self.commands.hasIndex(command) then
+            command_object = self.commands[command]
+
+        else if self.tools.hasIndex(command) then
+            command_object = self.tools[command]
+
+        else
+            print("Command not found: " + command)
+            good_result = false
+            break
+        end if
+
+        self.silent = raw_command.silent
+        if raw_command.piped then
+            for x in self.old_stdout
+                parts2 = parse_input(unformat_string(x.trim), true)
+                result = command_object.call(self, parts[1:] + parts_2)
+                if not is_error(result) then 
+                    had_success = true
+                else
+                    self.last_error = result.stack("Kernel.run_command")
+                    print(self.last_error.trace())
+                end if
+            end for
+        else
+
+        end if
+        self.silent = false
+    end while
+end function
+
 Kernel.run_command = function(text, add_to_history=true, silent=false)
+    commands = self.parse_command(text)
+    if (self.session.history.len > 0 and self.session.history[-1] != commands.string) or self.session.history.len == 0 then
+        if add_to_history then
+            self.session.history.push(commands.string)
+        end if
+    end if
+
+    good_result = true
+
+    if self.DEBUG then
+        print(commands.string)
+        print(commands.parsed)
+    end if
+
+    // cat /etc/passwd | grep "root" | crack && echo
+    //                    |
+    //                    v
+    // [["cat /etc/passwd", "grep ""root""", "crack"], ["echo hi"]]
+
+    for cmd in commands.parsed
+        new_cmd = KernelCommand.New(cmd)
+        new_cmd.silent = silent
+        self.execution_chain.push(new_cmd)
+    end for
+
+    result = self.run_chain(1)
+end function
+
+Kernel.run_command_OLD = function(text, add_to_history=true, silent=false)
     commands = self.parse_command(text)
     if (self.session.history.len > 0 and self.session.history[-1] != commands.string) or self.session.history.len == 0 then
         if add_to_history then
