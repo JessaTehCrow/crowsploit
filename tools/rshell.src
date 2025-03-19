@@ -88,7 +88,8 @@ rshell_interface_func = function(a)
     result = Shell.New(result)
     ses = Session.New(result)
     a.kernel.new_session(ses)
-    a.kernel.run_command("sessions", false)
+    a.kernel.use_session(ses)
+    a.kernel.run_command("session", false)
 end function
 
 rshell_interface_cmd = rshell.command("interface", rshell_interface_args, @rshell_interface_func)

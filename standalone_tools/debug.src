@@ -1,9 +1,6 @@
 import_code("../kernel/devtools")
-// import_code("../kernel/toolkernel")
-// import_code("../libs/utils")
-// import_code("../libs/argparse")
 
-debug_tool = Tool.New("debug", "1.0.0")
+debug_tool = Tool.New("debug", "1.0.1f")
 debug_tool.short_description = "Debug the kernell WOOOOOO"
 debug_tool.long_description  = "Look into the kernel stuffs"
 
@@ -220,14 +217,15 @@ Repl["new"] = function(args)
 
     else if @Repl._pwd.tree[-1] isa list then
         temp = null
-        while not temp isa number
-            print("$T;<i>Use 'last' to add append</i>")
+        while not temp isa number and temp != "last"
+            print("$T;<i>Empty to append</i>")
             temp = user_input(_global.kernel.color("$int;Index : "))
+            if temp == "" then temp = "last"
             temp = to_int(temp)
         end while
 
         if temp == "last" then
-            index = last
+            index = "last"
         else
             ob_len = len(Repl._pwd.tree[-1])
             if temp >= ob_len or temp < 0 then return "Out of index (0-"+ob_len-1+")"

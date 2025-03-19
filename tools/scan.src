@@ -535,16 +535,16 @@ for_func = function(a)
             lib_found = false
             lib_ver = ""
             for x in libraries
-                if x[0] == lib then
-                    if x[1] != "" and s[3] == x[1] then
-                        lib_found = true
-                        lib_ver = x[1]
-                        break
-                    else if x[1] == "" then
-                        lib_found = true
-                        lib_ver = x[1]
-                        break
-                    end if
+                if x[0] != lib then continue
+                
+                if x[1] != "" and s[3] == x[1] then
+                    lib_found = true
+                    lib_ver = x[1]
+                    break
+                else if x[1] == "" then
+                    lib_found = true
+                    lib_ver = x[1]
+                    break
                 end if
             end for
 
@@ -584,7 +584,6 @@ for_func = function(a)
     log(result)
     tab = tabulate_data(result, ["Port", "State", "Service", "Version", "IP", "InDB"], a.kernel.color(["$P;", "$S;", "$P;", "$T2;", "$S;", "$P;"]))
     print(tab.string)
-
 end function
 
 for_cmd = scantool.command("for", for_args, @for_func)
@@ -593,22 +592,25 @@ for_cmd.long_description  = "$P;Usage:
 
 $T2; <b>Library scanning 
 $T;Format:
+$P;name
 $P;name@version
 
 $T2; <b>Port scanning
 $T;Format:
+$P;num
 $P;num,num,num
 
 $T2; <b>Database checks
 $T;Format:
 $P; 0|1|2
 
-$S;0 = Any
-$S;1 = In db only
-$S;2 = Not in db only
+$S;0 $T;= $P;Any
+$S;1 $T;= $P;In db only
+$S;2 $T;= $P;Not in db only
 
 $T2; <b>Examples
 
+$P;scan for $string;-l ssh $T;<< find 1 ip with ssh of any version
 $P;scan for $string;-l ssh@1.0.2 $int;-p 22 $T;<< find 1 ip with ssh version 1.0.2 on port 22 and no checks for database
 $P;scan for $int;-p 80 -c 5 -d 1 $T;<< find 5 ips with http on port 80 that are all in your database"
 
