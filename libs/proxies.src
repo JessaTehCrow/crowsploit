@@ -300,6 +300,7 @@ end function
 
 Computer.groups = function(user)
     if not user isa string then return TypeError.New("Computer.groups","string", typeof(user))
+    if user == "" then return FormatError.New("Computer.groups", "Username", "Empty string")
     result = self.object.groups(user)
     if not result then return OsError.New("Computer.groups", "No user found with name '"+user+"'")
     return result
