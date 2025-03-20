@@ -5,7 +5,9 @@ Path.slices = null
  
 Path.New = function(full_path)
     if not full_path isa string then return TypeError.New("Path.new", "string", typeof(full_path))
-    if full_path.len < 1 or full_path[0] != "/" then return
+    if full_path == "" then return
+    if full_path[0] != "/" then return
+
     p = new self
     p.slices = []
     slices = full_path.split("/")[1:]
@@ -20,8 +22,10 @@ end function
 
 Path.change = function(new_path)
     if not new_path isa string then return TypeError.New("Path.change", "string", typeof(full_path))
+    if new_path == "" then return
+
     relative = false
-    if new_path.len < 1 or new_path[0] == "/" then
+    if new_path[0] == "/" then
         NewPath = Path.New(new_path)
         if not NewPath then return Error.New("path.change", "Input string is invalid")
         self.slices = NewPath.slices
