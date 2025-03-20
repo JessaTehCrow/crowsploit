@@ -387,22 +387,22 @@ $P;brute $S;run $string;'su root $PWD$'
 $P;brute $S;run $string;'ssh root@192.168.0.1 -p $PWD$'"
 
 
-// sudo
+// su
 
-sudo_args = [
+su_args = [
     OptionalArg.New("user", "string").Default("root").Info("User to bruteforce"),
     Kwarg.New("create-session","bool").Default(true).Alias("s").Info("Create session after crack"),
     Kwarg.New("overwrite-session", "bool").Default(false).Alias("o").Info("Overwrite on success (only if --session is used)"),
 ]
 
-sudo_func = function(a)
+su_func = function(a)
     r = check_generated(a.kernel)
     if is_error(r) then return r.stack("brute.main")
     if not a.kernel.hasIndex("password_list") then
         load_passwords(a.kernel)
     end if
 
-    if a.kernel.session != a.kernel.active_session then return KernelError.New("brute.sudo", "Session must be the active session")
+    if a.kernel.session != a.kernel.active_session then return KernelError.New("brute.su", "Session must be the active session")
 
     username = a.user
     for password in a.kernel.password_list.values
@@ -414,7 +414,7 @@ sudo_func = function(a)
         if not a["create-session"] then return
 
         ses = Session.New(Shell.New(shell))
-        if is_error(ses) then return ses.stack("brute.sudo")
+        if is_error(ses) then return ses.stack("brute.su")
 
         if a["overwrite-session"] then
             a.kernel.session.overwrite(ses)
@@ -427,14 +427,14 @@ sudo_func = function(a)
         return
     end for
 
-    return Error.New("brute.sudo", "Password not cracked. Attempted "+len(a.kernel.password_list)+" passwords")
+    return Error.New("brute.su", "Password not cracked. Attempted "+len(a.kernel.password_list)+" passwords")
 end function
 
-sudo_cmd = brute_tool.command("sudo", sudo_args, @sudo_func)
-sudo_cmd.short_description = "Use dictionary attack against sudo"
-sudo_cmd.long_description  = "$P;Usage:
-$P;brute sudo
-$P;brute sudo $string;Username $bool;--overwrite-session"
+su_cmd = brute_tool.command("su", su_args, @su_func)
+su_cmd.short_description = "Use dictionary attack against su"
+su_cmd.long_description  = "$P;Usage:
+$P;brute su
+$P;brute su $string;Username $bool;--overwrite-session"
 
 
 // service
