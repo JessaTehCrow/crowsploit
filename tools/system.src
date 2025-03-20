@@ -1805,7 +1805,7 @@ $P;whois $ip;12.34.56.78"
 
 
 
-// corrupt
+// remlog
 
 remlog_args = [
     Kwarg.New("message", "string").Alias("m").Info("Content to add to the log (to leave behind message)")
@@ -1816,34 +1816,36 @@ remlog_func = function(a)
     log_file = ses.file.get_file("/var/system.log")
     if is_error(log_file) then return log_file.stack("system.remlog")
     if not log_file.has_permission("rw") then return PermissionError.New("system.remlog", "Read & Write for /var/system.log")
-    
+
+    if ses.computer != null then
+        if ses.computer == null then return ObjectError.New("system.remlog", "computer")
+        attempt = ses.computer.touch("/var", "owo.txt", a.message)
+        if is_error(attempt) then return attempt.stack("system.remlog")
+        wait(0.02)
+        file = ses.file.get_file("/var/owo.txt")
+        if is_error(file) then return file.stack("system.remlog")
+        res = file.move("/var", "system.log")
+        if is_error(res) then return res.stack("system.remlog")
+        print("$S;Successfully corrupted log")
+        return
+    end if
+
     file = null
-    for f in ses.file.goto("/").find_permission("rw", true)
+    for f in ses.file.goto("/").find_permission("w", true, false)
         if f.is_file() then
             if f.path == "/etc/xorg.conf" then continue
-            log(f.path)
             file = f
             if f.path == "/etc/fstab" then break
             if f.path == "/etc/init.d/Sources.txt" then break
         end if
     end for
 
-    if file != null then
-        res = file.move("/var", "system.log")
-        if is_error(res) then return res.stack("system.remlog")
-    else
-        print("$error;No files found to overwrite system.log, using computer")
-        if ses.computer == null then return ObjectError.New("system.remlog", "computer")
-        attempt = ses.computer.touch("/var", "owo.txt")
-        if is_error(file) then return attempt.stack("system.remlog")
-        wait(0.02)
-        file = ses.file.getfile("/var/owo.txt")
-        if is_error(file) then return file.stack("system.remlog")
-        res = file.move("/var", "/system.log")
-        if is_error(res) then return res.stack("system.remlog")
-    end if
-    
+    if file == null then return OsError.New("system.remlog","No files found to overwrite system.log")
+
     if a.message != null then file.set_content(a.message)
+    res = file.move("/var", "system.log")
+    if is_error(res) then return res.stack("system.remlog")
+
     print("$S;Successfully corrupted log")
 end function
 

@@ -105,10 +105,15 @@ File.find_permission = function(perms, recursive=false, first=false)
     if recursive != 0 and recursive != 1 then return TypeError.New("File.find_name","bool", typeof(recursive))
 
     result = []
-    for x in self.tree(recursive,15, 0, true)
-        temp_result = x.has_permission(perms)
+    for x in self.tree(recursive, 15, 0, true)
+        temp_result = true
+        for p in perms
+            if not x.has_permission(p) then temp_result = false
+        end for
+        
+        if temp_result != true then continue
         if first then return File.New(x, self.root_path)
-        if temp_result == true then result.push(File.New(x, self.root_path))
+        result.push(File.New(x, self.root_path))
     end for
     return result
 end function
