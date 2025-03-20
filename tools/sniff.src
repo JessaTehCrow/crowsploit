@@ -13,29 +13,27 @@ sniff_args = [
 
 sniff_func = function(a)
     session = a.kernel.active_session
-    if a["from"] != null then
-        session = null
-        for x in a.kernel.sessions
-            if x.id == a["from"] then
-                session = x
-            end if
-        end for
+    if a["from"] != null then session = a.kernel.get_session(a["from"])
 
-    end if
     if session == null then return OsError.New("sniff", "Session with id '"+a["from"]+"' not found")
     if session.metax == null then return ObjectError.New("sniff","Metaxploit")
+
     print("$P;sniffing from session "+session.id+"...")
     result = session.metax.sniffer(a.save)
     if result == null then return Error.New("metax.sniffer","Could not start sniff. Unknown Error")
-    imp = result.split("\n")[2:-1]
-    source = unformat_string(imp[0].split(":")[1].trim.replace(" ",""))
-    dest = unformat_string(imp[1].split(":")[1].trim.replace(" ",""))
-    pro = unformat_string(imp[2].split(":")[1].trim.replace(" ",""))
-    user = unformat_string(imp[3].split(":")[1].trim.replace(" ",""))
-    pass = unformat_string(imp[4])
+
+    imp = unformat_string(result).split(char(10))[2:-1]
+    source = imp[0].split(":")[1].trim.replace(" ","")
+    dest = imp[1].split(":")[1].trim.replace(" ","")
+    pro = imp[2].split(":")[1].trim.replace(" ","")
+    user = imp[3].split(":")[1].trim.replace(" ","")
+    pass = imp[4]
+
     if is_lan_ip(source) and dest != session.computer.local_ip then dir = "Outgoing" else dir = "Incoming"
+
     encstat = "encrypted"
     if pass.indexOf("encrypted") == null then encstat = "plain"
+
     print("$S;"+dir+" data captured.")
     print("$S;"+source+" -> "+user+"@"+dest+":"+pro)
     print("$S;password("+encstat+") = "+pass.split(":")[1][1:])

@@ -198,7 +198,6 @@ File.goto = function(target)
     temp = self.root_path
     if target == "/" then return File.New(temp, temp)
 
-    temp = temp
     for s in p.slices
         folders = temp.get_folders
         found = false
