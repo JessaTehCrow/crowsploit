@@ -8,6 +8,7 @@ Session.id = null
 Session.shell = null
 Session.computer = null
 Session.file = null
+Session.root_file = null
 Session.history = []
 Session.path = null
 
@@ -26,7 +27,7 @@ Session.wan = null
 Session.lan = null
 
 
-Session.New = function(obj)
+Session.New = function(obj, username=null)
     success = obj.hasIndex("object")
 
     if obj isa string then return TypeError.New("Session.New","shell,computer,file", typeof(obj))
@@ -34,7 +35,9 @@ Session.New = function(obj)
 
     session = new self
 
-    session.user = obj.get_user()
+    session.user = username
+    if username == null then session.user = obj.get_user()
+    
     if obj.type == "shell" then
         session.shell = obj
         session.computer = obj.host_computer
@@ -47,6 +50,8 @@ Session.New = function(obj)
     else if obj.type == "file" then
         session.file = obj
     end if
+
+    session.root_path = session.file.goto("/")
 
     if session.computer != null then
         session.comp_name = session.computer.get_name

@@ -495,11 +495,7 @@ end function
 
 
 Kernel.save_settings = function()
-    user = self.sessions[0].user
-    user_settings = "/home/" + user
-    if user == "root" then
-        user_settings = "/root"
-    end if
+    user_settings = self.sessions[0].homepath
     
     f = self.sessions[0].file.get_file(user_settings+"/.crowrc")
     if is_error(f) then return f.stack("Kernel.save_settings")

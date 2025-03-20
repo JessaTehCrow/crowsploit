@@ -306,7 +306,7 @@ exit_func = function(a)
         end if
     end for
     if selected == null then return OsError.New("session.exit", "No session found with id " + a.sesid)
-    if selected != current then
+    if selected == current then
         a.kernel.run_command("exit")
         return
     end if

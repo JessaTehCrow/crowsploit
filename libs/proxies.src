@@ -6,18 +6,48 @@ File = {}
 File.object = null
 File.type = "file"
 
-File.New = function(obj)
+File.New = function(obj, root=null)
     if typeof(obj) != "file" then return TypeError.New("File.New","file", typeof(obj))
     file = new File
     file.object = obj
+
+    file.root_path = root
+    if root == null then
+        temp = obj
+        while temp.path != "/" 
+            temp = temp.parent
+        end while
+        file.root_path = temp
+    end if
+
     return file
 end function
 
+// @description a return value of 0 = FileOK
+// @description a return value of 1 = BrokenSymlink
+// @description a return value of 2 = FileDeleted
+// @returns {0|1|2}
+File.status = function()
+    if self.object == null then return 2
+    if self.object.owner == null then 
+        if self.object.is_symlink then return 1 else return 2
+    end if
+    return 0
+end function
+
+File.sanity_check = function()
+    if self.status == 0 then return
+    self.object = self.root_path
+    print("<#e88>File deleted or corrupted, resetting to /")
+end function
+
 File.path = function(original_path=false)
+    self.sanity_check
     return self.object.path(original_path)
 end function
 
 File.copy = function(path, name)
+    self.sanity_check
     err = expect_all([path, name], string)
     if err != null then return TypeError.New("File.copy","string", err)
     result = self.object.copy(path, name)
@@ -25,24 +55,28 @@ File.copy = function(path, name)
 end function
 
 File.is_file = function()
+    self.sanity_check
     obj = self.object
     return not (obj.is_folder or obj.is_binary)
 end function
 
 File.is_folder = function()
+    self.sanity_check
     return self.object.is_folder
 end function
 
 File.is_symlink = function()
-    if not hasIndex(self.object.__isa, "is_symlink") then return false
+    self.sanity_check
     return self.object.is_symlink
 end function
 
 File.is_binary = function()
+    self.sanity_check
     return self.object.is_binary
 end function
 
 File.file_type = function()
+    self.sanity_check
     if self.is_symlink then return "symlink"
     if self.is_folder then return "folder"
     if self.is_binary then return "binary"
@@ -51,10 +85,12 @@ File.file_type = function()
 end function
 
 File.permissions = function()
+    self.sanity_check
     return self.object.permissions
 end function
 
 File.has_permission = function(perm)
+    self.sanity_check
     if self.permissions == null then return true
     if not perm isa string then return TypeError.New("File.has_permission","string", typeof(perm))
     if not perm.is_match("^(?!.*(.).*\1)[rwx]{1,3}$") then return FormatError.New("File.has_permission","rwx", perm)
@@ -65,6 +101,7 @@ File.has_permission = function(perm)
 end function
 
 File.chmod = function(perm, recursive=false)
+    self.sanity_check
     //if not self.has_permission("w") then return PermissionError.New("File.set_permission","write")
     if not perm isa string then return TypeError.New("File.set_permission","string", typeof(perm))
 
@@ -76,12 +113,14 @@ File.chmod = function(perm, recursive=false)
 end function
 
 File.delete = function()
+    self.sanity_check
     if not self.parent.has_permission("w") then return PermissionError.New("File.delete","write")
     err = self.object.delete
     if err isa string then return Error.New("File.delete", err)
 end function
 
 File.get_content = function()
+    self.sanity_check
     if not self.is_file then return TypeError.New("File.get_content","file", self.file_type)
     if not self.has_permission("r") then return PermissionError.New("File.get_content","read")
 
@@ -89,34 +128,38 @@ File.get_content = function()
 end function
 
 File.get_folders = function()
+    self.sanity_check
     if not self.is_folder then return TypeError.New("File.get_folders","folder", self.file_type)
 
     result = []
     for folder in self.object.get_folders 
-        result.push(File.New(folder))
+        result.push(File.New(folder, self.root_path))
     end for
 
     return result
 end function
 
 File.get_files = function()
+    self.sanity_check
     if not self.is_folder then return TypeError.New("File.get_files","folder", self.file_type)
 
     result = []
     for file in self.object.get_files 
-        result.push(File.New(file))
+        result.push(File.New(file, self.root_path))
     end for
     
     return result
 end function
 
 File.group = function()
+    self.sanity_check
     o = self.object.group
     if o == null then return "null"
     return self.object.group
 end function
 
 File.move = function(path, name)
+    self.sanity_check
     if not path isa string then return TypeError.New("File.move","string", typeof(path))
     if not name isa string then return TypeError.New("File.move","string", typeof(name))
 
@@ -126,25 +169,29 @@ File.move = function(path, name)
 end function
 
 File.name = function()
+    self.sanity_check
     o = self.object.name
     if o == null then return "null"
     return self.object.name
 end function
 
 File.owner = function()
+    self.sanity_check
     o = self.object.owner
     if o == null then return "null"
     return self.object.owner
 end function
 
 File.parent = function()
+    self.sanity_check
     parent = self.object.parent
     if parent == null then return self
 
-    return File.New(parent)
+    return File.New(parent, self.root_path)
 end function
 
 File.rename = function(name)
+    self.sanity_check
     if not name isa string then return TypeError.New("File.rename","string", typeof(name))
     if not self.parent.has_permission("w") then return PermissionError.New("File.rename","write")
     result = self.object.rename(name)
@@ -152,12 +199,14 @@ File.rename = function(name)
 end function
 
 File.set_content = function(content)
+    self.sanity_check
     if not self.parent.has_permission("w") then return PermissionError.New("File.set_content","write")
     result = self.object.set_content(content)
     if result isa string then return Error.New("File.set_content",result)
 end function
 
 File.set_group = function(group, recursive=false)
+    self.sanity_check
     if not self.has_permission("w") then return PermissionError.New("File.set_group","write")
     result = self.object.set_group(group, recursive)
     if result == "Permission denied" then return PermissionError.New("File.set_group","write")
@@ -166,6 +215,7 @@ File.set_group = function(group, recursive=false)
 end function
 
 File.set_owner = function(owner, recursive=false)
+    self.sanity_check
     if not self.has_permission("w") then return PermissionError.New("File.set_owner","write")
     result = self.object.set_owner(owner, recursive)
     if result == "Permission denied" then return PermissionError.New("File.set_group","write")
@@ -174,10 +224,12 @@ File.set_owner = function(owner, recursive=false)
 end function
 
 File.size = function()
+    self.sanity_check
     return self.object.size
 end function
 
 File.symlink = function(destination, name)
+    self.sanity_check
     if len(name) > 128 then return OsError.New("File.symlink","Filename cannot be longer than 128 characters")
     //if not self.has_permission("w") then return PermissionError.New("File.symlink", "read")
     if not is_error(self.get_path(destination+"/"+name)) then return OsError.New("File.symlink", "Path already exists : " + destination+"/"+name)

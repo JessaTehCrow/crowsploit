@@ -4,7 +4,7 @@ import_code("../libs/utils")
 
 if program_path == "/etc/crow/tools/crowsploit" then exit("<#f00>crowsploit detected running as a tool. Quitting loop")
 
-interface_version = "1.3.0"
+interface_version = "1.4.0"
 
 motd = "$T;    ___                  $P;|$T;             ___     
 $T;    \  '———.____     __ $P;-$S;+$P;-$T;   ____.———'  / 
@@ -126,7 +126,7 @@ update_libs = function(kernel, session, path)
 end function
 
 kernel_setup = function()
-    ses = Session.New(shell)
+    ses = Session.New(shell, active_user)
 
     e = comp.create_folder("/etc", "crow")
     print("<#4fa>Created folder <#4af>/etc/crow")
@@ -234,8 +234,7 @@ else if params == ["setup"] then
     exit()
 else
     kernel = new Kernel
-    session = Session.New(shell)
-    session.user = active_user
+    session = Session.New(shell, active_user)
     if comp.is_network_active then session.router = get_router
 
     session.path = launch_path
@@ -267,7 +266,6 @@ else
     end if
 
     update_libs(kernel, session, kernel.settings.library.path)
-
     session.load_libs(kernel.settings.library.path)
 
     print(char(10))
