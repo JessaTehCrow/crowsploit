@@ -287,6 +287,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
         for pipe in command
             if self.quit_pipe then break
             parts = parse_input(pipe, true)
+            if self.DEBUG then print(pipe)
 
             if len(parts) == 0 then continue
 

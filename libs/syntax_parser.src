@@ -277,14 +277,17 @@ parse_syntax = function(text, line_number=false)
         "false"
     ]
 
+    tokens = "!.,/{}:-=+<>*[]()%"
+
     func_colors = "<color=#D63F3F>"
     class_colors = "<color=#50CA8D>"
-    other_colors = "<color=#935AB4>"
+    other_colors = "<color=#A865CF>"
     int_color = "<color=#5B89E0>"
     string_color = "<color=#CC7A3B>"
     bool_color = "<color=#4D87DF>"
     comment_color = "<i><#555>"
     nothing_color = "<#ccc>"
+    token_color = "<color=#8080B4>"
 
     word_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_"
     capitals = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -304,12 +307,12 @@ parse_syntax = function(text, line_number=false)
             return func_colors + text + nothing_color
         else if classes.indexOf(text) != null then
             return class_colors + text + nothing_color
+        else if ["true", "false", "null"].indexOf(text) != null then
+            return bool_color + text + nothing_color
         else if others.indexOf(text) != null then
             return other_colors + text + nothing_color
         else if capitals.indexOf(text[0]) != null then
             return class_colors + text + nothing_color
-        else if ["true", "false", "null"].indexOf(text) != null then
-            return bool_color + text + nothing_color
         else if seperator == "(" then
             return func_colors + text + nothing_color
         else if last_sep == "." then 
@@ -337,7 +340,7 @@ parse_syntax = function(text, line_number=false)
             result = string_color
         end if
         if line_number then
-            result = "<mark=#22222288> " + " "*line_length + " <pos=0><#fff> " + padding(__line_idx+1, line_length) + " </mark></color>  <indent=70px>" + result
+            result = "<size=120%><mark=#282A3D88> " + " "*line_length + " <pos=0><#fff> " + padding(__line_idx+1, line_length) + " </mark></color></size>  <indent="+(20+20*line_length)+"px>" + result
         end if
 
         last = ""
@@ -365,14 +368,16 @@ parse_syntax = function(text, line_number=false)
             if chr == "/" and not is_string then
                 if last == "/" then 
                     is_comment = true
-                    result = result + comment_color + "/" 
+                    result = result + "/" 
+                    continue
                 else
+                    result = result + comment_color + "/"
                     last = "/"
                     continue
                 end if
                 // If it wasn't a comment, add the character back to the output
             else if last == "/" and chr != "/" and not is_string then
-                result = result + "/"
+                result = result + token_color + "/" + nothing_color
             end if
 
             // check if it matches "
@@ -409,6 +414,8 @@ parse_syntax = function(text, line_number=false)
 
             if word_chars.indexOf(chr) != null then 
                 word = word + chr
+            else if tokens.indexOf(chr) != null then
+                result = result + token_color + chr + nothing_color
             else
                 result = result + chr
             end if

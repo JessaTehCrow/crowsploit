@@ -46,8 +46,6 @@ end function
 
 
 parse_input = function(text, evaluate=false, keep_quotes=false)
-    if evaluate then keep_quotes = true
-
     out = []
     temp = ""
     quote = null
@@ -81,7 +79,11 @@ parse_input = function(text, evaluate=false, keep_quotes=false)
             // Ignore all quotes if escaped
             if backs then
                 backs = false
-                temp = temp + x
+                if keep_quotes then
+                    temp = temp + "\" + x
+                else
+                    temp = temp + x
+                end if
                 continue
             end if
 
@@ -94,7 +96,7 @@ parse_input = function(text, evaluate=false, keep_quotes=false)
                 end if
 
                 temp = ""
-                if keep_quotes then
+                if keep_quotes or evaluate then
                     temp = x
                 end if
 
@@ -109,7 +111,7 @@ parse_input = function(text, evaluate=false, keep_quotes=false)
             // If quote char is the current active one,
             // And not escaped, then close string
             else
-                if keep_quotes then temp = temp + quote
+                if keep_quotes or evaluate then temp = temp + quote
                 quote = null
                 out.push(temp)
                 temp = ""

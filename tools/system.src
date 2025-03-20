@@ -463,33 +463,18 @@ cd_func = function(a)
         return KernelError.New("system.cd", "Path deleted or corrupted. Resetting to /")
     end if
 
-    file = a.kernel.session.file
-    if a.path == ".." then 
-        a.kernel.session.file = a.kernel.session.file.parent
-        return
-    end if
+    loc = a.path
+    if a.path == null then loc = a.kernel.session.homepath
 
-    new_path = a.path
+    p = Path.New(a.kernel.session.file.path)
+    p.change(loc)
 
-    if a.path == null then
-        user = a.kernel.session.user
-        log(user)
-        if user == "root" then
-            new_path = "/root"
-        else if user == "unknown" then
-            return KernelError.New("system.cd", "Unknown user does not have a home folder")
-        else
-            new_path = "/home/" + user
-        end if
-    end if
-    // if file.path != "/" and a.path[0] != "/" then new_path = file.path + "/" + a.path
-    
-    log(new_path)
-    new_path = file.goto(new_path)
-    if is_error(new_path) then return new_path.stack("system.cd")
-    if new_path.is_symlink and new_path.status then return OsError.New("system.cd", "Folder deleted or corrupted. Failed to change into directory")
+    file = a.kernel.session.file.goto(p.path)
 
-    a.kernel.session.file = new_path
+    if is_error(file) then return file.stack("system.cd")
+    if file.status then return OsError.New("system.cd", "Target folder is corrupt or deleted")
+
+    a.kernel.session.file = file
 end function
 
 cd = mytool.standalone_command("cd", cd_args, @cd_func)
@@ -846,9 +831,12 @@ copy_func = function(a)
     old_name = target.name
     filename = target.name
 
+    log(old_name + " / " + filename)
     p = Path.New(ses_file.path)
     p.change(a.target)
     new_path = ses_file.get_path(p.path)
+
+    log(new_path)
 
     if not is_error(new_path) and not new_path.is_folder then
         filename = new_path.name
@@ -856,13 +844,13 @@ copy_func = function(a)
     else if is_error(new_path) then
         new_path = p.folder
         filename = p.name
-    else if new_path.is_folder then
-        new_path = new_path.path
     end if
+
+    log(new_path + " / " + filename)
 
     if is_error(new_path) then
         if a.target.count("\/") == 0 then
-            new_path = ses_file.path
+            new_path = ses_file
         end if
         filename = a.target.split("/")[-1]
     end if
@@ -871,12 +859,11 @@ copy_func = function(a)
     // if not new_path.has_permission("w") then return PermissionError.New("system.cp", "write")
     if filename.len >= 128 then return OsError.New("system.cp", "Filename cannot be above 128 characters")
 
-    dir = new_path
     //dir = new_path.path
-    err = target.copy(dir.path, filename)
+    err = target.copy(new_path, filename)
     if is_error(err) then return err.stack("system.cp")
     if err isa string then return Error.New(err)
-    print("$T;Copied $ls" + target.file_type + ";" + old_name + " $T;to $ls" + target.file_type + ";" + dir + "/" + filename)
+    print("$T;Copied $ls" + target.file_type + ";" + old_name + " $T;to $ls" + target.file_type + ";" + new_path + "/" + filename)
 end function
 
 copy = mytool.standalone_command("cp", copy_args, @copy_func)
@@ -930,8 +917,8 @@ touch_func = function(a)
     ses_file = a.kernel.session.file
     ses_comp = a.kernel.session.computer
 
-    target = ses_file.get_file(a.name)
-    if not is_error(target) then return OsError.New("system.touch", "File already exists")
+    // target = ses_file.get_file(a.name)
+    // if not is_error(target) then return OsError.New("system.touch", "File already exists")
 
     p = Path.New(ses_file.path)
     p.change(a.name)

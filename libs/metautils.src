@@ -529,7 +529,11 @@ ExploitLibrary.display = function(kernel, relevant=false, short=false, ip=null)
 
     kernel.print("<size=200%>$P;" + self.name)
     kernel.print("$T2;Version $T;: $S;" + self.raw_version)
-    print(tabulate_data(tab_data, tab_titles, colors, ["<i><u>"+kernel.color("$T2;")]).string)
+    lines = tabulate_data(tab_data, tab_titles, colors, ["<i><u>"+kernel.color("$T2;")]).string.split(char(10))
+    for x in lines
+        if __x_idx % 300 == 0 then wait(0.1)
+        print(x)
+    end for
 end function
 
 
