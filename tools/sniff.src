@@ -33,7 +33,7 @@ sniff_func = function(a)
     pro = unformat_string(imp[2].split(":")[1].trim.replace(" ",""))
     user = unformat_string(imp[3].split(":")[1].trim.replace(" ",""))
     pass = unformat_string(imp[4])
-    if is_lan_ip(source) and not dest == session.computer.local_ip then dir = "Outgoing" else dir = "Incoming"
+    if is_lan_ip(source) and dest != session.computer.local_ip then dir = "Outgoing" else dir = "Incoming"
     encstat = "encrypted"
     if pass.indexOf("encrypted") == null then encstat = "plain"
     print("$S;"+dir+" data captured.")
