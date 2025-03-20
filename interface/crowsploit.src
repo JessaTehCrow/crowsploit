@@ -189,6 +189,7 @@ else if hasIndex(custom_obj, "kernel") then
 
     active = kernel.active_sessions[0]
     session = kernel.session
+    session.shell = Shell.New(get_shell)
     session.user = active_user
     if comp.is_network_active then
         session.router = get_router

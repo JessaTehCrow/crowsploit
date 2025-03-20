@@ -780,9 +780,7 @@ mv_args = [
 mv_func = function(a)
     ses_file = a.kernel.session.file
 
-    print("A")
     target = ses_file.get_path(a.path)
-    print("B")
     if is_error(target) then return target.stack("system.mv")
     p = Path.New(target.path)
     if not target.parent.has_permission("w") then return PermissionError.New("system.mv", "write")
