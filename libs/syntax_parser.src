@@ -340,7 +340,7 @@ parse_syntax = function(text, line_number=false)
             result = string_color
         end if
         if line_number then
-            result = "<size=120%><mark=#282A3D88> " + " "*line_length + " <pos=0><#fff> " + padding(__line_idx+1, line_length) + " </mark></color></size>  <indent="+(20+20*line_length)+"px>" + result
+            result = "<size=120%><mark=#282A3D88>" + " "*line_length + " </size><pos=0><#fff> " + padding(__line_idx+1, line_length) + " </mark></color>  <indent="+(20+20*line_length)+"px>" + result
         end if
 
         last = ""
