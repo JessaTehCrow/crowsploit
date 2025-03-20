@@ -1168,6 +1168,7 @@ groups_func = function(a)
     if a.kernel.session.computer == null then return ObjectError.New("system.groups", "computer")
     result = a.kernel.session.computer.groups(a.user)
     if not result then return OsError.New("system.groups", "No user found with name '"+a.user+"'")
+    if is_error(result) then return result.stack("system.groups")
     print(result.split(char(10))[:-1].join(", "))
 end function
 
