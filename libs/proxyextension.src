@@ -5,8 +5,8 @@ Path.slices = null
  
 Path.New = function(full_path)
     if not full_path isa string then return TypeError.New("Path.new", "string", typeof(full_path))
-    if full_path == "" then return
-    if full_path[0] != "/" then return
+    if full_path == "" then return FormatError.New("Path.New", "Full system path", "Empty string")
+    if full_path[0] != "/" then return FormatError.New("Path.New", "Full system path", full_path)
 
     p = new self
     p.slices = []
@@ -22,7 +22,7 @@ end function
 
 Path.change = function(new_path)
     if not new_path isa string then return TypeError.New("Path.change", "string", typeof(full_path))
-    if new_path == "" then return
+    if full_path == "" then return FormatError.New("Path.New", "System path", "Empty string")
 
     relative = false
     if new_path[0] == "/" then
