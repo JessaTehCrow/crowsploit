@@ -611,7 +611,7 @@ Kernel.check_update = function(interface_version)
     self.print("$P;Checking for updates...")
     self.print("$P;Connecting to crowsploit servers $T;(159.139.90.130:69)")
     result = self.sessions[0].shell.connect_service("159.139.90.130", 69, "versioncheck", "versioncheck", "ssh")
-    if is_error(result) == null then return result.stack("kernel.check_update")
+    if is_error(result) then return result.stack("kernel.check_update")
 
     result.launch("/home/versioncheck/check",ver_string.join(" "))
 end function
