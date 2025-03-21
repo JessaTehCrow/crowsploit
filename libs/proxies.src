@@ -280,7 +280,7 @@ Computer.close_program = function(pid)
 end function
 
 Computer.connect_ethernet = function(netDevice, local, gateway)
-    err = expect_all([netDevice, local, gateway])
+    err = expect_all([netDevice, local, gateway],string)
     if err != null then return TypeError.New("Computer.connect_ethernet","string", err)
     result = self.object.connect_ethernet(netDevice, local, gateway)
     if result isa string then return Error.New("Computer.connect_ethernet",result)
@@ -398,6 +398,7 @@ end function
 
 Computer.wifi_networks = function(interface)
     if not interface isa string then return TypeError.New("Computer.wifi_networks", "string", typeof(interface))
+    if self.object.active_net_card != "WIFI" then return OsError.New("computer.wifi_networks","Wifi card isnt enabled")
     return self.object.wifi_networks(interface)
 end function
 
