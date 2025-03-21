@@ -1,6 +1,6 @@
 import_code("../kernel/toolkernel")
 
-until_tool = Tool.New("until", "1.0.2")
+until_tool = Tool.New("until", "1.0.3")
 until_tool.short_description = "repeat commands"
 until_tool.long_description = "repeat commands until certain outputs are received, for x amount of times, or other reasons"
 

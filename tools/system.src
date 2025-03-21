@@ -2,7 +2,7 @@ import_code("../kernel/toolkernel")
 import_code("../libs/sessionmanager")
 import_code("../libs/syntax_parser")
 
-mytool = Tool.New("system", "1.9.0")
+mytool = Tool.New("system", "1.9.1")
 
 mytool.short_description = "All default system commands"
 mytool.long_description = "All default system commands"
@@ -53,6 +53,10 @@ settings.set("library", {
     "path" : "/etc/crow/libs",
     "auto_update_meta" : "true",
     "auto_install" : "true"
+})
+
+settings.set("update", {
+    "check" : "true"
 })
 
 mytool.settings = settings
@@ -2137,6 +2141,16 @@ $P;Usage:
 $P;passgen -l 5 $T;> ab3D0
 $P;passgen a 10 $T;> fbqorfhaix
 $P;passgen 0 10 $T;> 7781945292"
+
+// update
+
+update_func = function(a)
+    r = a.kernel.check_update()
+    if is_error(r) then return r.stack("system.update")
+end function
+update_cmd = mytool.command("update", [], @update_func)
+update_cmd.short_description = "Check if there are available updates"
+update_cmd.long_description  = "Check if there are available updates"
 
 // init
 
