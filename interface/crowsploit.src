@@ -4,7 +4,7 @@ import_code("../libs/utils")
 
 if program_path == "/etc/crow/tools/crowsploit" then exit("<#f00>crowsploit detected running as a tool. Quitting loop")
 
-interface_version = "1.4.0"
+interface_version = "1.4.1"
 
 motd = "$T;    ___                  $P;|$T;             ___     
 $T;    \  '———.____     __ $P;-$S;+$P;-$T;   ____.———'  / 
@@ -265,6 +265,11 @@ else
             "auto_install":"true"
         }
     end if
+    if not kernel.settings.hasIndex("update") then
+        kernel.settings.update = {
+            "check":"true"
+        }
+    end if
 
     update_libs(kernel, session, kernel.settings.library.path)
     session.load_libs(kernel.settings.library.path)
@@ -294,8 +299,14 @@ else
     kernel.load_tools()
 
     kernel.print()
-    kernel.print("$P;Check for updates on $T2;www.crowsploit.com!")
     kernel.print("$S;Join the discord: $T2;discord.gg/qW5Uv2SAmq $S;for help and more info!")
+
+    if kernel.settings.update.check == "true" then
+        res = kernel.check_update(interface_version)
+        if is_error(res) then print(res.trace)
+        print("")
+        kernel.print("$T2;!! You can turn off update checker in the .crowrc file !!")
+    end if
     
     while kernel.keep_session
         custom_obj.kernel = kernel

@@ -267,6 +267,8 @@ Tool.New = function(name, version)
     tool.name = name
     tool.settings = null
     tool.version = version
+    if not tool.name.is_match("^[a-zA-Z0-9.-]+$") then exit FormatError.New("Tool.New [name]", "a-z 0-9 - .", name)
+    if not tool.version.is_match("^[a-zA-Z0-9.-]+$") then exit FormatError.New("Tool.New [version]", "a-z 0-9 - .", version)
     return tool
 end function
 
@@ -304,6 +306,7 @@ Tool._command = function(name, fargs, main=false)
 
     if name == "main" and not main then 
         return CommandError.New("Tool._command", name, self.name, "Command name 'main' is reserved.")
+    if not name.is_match("^[a-zA-Z0-9.-]+$") then return FormatError.New("Tool.command [name]", "a-z 0-9 - .", name)
     end if
 
     args = {"args":[], "kwargs":{}}

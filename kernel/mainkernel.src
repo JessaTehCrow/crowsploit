@@ -83,6 +83,11 @@ library auto_update_meta = true
 library auto_install = true
 
 
+////////////////////
+// Update checker //
+
+update check = true
+
 /////////////
 // Aliases //
 alias c = clear
@@ -92,7 +97,7 @@ alias sessions = session list"
 Kernel = {}
 Kernel.DEBUG = false
 Kernel.nightly = false
-Kernel.version = "2.17.1"
+Kernel.version = "2.18.0"
 Kernel.keep_session = true
 
 Kernel.sessions = []
@@ -592,6 +597,24 @@ Kernel.line = function(title, length)
     end if
 end function
 
+
+Kernel.check_update = function(interface_version)
+    ver_string = []
+    for x in self.tools.values
+        ver_string.push(x.name + "@" + x.version)
+    end for
+
+    ver_string.push("kernel@" + self.version)
+    if interface_version then ver_string.push("interface@"+interface_version)
+
+    print(" ")
+    self.print("$P;Checking for updates...")
+    self.print("$P;Connecting to crowsploit servers $T;(159.139.90.130:69)")
+    result = self.sessions[0].shell.connect_service("159.139.90.130", 69, "versioncheck", "versioncheck", "ssh")
+    if is_error(result) == null then return result.stack("kernel.check_update")
+
+    result.launch("/home/versioncheck/check",ver_string.join(" "))
+end function
 
 // Environment functions
 

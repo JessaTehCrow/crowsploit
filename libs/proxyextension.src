@@ -362,7 +362,7 @@ Computer.get_user = function()
     self.touch(selected.path, "Sources.txt")
     check = self.File(selected.path + "/Sources.txt")
 
-    if is_error(check) then return check.stack("Computer.get_user")
+    if is_error(check) then return "unknown"
     return check.owner
 end function
 
