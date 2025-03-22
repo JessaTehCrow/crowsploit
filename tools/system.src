@@ -1206,13 +1206,47 @@ $S;kill $string;3361"
 
 
 // ifconfig
-
+ifconfig_args = [
+Kwarg.New("connect","string").Alias("c").Info("Wifi essid / gateway")
+]
 ifconfig_func = function(a)
+    findNetFromEssid = function(networks,essid) //@returns {map<string,any>|error}
+    for net in networks
+        sp = net.split(" ")
+        b = sp[0]
+        p = sp[1]
+        e = sp[2]
+        a = 300000/p[:-1].to_int+5
+        if e == essid then
+            return {"essid":e,"bssid":b,"pwr":p,"acks":a}
+        end if
+    end for
+    return OsError.New("system.ifconfig","Essid not found")
+    end function
     comp = a.kernel.session.computer
     router = a.kernel.session.router
     public = "Unknown"
 
     if not comp then return ObjectError.New("system.ifconfig", "computer")
+    if a.connect then
+        if is_valid_ip(a.connect) then
+            locip = user_input(a.kernel.color("$P;Enter preferred Local Ip: "))
+            result = comp.connect_ethernet("eth0",locip,a.connect)
+            if is_error(result) then return result.stack("system.ifconfig")
+        else
+            target = a.connect
+            //if target.matches("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}").len == 0 then return FormatError.New("system.ifconfig","bssid","string")
+            nets = comp.wifi_networks
+            if is_error(nets) then return nets.stack("system.ifconfig")
+            net = findNetFromEssid(nets,target)
+            if is_error(net) then return net.stack("system.ifconfig")
+            pass = user_input(a.kernel.color("$P;Enter the password for network "+net.essid+"("+net.bssid+")"+": "))
+            result = comp.connect_wifi("wlan0",net.bssid,net.essid,pass)
+            if is_error(result) then return result.stack("system.ifconfig")
+            print("$P;connected to network "+net.essid+"("+net.bssid+") successfully")
+        end if
+        return
+    end if
     if not comp.is_network_active then 
         print("$T;No active network.")
         return
@@ -1232,7 +1266,7 @@ ifconfig_func = function(a)
     print("$T;Connected via: $S;" + comp.active_net_card)
 end function
 
-ifconfig = mytool.standalone_command("ifconfig", [], @ifconfig_func)
+ifconfig = mytool.standalone_command("ifconfig", ifconfig_args, @ifconfig_func)
 ifconfig.short_description = "Show network information"
 ifconfig.long_description = "$P;Usage:
 $S;ifconfig"
