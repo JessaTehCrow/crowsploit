@@ -2,7 +2,7 @@ import_code("../kernel/toolkernel")
 import_code("../libs/sessionmanager")
 import_code("../libs/syntax_parser")
 
-mytool = Tool.New("system", "1.9.1")
+mytool = Tool.New("system", "1.9.2")
 
 mytool.short_description = "All default system commands"
 mytool.long_description = "All default system commands"
@@ -840,11 +840,11 @@ copy_func = function(a)
     p.change(a.target)
     new_path = ses_file.get_path(p.path)
 
-    log(new_path)
-
     if not is_error(new_path) and not new_path.is_folder then
         filename = new_path.name
-        new_path = new_path.parent
+        new_path = new_path.parent.path
+    else if not is_error(new_path) then
+        new_path = new_path.path
     else if is_error(new_path) then
         new_path = p.folder
         filename = p.name
@@ -854,7 +854,7 @@ copy_func = function(a)
 
     if is_error(new_path) then
         if a.target.count("\/") == 0 then
-            new_path = ses_file
+            new_path = ses_file.path
         end if
         filename = a.target.split("/")[-1]
     end if
