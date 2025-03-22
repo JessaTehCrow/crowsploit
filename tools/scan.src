@@ -108,7 +108,7 @@ end function
 
 // End util funcs
 
-scantool = Tool.New("scan", "1.4.0")
+scantool = Tool.New("scan", "1.4.1")
 scantool.short_description = "Scan ports and libraries for versions & exploits"
 scantool.long_description = "Scan ports and libraries for versions & exploits"
 
@@ -187,6 +187,10 @@ main_func = function(a)
                 continue
             else
                 scanned.push(lib.lib_name + lib.version)
+            end if
+            if lib == null then 
+                print("$error;Failed loading library, skipping")
+                continue
             end if
 
             existing = ExploitLibrary.New(lib)
@@ -438,8 +442,10 @@ libs.long_description = "$P;Usage:
 $S;scan libs
 $S;scan libs $string;-l /lib/net.so
 $S;scan libs $bool;--exploits
-$S;scan libs $bool;--exploits --try
-$S;scan libs $bool;-e -t"
+$S;scan libs $bool;--exploits
+$S;scan libs $bool;-e -n
+$S;scan libs $string;-l /lib/kernel_router.so $bool;--full
+"
 
 
 

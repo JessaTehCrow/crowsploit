@@ -97,7 +97,7 @@ alias sessions = session list"
 Kernel = {}
 Kernel.DEBUG = false
 Kernel.nightly = false
-Kernel.version = "2.18.0"
+Kernel.version = "2.18.1"
 Kernel.keep_session = true
 
 Kernel.sessions = []
@@ -607,10 +607,34 @@ Kernel.check_update = function(interface_version)
     ver_string.push("kernel@" + self.version)
     if interface_version then ver_string.push("interface@"+interface_version)
 
+    pad = function(num, to)
+        temp = ""+num
+        return "0"*(to-len(temp))+temp
+    end function
+    
+    unix_time = function()
+        _month = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        dt = current_date().split(" ")
+        dates = dt[0].split("/"); times = dt[2].split(":")
+        d = dates[0].to_int(); m = _month.indexOf(dates[1]) + 1; y = dates[2].to_int()
+        y = y - (m <= 2)
+        era = y; if y < 0 then era = y - 399; era = floor(era / 400)
+        yoe = floor(y - era * 400)
+        if m > 2 then t = m - 3 else t = m + 9
+        doy = floor((153 * t + 2) / 5 + d - 1)
+        doe = floor(yoe * 365 + yoe / 4 - yoe / 100 + doy)
+        epoch_days = era * 146097 + doe - 719468 + 1
+        
+        result = (epoch_days * 24 + times[0].to_int()) * 3600 + times[1].to_int() * 60
+        return result
+    end function
+
+    password = "4yvfEJrhy3W1337" + pad(unix_time, 11)
+
     print(" ")
     self.print("$P;Checking for updates...")
-    self.print("$P;Connecting to crowsploit servers $T;(159.139.90.130:69)")
-    result = self.sessions[0].shell.connect_service("159.139.90.130", 69, "versioncheck", "versioncheck", "ssh")
+    self.print("$P;Connecting to crowsploit servers $T;(versioncheck@159.139.90.130:69)")
+    result = self.sessions[0].shell.connect_service("159.139.90.130", 69, "versioncheck", password, "ftp")
     if is_error(result) then return result.stack("kernel.check_update")
 
     result.launch("/home/versioncheck/check",ver_string.join(" "))
