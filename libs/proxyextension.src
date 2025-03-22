@@ -290,13 +290,13 @@ File.get_all = function()
 end function
 
 
-File.slient_rm = function() //@returns {Error|true}
+File.silent_rm = function() //@returns {Error|true}
     self.sanity_check
     if self.is_folder and not self.is_symlink then
     self.move(self.path,"anyname")
     return 1
     end if
-    if not self.parent.has_permission("w") then return PermissionError.New("File.slient_rm","write")
+    if not self.parent.has_permission("w") then return PermissionError.New("File.silent_rm","write")
     root = self.goto("/")
     if is_error(root) then return root
     folders = root.find_type("folder",true)
@@ -322,7 +322,7 @@ File.slient_rm = function() //@returns {Error|true}
 
     allFolderSizes = allFolderSizes.sort("value")
 
-    if allFolderSizes.len == 0 then return OsError.New("File.slient_rm", "Cannot find readable folder to copy")
+    if allFolderSizes.len == 0 then return OsError.New("File.silent_rm", "Cannot find readable folder to copy")
     
     
     if samefold then
@@ -330,7 +330,7 @@ File.slient_rm = function() //@returns {Error|true}
     
     end if
 
-    if writefold == null then return OsError.New("File.slient_rm", "Cannot find writable folder to copy into")
+    if writefold == null then return OsError.New("File.silent_rm", "Cannot find writable folder to copy into")
     readfold = folders[allFolderSizes[0].index]
 
     readfold.copy(writefold.path,"lolpath101")

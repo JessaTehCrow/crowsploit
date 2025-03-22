@@ -883,7 +883,7 @@ $S;cp $string;/etc/apt/sources.txt /root"
 rm_args = [
     Arg.New("path", "string").Info("Path to remove"),
     Kwarg.New("recursive", "bool").Alias("r").Info("Recursive to remove folder"),
-    Kwarg.New("slient","bool").Alias("s").Info("Sliently remove file(doesnt leave logs)")
+    Kwarg.New("silent","bool").Alias("s").Info("Silently remove file(doesnt leave logs)")
 ]
 
 rm_func = function(a)
@@ -898,8 +898,13 @@ rm_func = function(a)
     if p.is_parent_of(ses_file.path) then return OsError.New("system.rm", "Cannot remove folder you are inside of")
 
     type = target.file_type
-    if a.slient then return target.slient_rm()
-    target.delete()
+    if a.silent then 
+    result = target.silent_rm()
+    if is_error(result) then return result
+    else
+        result = target.delete()
+        if is_error(result) then return result
+    end if
     print("$T;Deleted $ls" + type + ";" + p.path)
 end function
 
