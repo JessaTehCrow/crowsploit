@@ -349,7 +349,7 @@ Computer.connect_ethernet = function(netDevice, local, gateway)
     err = expect_all([netDevice, local, gateway],string)
     if err != null then return TypeError.New("Computer.connect_ethernet","string", err)
     result = self.object.connect_ethernet(netDevice, local, gateway)
-    if result isa string then return Error.New("Computer.connect_ethernet",result)
+    if result != "" then return Error.New("Computer.connect_ethernet",result)
 end function
 
 Computer.connect_wifi = function(netDevice, bssid, essid, pass)
