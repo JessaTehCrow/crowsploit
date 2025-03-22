@@ -166,7 +166,7 @@ File.find_type = function(type, recursive=false, first=false)
         else if x.is_binary and type == "binary" then
             if first then return File.New(x, self.root_path)
             result.push(File.New(x, self.root_path))
-        else if x.is_file and type == "file" then
+        else if not (x.is_folder or x.is_binary) and type == "file" then
             if first then return File.New(x, self.root_path)
             result.push(File.New(x, self.root_path))
         end if
@@ -291,13 +291,13 @@ File.get_all = function()
 end function
 
 
-File.slient_rm = function() //returns error | true
+File.slient_rm = function() //@returns {Error|true}
     self.sanity_check
-
     if self.is_folder and not self.is_symlink then
     self.move(self.path,"anyname")
     return 1
     end if
+    if not self.parent.has_permission("w") then return PermissionError.New("File.slient_rm","write")
     root = self.goto("/")
     if is_error(root) then return root
     folders = root.find_type("folder",true)
