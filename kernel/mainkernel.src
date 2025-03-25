@@ -177,7 +177,6 @@ Kernel.parse_command = function(text)
         else if x.trim == "|" then
             pipes[-1] = pipes[-1].join(" ")
             pipes.push([])
-
         else
             pipes[-1].push(x)
         end if
@@ -288,7 +287,9 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
         self.last_error = null
         self.quit_pipe = false
         had_success = false
-
+        redircted = false
+        fullRedirect = false
+        redirectFile = null
         for pipe in command
             if self.quit_pipe then break
             parts = parse_input(pipe, true)
@@ -319,11 +320,60 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 good_result = false
                 break
             end if
+            if parts.len > 1 and parts[-2].value == ">>" or parts[-2].value == ">" then
+                if parts[-2].value == ">" then fullRedirect = true
+                redircted = true
+                sessf = self.session.file
+                path = parts[-1].eval_value
+                temp = sessf.get_file(parts[-1].eval_value)
+                if path[0] != "/" then path = sessf.path + "/" + path
+                comp = self.session.computer
+                if comp and is_error(temp) then 
 
+                temp = comp.touch(parent_path(path),path.split("/")[-1])
+                temp = sessf.get_file(path)
+
+                end if
+
+                if is_error(temp) then
+                    redircted = false
+                    self.last_error = temp.stack("Kernel.run_command")
+                    continue
+                end if
+                
+                redirectFile = temp
+                if not fullRedirect then
+
+                if not redirectFile.has_permission("rw") then
+                redircted = false
+                self.last_error = temp.stack("Kernel.run_command")
+                continue
+                end if
+
+                else 
+                    if not redirectFile.has_permission("w") then
+                        redircted = false
+                        fullRedirect = false
+                        self.last_error = temp.stack("Kernel.run_command")
+                        continue
+                        end if
+                end if
+                for x in range(0,1)
+                parts.pop()
+                end for
+            end if
             if __pipe_idx == 0 then
-                // sep = parse_smart_split(parts[1:])
+                pd = self.piped
+                if redircted then self.piped = true
                 result = cmd_obj.call(self, parts[1:])
-
+                if redircted then 
+                    self.piped = pd
+                    prev = ""
+                    if not fullRedirect then prev = redirectFile.get_content + char(10)
+                    redirectFile.set_content(prev + unformat_string(self.stdout.join(char(10))))
+                    redircted = false
+                    fullRedirect = false
+                end if
                 if not is_error(result) then 
                     had_success = true
                 else
@@ -339,7 +389,6 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
 
                 self.old_stdout = self.stdout.values
                 self.stdout = []
-
                 for x in self.old_stdout
                     parts_2 = parse_input(unformat_string(x.trim), true)
 
@@ -354,7 +403,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
             end if
 
             if not self.raw_piped then
-                for x in self.stdout 
+                for x in self.stdout
                     self.stdout[__x_idx] = """" + x.replace("""", """""") + """"
                 end for
             end if
