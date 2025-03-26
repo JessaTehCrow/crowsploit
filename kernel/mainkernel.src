@@ -320,7 +320,8 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 good_result = false
                 break
             end if
-            if parts.len > 1 and parts[-2].value == ">>" or parts[-2].value == ">" then
+            if parts.len > 2 then
+                if parts[-2].value == ">>" or parts[-2].value == ">" then
                 if parts[-2].value == ">" then fullRedirect = true
                 redircted = true
                 sessf = self.session.file
@@ -340,7 +341,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                     self.last_error = temp.stack("Kernel.run_command")
                     continue
                 end if
-                
+
                 redirectFile = temp
                 if not fullRedirect then
 
@@ -361,6 +362,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 for x in range(0,1)
                 parts.pop()
                 end for
+            end if
             end if
             if __pipe_idx == 0 then
                 pd = self.piped
@@ -386,7 +388,6 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
             else
                 was_piped = self.piped
                 if __pipe_idx == command.len - 1 then self.piped = false
-
                 self.old_stdout = self.stdout.values
                 self.stdout = []
                 for x in self.old_stdout
