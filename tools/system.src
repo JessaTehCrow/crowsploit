@@ -2,7 +2,7 @@ import_code("../kernel/toolkernel")
 import_code("../libs/sessionmanager")
 import_code("../libs/syntax_parser")
 
-mytool = Tool.New("system", "1.9.3")
+mytool = Tool.New("system", "1.9.4")
 
 mytool.short_description = "All default system commands"
 mytool.long_description = "All default system commands"
@@ -2135,6 +2135,24 @@ end function
 update_cmd = mytool.command("update", [], @update_func)
 update_cmd.short_description = "Check if there are available updates"
 update_cmd.long_description  = "Check if there are available updates"
+
+// concat
+
+concat_args = [
+    RestArg.New().Info("Strings to join together"),
+    Kwarg.New("delimiter", "string").Default("").Alias("d").Info("Character to join the strings together")
+]
+
+concat_func = function(a)
+    return a.rest.join(a.delimiter)
+end function
+
+concat_cmd = mytool.standalone_command("concat", concat_args, @concat_func)
+concat_cmd.short_description = "Combine strings together"
+concat_cmd.long_description  = "$P;Usage:
+$P;concat $string;'hello' 'how' 'are' 'you' $T;>> 'hellohowareyou'
+$P;concat $string;--delimter ':' $WAN 21 $T>> '32.12.53.2:21'
+$P;concat $string;--delimter '@' $USER wuwuvik.com $T>> 'user@wuwuvik.com'"
 
 // init
 
