@@ -182,7 +182,7 @@ File.delete = function()
     self.sanity_check
     if not self.parent.has_permission("w") then return PermissionError.New("File.delete","write")
     err = self.object.delete
-    if err isa string then return Error.New("File.delete", err)
+    if err != "" then return Error.New("File.delete", err)
 end function
 
 File.get_content = function()

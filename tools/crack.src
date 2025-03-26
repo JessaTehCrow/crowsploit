@@ -1,6 +1,6 @@
 import_code("../kernel/toolkernel")
 
-cracktool = Tool.New("crack", "1.2.1")
+cracktool = Tool.New("crack", "1.2.2")
 
 cracktool.short_description = "Crack wifi or hashes"
 cracktool.long_description = "Crack wifi or hashes"
@@ -66,6 +66,7 @@ wifi_func = function(a)
     wifis_list = comp.wifi_networks(a.interface)
 
     if wifis_list == null then return OsError.New("crack.wifi", "No wifi card found")
+    if is_error(wifis_list) then return wifis_list.stack("crack.wifi")
 
     wifis = []
     tab_data = []
@@ -94,7 +95,7 @@ wifi_func = function(a)
 
         selected = select_prompt("Select wifi", range(1, len(wifis)), true)
         if selected == null then return
-        wifi = wifis[selected]
+        wifi = wifis[selected-1]
     end if
 
     // Start listen
