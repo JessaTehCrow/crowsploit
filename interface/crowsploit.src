@@ -5,7 +5,7 @@ import_code("../constants/motd")
 
 if program_path == "/etc/crow/tools/crowsploit" then exit("<#f00>crowsploit detected running as a tool. Quitting loop")
 
-interface_version = "1.4.1"
+interface_version = "1.4.2"
 
 get_fact = function()
     fact = fun_facts[random(0,fun_facts.len-1)]
@@ -288,12 +288,14 @@ end if
 
 while kernel.keep_session
     inp = user_input(kernel.get_prompt + " ")
-    if inp == "" then continue
-    while inp.trim()[-1] == "\"
+
+    while inp.trim != "" and inp.trim()[-1] == "\"
         inp = inp.trim[:-1]
         user_inp = user_input(kernel.color("$input;") + " ")
         inp = inp + " " + user_inp
     end while
+
+    if inp.trim == "" then continue
 
     kernel.run_command(inp)
 end while

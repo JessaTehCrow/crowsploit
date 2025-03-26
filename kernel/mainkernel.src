@@ -7,7 +7,7 @@ import_code("../constants/settings")
 Kernel = {}
 Kernel.DEBUG = false
 Kernel.nightly = false
-Kernel.version = "2.18.1"
+Kernel.version = "2.18.2"
 Kernel.keep_session = true
 
 Kernel.sessions = []
@@ -99,6 +99,8 @@ Kernel.parse_command = function(text)
         pipes.pop()
     end if
 
+    if pipes == [] then return null
+
     if pipes[0] != "" or pipes.len > 1 then commands.push(pipes)
     
     has_history = false
@@ -175,6 +177,8 @@ end function
 
 Kernel.run_command = function(text, add_to_history=true, silent=false)
     commands = self.parse_command(text)
+    if commands == null then return false
+
     if (self.session.history.len > 0 and self.session.history[-1] != commands.string) or self.session.history.len == 0 then
         if add_to_history then
             self.session.history.push(commands.string)
