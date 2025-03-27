@@ -1,0 +1,91 @@
+SETTINGS_DEFAULT = "// Format:
+// [category] [key] = [value]
+
+// Categories and keys cannot have spaces
+
+////////////////
+//// Colors ////
+
+// primary color
+color P = <#08f>
+
+// secondary color
+color S = <#0cc>
+
+// tertiary colors
+color T = <#669>
+color T2 = <#99c>
+
+// Input color
+color input = <#bcf>
+
+// Root color
+color root = <#f60>
+
+// Error color
+color error = <#e05>
+
+//// LS data
+color lsfolder = <#08f>
+color lsbinary = <#0e8>
+color lsfile   = <#aad>
+color lsdata   = <#99c>
+color lsuser   = <#99c>
+color lscode   = <#fc1>
+color lssymlink = <#c158d6>
+
+// Argument colors
+color string = <#d63>
+color int    = <#39d>
+color float  = <#b5e>
+color bool   = <#35f>
+color ip     = <#d44>
+color rest   = <#557>
+
+// Status colors
+color status_active = <#c80>
+color status_jumped = <#7c7>
+color status_parses = <#c4c>
+color status_none   = <#669>
+color session       = <#669>
+color ip_prompt     = <#d44>
+
+/////////////////
+// User prompt //
+input prompt = <voffset=2em> </voffset><pos=0><size=85%><voffset=1.4em>$S;$type $status $session $ip</voffset><pos=0></size>$T;($pwd) $P;$usr$T;@$S;$comp $T2;$suffix$input;
+
+///////////////////
+// Input sufixes //
+// example: (pwd) user@pc > 
+// example: (pwd) user@pc : 
+// example: (pwd) user@pc - 
+
+input shell    = >
+input computer = :
+input file     = -
+
+//////////////
+// Database //
+
+database location = /etc/crow/exdb
+brute list_directory = /etc/crow/plist
+
+
+///////////////////////
+// Library directory //
+
+library path = /etc/crow/libs
+library auto_update_meta = true
+library auto_install = true
+
+
+////////////////////
+// Update checker //
+
+update check = true
+
+/////////////
+// Aliases //
+alias c = clear
+alias la = ls -la
+alias sessions = session list"

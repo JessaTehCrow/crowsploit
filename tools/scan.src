@@ -108,7 +108,7 @@ end function
 
 // End util funcs
 
-scantool = Tool.New("scan", "1.4.0")
+scantool = Tool.New("scan", "1.4.2")
 scantool.short_description = "Scan ports and libraries for versions & exploits"
 scantool.long_description = "Scan ports and libraries for versions & exploits"
 
@@ -187,6 +187,10 @@ main_func = function(a)
                 continue
             else
                 scanned.push(lib.lib_name + lib.version)
+            end if
+            if lib == null then 
+                print("$error;Failed loading library, skipping")
+                continue
             end if
 
             existing = ExploitLibrary.New(lib)
@@ -282,7 +286,9 @@ $S;scan $string;112.2.54.12 -p 80,21"
 
 // Lan
 
-lan_args = []
+lan_args = [
+    Kwarg.New("no-ports", "bool").Alias("n").Info("Don't scan ports")
+]
 
 lan_func = function(a)
     if not a.kernel.session.router then return ObjectError.New("scan.lan", "router")
@@ -299,6 +305,8 @@ lan_func = function(a)
         "<#36d>",
         "<#ddd>",
         "<#4b3>",
+        "<#ef7>",
+        "<#bbb>",
     ]
     
     type_cols = {}
@@ -318,7 +326,10 @@ lan_func = function(a)
         subnet = ip.split("\.")[:-1].join(".")
         subnet_id = sum(map_list(subnet, [@code]))
         color = net_cols[subnet_id % net_cols.len]
-        ports = local_ports(get_router, ip)
+        ports = []
+        if not a["no-ports"] then
+            ports = local_ports(get_router, ip)
+        end if
 
         camera = 0
         for port in ports
@@ -438,8 +449,10 @@ libs.long_description = "$P;Usage:
 $S;scan libs
 $S;scan libs $string;-l /lib/net.so
 $S;scan libs $bool;--exploits
-$S;scan libs $bool;--exploits --try
-$S;scan libs $bool;-e -t"
+$S;scan libs $bool;--exploits
+$S;scan libs $bool;-e -n
+$S;scan libs $string;-l /lib/kernel_router.so $bool;--full
+"
 
 
 

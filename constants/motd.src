@@ -1,0 +1,30 @@
+motd = "$T;    ___                  $P;|$T;             ___     
+$T;    \  '———.____     __ $P;-$S;+$P;-$T;   ____.———'  / 
+$T;     \____      /   /_ \ $P;|$T;   \     _____/
+$T;       \____    \____/  \____/    ____/
+$T;        \____     $P;Crowsploit$T;     ____/
+$T;            '——._____    _____.——'
+$T;                    /____\"
+
+fun_facts = [
+    "Crows can have grudges on people, as well as pass them down to their young",
+    "Befriending wild crows is very easy! All you need to do is give them food",
+    "Crows will give gifts to people that feed them regularly",
+    "Research on crows shows that their inteligence is comparable to a 7 year old",
+    "When a crow dies, their family will hold a crow-equivalent of a funeral",
+    "Crows can use basic tools to get whatever they need done",
+    "To crack open nuts, crows will put them on the road until a car drives over them",
+    "Crows have the ability to mimic human speach, much like a parrot",
+    "Though ravens and crows are very similar, they don't get along with eachother",
+    "Crows have a slimmer and curvier beak compared to a raven",
+    "Crows and bluejays don't look alike, but they are from the same animal family",
+    "When it snows, crows like to play and slide down it with their buddies",
+    "Crows and other corvids like hanging upside down, for the fun of it!",
+]
+
+secret_facts = [
+    "<#4f8>This message has a 1 in 2000 chance to show up!",
+    "I know where you are",
+    "<b>I am in your network",
+    "TmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXAsIE5ldmVyIGdvbm5hIGxldCB5b3UgZG93bg==",
+]

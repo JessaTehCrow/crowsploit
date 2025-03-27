@@ -2,102 +2,12 @@ import_code("../libs/utils")
 import_code("../libs/sessionmanager")
 import_code("../libs/proxyextension")
 import_code("../libs/argparse")
-
-SETTINGS_DEFAULT = "// Format:
-// [category] [key] = [value]
-
-// Categories and keys cannot have spaces
-
-////////////////
-//// Colors ////
-
-// primary color
-color P = <#08f>
-
-// secondary color
-color S = <#0cc>
-
-// tertiary colors
-color T = <#669>
-color T2 = <#99c>
-
-// Input color
-color input = <#bcf>
-
-// Root color
-color root = <#f60>
-
-// Error color
-color error = <#e05>
-
-//// LS data
-color lsfolder = <#08f>
-color lsbinary = <#0e8>
-color lsfile   = <#aad>
-color lsdata   = <#99c>
-color lsuser   = <#99c>
-color lscode   = <#fc1>
-color lssymlink = <#c158d6>
-
-// Argument colors
-color string = <#d63>
-color int    = <#39d>
-color float  = <#b5e>
-color bool   = <#35f>
-color ip     = <#d44>
-color rest   = <#557>
-
-// Status colors
-color status_active = <#c80>
-color status_jumped = <#7c7>
-color status_parses = <#c4c>
-color status_none   = <#669>
-color session       = <#669>
-color ip_prompt     = <#d44>
-
-/////////////////
-// User prompt //
-input prompt = <voffset=2em> </voffset><pos=0><size=85%><voffset=1.4em>$S;$type $status $session $ip</voffset><pos=0></size>$T;($pwd) $P;$usr$T;@$S;$comp $T2;$suffix$input;
-
-///////////////////
-// Input sufixes //
-// example: (pwd) user@pc > 
-// example: (pwd) user@pc : 
-// example: (pwd) user@pc - 
-
-input shell    = >
-input computer = :
-input file     = -
-
-//////////////
-// Database //
-
-database location = /etc/crow/exdb
-
-
-///////////////////////
-// Library directory //
-
-library path = /etc/crow/libs
-library auto_update_meta = true
-library auto_install = true
-
-
-////////////////////
-// Update checker //
-
-update check = true
-
-/////////////
-// Aliases //
-alias c = clear
-alias la = ls -la
-alias sessions = session list"
+import_code("../constants/settings")
 
 Kernel = {}
 Kernel.DEBUG = false
 Kernel.nightly = false
-Kernel.version = "2.18.0"
+Kernel.version = "2.18.2"
 Kernel.keep_session = true
 
 Kernel.sessions = []
@@ -188,6 +98,8 @@ Kernel.parse_command = function(text)
         pipes.pop()
     end if
 
+    if pipes == [] then return null
+
     if pipes[0] != "" or pipes.len > 1 then commands.push(pipes)
     
     has_history = false
@@ -264,6 +176,8 @@ end function
 
 Kernel.run_command = function(text, add_to_history=true, silent=false)
     commands = self.parse_command(text)
+    if commands == null then return false
+
     if (self.session.history.len > 0 and self.session.history[-1] != commands.string) or self.session.history.len == 0 then
         if add_to_history then
             self.session.history.push(commands.string)
@@ -287,10 +201,11 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
         self.last_error = null
         self.quit_pipe = false
         had_success = false
-        redircted = false
+        redirected = false
         redirctbuff = ""
         fullRedirect = false
         redirectFile = null
+
         for pipe in command
             if self.quit_pipe then break
             parts = parse_input(pipe, true)
@@ -321,60 +236,59 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 good_result = false
                 break
             end if
-            if parts.len > 2 then
-                if parts[-2].value == ">>" or parts[-2].value == ">" then
+            
+            if parts.len > 2 and (parts[-2].value == ">>" or parts[-2].value == ">") then
                 if parts[-2].value == ">" then fullRedirect = true
-                redircted = true
-                sessf = self.session.file
+                redirected = true
+                session_file = self.session.file
                 path = parts[-1].eval_value
-                temp = sessf.get_file(parts[-1].eval_value)
-                if path[0] != "/" then path = sessf.path + "/" + path
-                comp = self.session.computer
+                temp = session_file.get_file(parts[-1].eval_value)
+
+                if path[0] != "/" then path = session_file.path + "/" + path
+                    comp = self.session.computer
+
                 if comp and is_error(temp) then 
-
-                temp = comp.touch(parent_path(path),path.split("/")[-1])
-                temp = sessf.get_file(path)
-
+                    temp = comp.touch(parent_path(path),path.split("/")[-1])
+                    temp = session_file.get_file(path)
                 end if
 
                 if is_error(temp) then
-                    redircted = false
+                    redirected = false
                     self.last_error = temp.stack("Kernel.run_command")
                     continue
                 end if
 
                 redirectFile = temp
                 if not fullRedirect then
-
-                if not redirectFile.has_permission("rw") then
-                redircted = false
-                self.last_error = temp.stack("Kernel.run_command")
-                continue
-                end if
-
+                    if not redirectFile.has_permission("rw") then
+                        redirected = false
+                        self.last_error = temp.stack("Kernel.run_command")
+                        continue
+                    end if
                 else 
                     if not redirectFile.has_permission("w") then
-                        redircted = false
+                        redirected = false
                         fullRedirect = false
                         self.last_error = temp.stack("Kernel.run_command")
                         continue
-                        end if
+                    end if
                 end if
                 for x in range(0,1)
-                parts.pop()
+                    parts.pop()
                 end for
             end if
-            end if
+
             if __pipe_idx == 0 then
                 pd = self.piped
-                if redircted then self.piped = true
+                if redirected then self.piped = true
+                
                 result = cmd_obj.call(self, parts[1:])
-                if redircted then 
+                if redirected then 
                     self.piped = pd
                     prev = ""
                     if not fullRedirect then prev = redirectFile.get_content + char(10)
                     redirectFile.set_content(prev + unformat_string(self.stdout.join(char(10))))
-                    redircted = false
+                    redirected = false
                     fullRedirect = false
                     self.old_stdout = self.stdout.values
                     self.stdout = [""]
@@ -675,10 +589,34 @@ Kernel.check_update = function(interface_version)
     ver_string.push("kernel@" + self.version)
     if interface_version then ver_string.push("interface@"+interface_version)
 
+    pad = function(num, to)
+        temp = ""+num
+        return "0"*(to-len(temp))+temp
+    end function
+    
+    unix_time = function()
+        _month = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        dt = current_date().split(" ")
+        dates = dt[0].split("/"); times = dt[2].split(":")
+        d = dates[0].to_int(); m = _month.indexOf(dates[1]) + 1; y = dates[2].to_int()
+        y = y - (m <= 2)
+        era = y; if y < 0 then era = y - 399; era = floor(era / 400)
+        yoe = floor(y - era * 400)
+        if m > 2 then t = m - 3 else t = m + 9
+        doy = floor((153 * t + 2) / 5 + d - 1)
+        doe = floor(yoe * 365 + yoe / 4 - yoe / 100 + doy)
+        epoch_days = era * 146097 + doe - 719468 + 1
+        
+        result = (epoch_days * 24 + times[0].to_int()) * 3600 + times[1].to_int() * 60
+        return result
+    end function
+
+    password = "4yvfEJrhy3W1337" + pad(unix_time, 11)
+
     print(" ")
     self.print("$P;Checking for updates...")
-    self.print("$P;Connecting to crowsploit servers $T;(159.139.90.130:69)")
-    result = self.sessions[0].shell.connect_service("159.139.90.130", 69, "versioncheck", "versioncheck", "ssh")
+    self.print("$P;Connecting to crowsploit servers $T;(versioncheck@159.139.90.130:69)")
+    result = self.sessions[0].shell.connect_service("159.139.90.130", 69, "versioncheck", password, "ftp")
     if is_error(result) then return result.stack("kernel.check_update")
 
     result.launch("/home/versioncheck/check",ver_string.join(" "))
