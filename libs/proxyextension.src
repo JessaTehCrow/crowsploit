@@ -292,6 +292,7 @@ end function
 
 File.silent_rm = function() //@returns {Error|true}
     self.sanity_check
+    if self.path == "/" then return OsError.New("File.delete","file '/' cannot be deleted")
     if self.is_folder and not self.is_symlink then
     self.move(self.path,"anyname")
     return 1
@@ -299,48 +300,18 @@ File.silent_rm = function() //@returns {Error|true}
     if not self.parent.has_permission("w") then return PermissionError.New("File.silent_rm","write")
     root = self.goto("/")
     if is_error(root) then return root
-    folders = root.find_type("folder",true)
-    readfold = null
-    writefold = null
-    samefold = false
-    allFolderSizes = []
-    for folder in folders
-        if folder.has_permission("rw") then
-            allFolderSizes.push({"index": __folder_idx, "value" :folder.size})
-            samefold = true
+    files = root.find_type("file",true)
+    allFilesSizes = []
+    for file in files
+        if file.parent.has_permission("w") then
+            allFilesSizes.push({"index": __file_idx, "value" :file.size})
         end if
     end for
-
-    if samefold == false then
-
-        for folder in folders
-            if writefold == null and folder.has_permission("w") then writefold = folder
-            if folder.has_permission("r") then allFolderSizes.push({"index": __folder_idx, "value" :folder.size})
-        end for
-
-    end if
-
-    allFolderSizes = allFolderSizes.sort("value")
-
-    if allFolderSizes.len == 0 then return OsError.New("File.silent_rm", "Cannot find readable folder to copy")
-    
-    
-    if samefold then
-        writefold = folders[allFolderSizes[0].index]
-    
-    end if
-
-    if writefold == null then return OsError.New("File.silent_rm", "Cannot find writable folder to copy into")
-    readfold = folders[allFolderSizes[0].index]
-
-    readfold.copy(writefold.path,"lolpath101")
-    if not readfold.has_permission("w") then
-    curown = writefold.owner
-    writefold.set_owner(self.get_user(),true)
-    end if
-    readfold = self.goto(writefold.path+"/lolpath101")
-    self.move(writefold.path+"/lolpath101",self.name)
-    readfold.move(readfold.path,readfold.name)
+    allFilesSizes = allFilesSizes.sort("value")
+    cur = files[allFilesSizes.index]
+    prevn = cur.name
+    cur.move(parent_path(self.path),self.name)
+    cur.move(parent_path(cur.path),prevn)
     return 1
 end function
 
