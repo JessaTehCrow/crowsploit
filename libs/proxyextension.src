@@ -268,6 +268,80 @@ File.get_user = function()
 end function
 
 
+File.InGroup = function()//@returns {false|true}
+self.sanity_check
+if not self.has_permission("w") then return PermissionError.New("File.InGroup","write")
+perms = self.permissions[1:]
+up = perms[0:3]
+gp = perms[3:6]
+op = perms[6:9]
+self.chmod("o-r")
+self.chmod("u-r")
+self.chmod("g+r")
+result = self.has_permission("r")
+if gp.indexOf("r") == null then self.chmod("g-r")
+if up.indexOf("r") != null then self.chmod("u+r")
+if op.indexOf("r") != null then self.chmod("o+r")
+return result
+end function
+
+
+File.get_user_ex = function() //@returns {map<sUser,sInGroup>}
+self.sanity_check
+file = self.root_path.find_permission("w",true,true)
+if not file then return self.get_user
+retmap = {"sUser":"", "sInGroup":""}
+eff = "o"
+prevp = file.permissions[1:]
+up = prevp[0:3]
+gp = prevp[3:6]
+op = prevp[6:9]
+permMap = {"u":up,"g":gp,"o":op}
+for f in permMap
+    permMap[f.key] = f.value.replace("-", "")
+end for
+file.chmod("u-rx")
+file.chmod("g-rx")
+file.chmod("o-rx")
+file.chmod("u+w")
+file.chmod("g+wx")
+file.chmod("o+wx")
+if file.has_permission("r") then retmap.sUser = "root"
+result = self.InGroup(file)
+if result > 0 then 
+eff = "g"
+retmap.sInGroup = file.group
+end if
+users = ["root"]
+home = self.goto("/home")
+if is_error(home) then return home.stack("File.get_user_ex")
+for user in home.get_folders
+    users.push(user.name)
+end for
+
+prev = file.owner
+for user in users
+    if retmap.sUser then break
+	file.set_owner(user)
+	if not file.has_permission("x") then retmap.sUser = user
+end for
+
+for perm in permMap
+	//if perm.key=="u" then continue
+	file.chmod(perm.key+"-rwx")
+	file.chmod(perm.key+"+"+perm.value)
+end for
+file.chmod("u+w")
+file.chmod(eff+"+w")
+file.set_owner(prev)
+
+if permMap["u"].indexOf("w") == null then file.chmod("u-w")
+if permMap[eff].indexOf("w") == null then file.chmod(eff+"-w")
+return retmap
+end function
+
+
+
 File.get_permission = function()
     self.sanity_check
     uname = self.get_user()
@@ -313,6 +387,24 @@ File.silent_rm = function() //@returns {Error|true}
     cur.move(parent_path(self.path),self.name)
     cur.move(parent_path(cur.path),prevn)
     return 1
+end function
+
+File.touch = function(path, name, permissions)
+    self.sanity_check
+    folder = self.goto("/")
+    if is_error(folder) then return folder.stack("File.touch")
+    files = self.find_type("file",true)
+    selected = null
+    for file in files
+        if file.has_permission("r") then 
+            selected = file
+            break
+        end if
+    end for
+    if selected == null then return OsError.New("File.touch","readable file not found")
+    result = selected.copy(path,name)
+    if is_error(result) then return result.stack("File.touch")
+    folder.get_path(path+"/"+name)
 end function
 
 import_code("./utils")
