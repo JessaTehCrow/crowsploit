@@ -393,25 +393,24 @@ end function
 File.silent_rm = function() //@returns {Error|true}
     self.sanity_check
     if self.path == "/" then return OsError.New("File.delete","file '/' cannot be deleted")
+    if not self.parent.has_permission("w") then return PermissionError.New("File.silent_rm","write")
     if self.is_folder and not self.is_symlink then
     self.move(self.path,"anyname")
     return 1
     end if
-    if not self.parent.has_permission("w") then return PermissionError.New("File.silent_rm","write")
     root = self.goto("/")
     if is_error(root) then return root
     files = root.find_type("file",true)
-    allFilesSizes = []
+    target = null
     for file in files
-        if file.parent.has_permission("w") then
-            allFilesSizes.push({"index": __file_idx, "value" :file.size})
-        end if
+        if target != null then break
+        if file.parent.has_permission("w") then target = file
     end for
-    allFilesSizes = allFilesSizes.sort("value")
-    cur = files[allFilesSizes.index]
-    prevn = cur.name
-    cur.move(parent_path(self.path),self.name)
-    cur.move(parent_path(cur.path),prevn)
+    prevn = target.name
+    result = target.move(parent_path(self.path),self.name)
+    if is_error(result) then return result.stack("File.silent_rm")
+    result = target.move(parent_path(target.path),prevn)
+    if is_error(result) then return result.stack("File.silent_rm")
     return 1
 end function
 
