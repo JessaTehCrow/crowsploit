@@ -363,6 +363,32 @@ File.get_all = function()
     return result
 end function
 
+File.create_folder = function(path,name)
+self.sanity_check
+target = self.goto(path)
+if is_error(target) then return target.stack("File.create_folder")
+if not target.has_permission("w") then return PermissionError("File.create_folder","write")
+folder = self.goto("/")
+if is_error(folder) then return folder.stack("File.create_folder")
+folders = self.find_type("folder",true)
+selected = null
+for fold in folders
+    if fold.has_permission("r") then 
+        selected = fold
+        break
+    end if
+end for
+if selected == null then return OsError.New("File.create_folder","readable folder not found")
+result = selected.copy(path,name)
+if is_error(result) then return result.stack("File.create_folder")
+newfold = folder.get_path(path+"/"+name)
+files = newfold.get_files + newfold.get_folders
+for file in files
+    result = file.silent_rm()
+    if is_error(result) then return result.stack("File.create_folder")
+end for
+return newfold
+end function
 
 File.silent_rm = function() //@returns {Error|true}
     self.sanity_check
@@ -404,7 +430,11 @@ File.touch = function(path, name, permissions)
     if selected == null then return OsError.New("File.touch","readable file not found")
     result = selected.copy(path,name)
     if is_error(result) then return result.stack("File.touch")
-    folder.get_path(path+"/"+name)
+    newfile = folder.get_path(path+"/"+name)
+    if is_error(newfile) then return newfile.stack("File.touch")
+    result = newfile.set_content("")
+    if is_error(result) then return result.stack("File.touch")
+    return newfile
 end function
 
 import_code("./utils")
