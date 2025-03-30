@@ -307,15 +307,16 @@ file.chmod("u+w")
 file.chmod("g+wx")
 file.chmod("o+wx")
 if file.has_permission("r") then retmap.sUser = "root"
-result = self.InGroup(file)
+result = self.InGroup
 if result > 0 then 
 eff = "g"
 retmap.sInGroup = file.group
 end if
-users = ["root"]
+users = ["root","guest"]
 home = self.goto("/home")
 if is_error(home) then return home.stack("File.get_user_ex")
 for user in home.get_folders
+    if user.name == "guest" then continue
     users.push(user.name)
 end for
 
@@ -340,6 +341,38 @@ if permMap[eff].indexOf("w") == null then file.chmod(eff+"-w")
 return retmap
 end function
 
+File.ForceChmod = function(perms)
+self.sanity_check
+if not self.has_permission("w") then return PermissionError.New("File.ForceChmod","write")
+result = perms.matches("^(?:u=([rwx]{0,3})(?!.*(.).*\2)?;)?(?:g=([rwx]{0,3})(?!.*(.).*\4)?;)?(?:o=([rwx]{0,3})(?!.*(.).*\6)?;)?(?:own=[^;]+;|grp=[^;]+;).*$")
+if not result then return FormatError.New("File.ForceChmod","PermissionString",typeof(perms))
+sp = perms.split(";")
+user = self.get_user_ex.sUser
+eff = "o"
+
+up = sp[0].split("=")[1]
+gp = sp[1].split("=")[1]
+op = sp[2].split("=")[1]
+permMap = {"u":up,"g":gp,"o":op}
+
+self.set_owner(user)
+self.set_group(sp[4].split("=")[1])
+
+result = self.InGroup()
+if result > 0 then eff = "g"
+for perm in permMap
+	//if perm.key=="u" then continue
+	self.chmod(perm.key+"-rwx")
+	self.chmod(perm.key+"+"+perm.value)
+end for
+self.chmod("u+w")
+self.chmod(eff+"+w")
+self.set_owner(sp[3].split("=")[1])
+
+if permMap["u"].indexOf("w") == null then self.chmod("u-w")
+if permMap[eff].indexOf("w") == null then self.chmod(eff+"-w")
+
+end function
 
 
 File.get_permission = function()
@@ -415,7 +448,7 @@ File.silent_rm = function() //@returns {Error|true}
     return 1
 end function
 
-File.touch = function(path, name, permissions)
+File.touch = function(path, name)
     self.sanity_check
     folder = self.goto("/")
     if is_error(folder) then return folder.stack("File.touch")
