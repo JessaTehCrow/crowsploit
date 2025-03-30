@@ -180,7 +180,7 @@ end function
 
 File.delete = function()
     self.sanity_check
-    if not File.is_symlink and not self.parent.has_permission("w") then return PermissionError.New("File.delete","write")
+    if not self.is_symlink and not self.parent.has_permission("w") then return PermissionError.New("File.delete","write")
     err = self.object.delete
     if err != "" then return Error.New("File.delete", err)
 end function
