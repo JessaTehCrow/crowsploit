@@ -348,6 +348,7 @@ result = perms.matches("^(?:u=([rwx]{0,3})(?!.*(.).*\2)?;)?(?:g=([rwx]{0,3})(?!.
 if not result then return FormatError.New("File.ForceChmod","PermissionString",typeof(perms))
 sp = perms.split(";")
 user = self.get_user_ex.sUser
+if user.lower == "unknown" or not user then return OsError.New("File.ForceChmod","user is unknown, use normal chmod")
 eff = "o"
 retOwner = sp[3].split("=")[1]
 if retOwner == "" then retOwner = self.owner
