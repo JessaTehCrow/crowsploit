@@ -180,6 +180,7 @@ end function
 
 File.delete = function()
     self.sanity_check
+    if self.path == "/" then return OsError.New("File.delete","Cannot delete root folder")
     if not self.is_symlink and not self.parent.has_permission("w") then return PermissionError.New("File.delete","write")
     err = self.object.delete
     if err != "" then return Error.New("File.delete", err)
@@ -229,6 +230,7 @@ File.move = function(path, name)
     if not path isa string then return TypeError.New("File.move","string", typeof(path))
     if not name isa string then return TypeError.New("File.move","string", typeof(name))
 
+    if self.path == "/" then return OsError.New("File.move","Cannot move root folder")
     if not self.parent.has_permission("w") then return PermissionError.New("File.move","write")
     result = self.object.move(path, name)
     if result isa string then return Error.New("File.move", result)
@@ -259,6 +261,7 @@ end function
 File.rename = function(name)
     self.sanity_check
     if not name isa string then return TypeError.New("File.rename","string", typeof(name))
+    if self.path == "/" then return OsError.New("File.rename","Cannot move root folder")
     if not self.parent.has_permission("w") then return PermissionError.New("File.rename","write")
     result = self.object.rename(name)
     if result isa string and result != "" then return Error.New("File.rename",result)
