@@ -378,6 +378,59 @@ if permMap[eff].indexOf("w") == null then self.chmod(eff+"-w")
 end function
 
 
+// **get_effective_permissions:**
+// Retrieves a list of permissions that the current user has on the file.
+//
+// @description **Args:**
+// @param {bool} Force
+// @description Force - If false, the function returns an error object when lacking write permissions. (default: true)
+//
+// @returns {string|Error}
+// @description **Returns:** a list of permission strings. If access is denied and Force is false, an Error object is returned instead.
+File.get_effective_permissions = function(Force = true)
+CRE = function(perms)
+temp = []
+order = "rwx"
+sortedPerms = ""
+
+for ch in order
+    if perms.indexOf(ch) != null and sortedPerms.indexOf(ch) == null then
+        sortedPerms = sortedPerms + ch
+    end if
+end for
+
+for perm in sortedPerms
+    if perm == "r" then temp.push("read")
+    if perm == "w" then temp.push("write")
+    if perm == "x" then temp.push("execute")
+end for
+
+return temp.split(", ")
+end function
+
+effperms = "---"
+eff = null
+user = self.get_user_ex
+ingrp = self.InGroup
+if is_error(ingrp) and not Force then return ingrp.stack("File.get_effective_permissions")
+if self.has_permission("r") then effperms[0] = "r"//({"raw":"r", "eval":"read"})
+if self.has_permission("w") then effperms[1] = "w"//({"raw":"w", "eval":"write"})
+if self.has_permission("x") then effperms[2] = "x"//({"raw":"x", "eval":"execute"})
+prevp = file.permissions[1:]
+up = prevp[0:3]
+gp = prevp[3:6]
+op = prevp[6:9]
+permMap = {"u":up,"g":gp,"o":op}
+for f in permMap
+    if f.value == effperms then eff = f.key
+end for
+StringPerms = CRE(effperms)
+if user.lower == "unknown" or not user then return CRE(StringPerms)+":"eff
+if user == file.owner then return StringPerms+":u"
+if ingrp == 1 then return StringPerms+":g"
+return StringPerms+":o"
+end function
+
 File.get_permission = function()
     self.sanity_check
     uname = self.get_user()
