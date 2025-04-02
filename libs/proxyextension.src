@@ -416,7 +416,7 @@ if is_error(ingrp) and not Force then return ingrp.stack("File.get_effective_per
 if self.has_permission("r") then effperms[0] = "r"//({"raw":"r", "eval":"read"})
 if self.has_permission("w") then effperms[1] = "w"//({"raw":"w", "eval":"write"})
 if self.has_permission("x") then effperms[2] = "x"//({"raw":"x", "eval":"execute"})
-prevp = file.permissions[1:]
+prevp = self.permissions[1:]
 up = prevp[0:3]
 gp = prevp[3:6]
 op = prevp[6:9]
@@ -426,7 +426,7 @@ for f in permMap
 end for
 StringPerms = CRE(effperms)
 if user.lower == "unknown" or not user then return CRE(StringPerms)+":"eff
-if user == file.owner then return StringPerms+":u"
+if user == self.owner then return StringPerms+":u"
 if ingrp == 1 then return StringPerms+":g"
 return StringPerms+":o"
 end function
