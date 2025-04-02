@@ -242,8 +242,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 redirected = true
                 session_file = self.session.file
                 path = parts[-1].eval_value
-                temp = session_file.get_file(parts[-1].eval_value)
-
+                temp = session_file.get_file(path)
                 if path[0] != "/" then path = session_file.path + "/" + path
                     comp = self.session.computer
 

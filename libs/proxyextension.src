@@ -20,7 +20,7 @@ Path.New = function(full_path)
 end function
 
 Path.change = function(new_path)
-    if not new_path isa string then return TypeError.New("Path.change", "string", typeof(full_path))
+    if not new_path isa string then return TypeError.New("Path.change", "string", typeof(new_path))
     if new_path == "" then return FormatError.New("Path.New", "System path", "Empty string")
 
     relative = false
