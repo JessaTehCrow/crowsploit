@@ -425,7 +425,7 @@ for f in permMap
     if f.value == effperms then eff = f.key
 end for
 StringPerms = CRE(effperms)
-if user.lower == "unknown" or not user then return CRE(StringPerms)+":"eff
+if user.lower == "unknown" or not user then return StringPerms+":"eff
 if user == self.owner then return StringPerms+":u"
 if ingrp == 1 then return StringPerms+":g"
 return StringPerms+":o"
