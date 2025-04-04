@@ -405,7 +405,7 @@ libs_func = function(a)
     else
         if a.kernel.session.file == null then return ObjectError.New("scan.libs", "file")
 
-        files = a.kernel.session.file.goto("/lib").get_files()
+        files = a.kernel.session.file.get_folder("/lib").get_files()
         for file in files
             r = a.kernel.session.metax.load(file.path)
             if r == null then continue

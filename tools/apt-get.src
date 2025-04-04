@@ -196,9 +196,9 @@ upgrade_func = function(a)
     staged = []
 
     if not a.full then
-        files = session.file.goto("/lib").find_name(".+\.so")
+        files = session.file.get_folder("/lib").find_name(".+\.so")
     else
-        files = session.file.goto("/").find_name(".+\.so", true)
+        files = session.file.get_folder("/").find_name(".+\.so", true)
     end if
 
     for file in files

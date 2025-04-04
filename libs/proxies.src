@@ -302,7 +302,7 @@ File.symlink = function(destination, name)
     if len(name) > 128 then return OsError.New("File.symlink","Filename cannot be longer than 128 characters")
     //if not self.has_permission("w") then return PermissionError.New("File.symlink", "read")
     if not is_error(self.get_path(destination+"/"+name)) then return OsError.New("File.symlink", "Path already exists : " + destination+"/"+name)
-    target_folder = self.goto(destination)
+    target_folder = self.get_folder(destination)
     if is_error(target_folder) then return target_folder.stack("File.symlink")
     if not target_folder.has_permission("w") then return PermissionError.New("File.symlink", "write")
 

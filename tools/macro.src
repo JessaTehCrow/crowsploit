@@ -338,7 +338,7 @@ end function
 
 load_macros = function(kernel, silent=false)
     ses = kernel.sessions[0]
-    macro_folder = ses.file.goto("/etc/crow/macros")
+    macro_folder = ses.file.get_folder("/etc/crow/macros")
     if is_error(macro_folder) then return macro_folder
 
     for f in macro_folder.get_files

@@ -23,7 +23,7 @@ comp = shell.host_computer
 
 update_libs = function(kernel, session, path)
     // Check if lib folder exists, otherwise, make it exist (mood tbh)
-    if is_error(session.file.goto(path)) then
+    if is_error(session.file.get_folder(path)) then
         p = Path.New(path)
         res = session.computer.create_folder(p.folder, p.name)
         if is_error(res) then kernel.print("$error;No permission to create folder: /etc/crow/libs")
@@ -166,7 +166,7 @@ else if hasIndex(custom_obj, "kernel") then
     end if
 
     session.path = program_path 
-    session.file = session.file.goto(current_path)
+    session.file = session.file.get_folder(current_path)
     destination = current_path
     
     if not params.indexOf("nolibs") != null then
@@ -209,7 +209,7 @@ else
     if comp.is_network_active then session.router = get_router
 
     session.path = launch_path
-    session.file = session.file.goto(current_path)
+    session.file = session.file.get_folder(current_path)
 
     kernel.new_session(session)
     kernel.active_session = session
