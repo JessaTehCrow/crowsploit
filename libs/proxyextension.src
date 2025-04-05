@@ -393,9 +393,19 @@ end function
 // @description Force - If false, the function returns an error object when lacking write permissions. (default: true)
 //
 // @returns {string|Error}
-// @description **Returns:** a list of permission strings. If access is denied and Force is false, an Error object is returned instead.
+// @description **Returns:** a human readable string of permissions. If access is denied and Force is false, an Error object is returned instead.
 File.get_effective_permissions = function(Force = true,raw = false)
-CRE = function(perms,raw = false)
+GetWriteLevel = function(file)
+
+level = 0
+if file.parent.has_permission("w") then level = level + 1
+if file.has_permission("w") then level = level + 2
+levels = ["None", "Parent", "File", "Full"]
+return levels[level]
+end function
+
+
+CRE = function(perms)
 temp = []
 order = "rwx"
 sortedPerms = ""
@@ -415,7 +425,7 @@ for perm in sortedPerms
     if perm == "w" then temp.push("write")
     if perm == "x" then temp.push("execute")
 end for
-if raw then return temp else return temp.split(", ")
+if raw then return temp.join("") else return temp.join(", ")
 end function
 
 effperms = "---"
@@ -435,7 +445,11 @@ for f in permMap
     if f.value == effperms then eff = f.key
 end for
 StringPerms = CRE(effperms)
-if user.lower == "unknown" or not user then return StringPerms+":"eff
+idx = StringPerms.indexOf("write")
+if idx != null then
+StringPerms = StringPerms.insert(idx+5,GetWriteLevel(self))
+end if
+if user.lower == "unknown" or not user then return StringPerms+":"+eff
 if user == self.owner then return StringPerms+":u"
 if ingrp == 1 then return StringPerms+":g"
 return StringPerms+":o"
