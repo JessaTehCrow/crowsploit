@@ -202,6 +202,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
         self.quit_pipe = false
         had_success = false
         redirected = false
+        redirctbuff = ""
         fullRedirect = false
         redirectFile = null
 
@@ -289,6 +290,9 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                     redirectFile.set_content(prev + unformat_string(self.stdout.join(char(10))))
                     redirected = false
                     fullRedirect = false
+                    self.old_stdout = self.stdout.values
+                    self.stdout = [""]
+                    self.raw_piped = true
                 end if
                 if not is_error(result) then 
                     had_success = true
@@ -302,12 +306,18 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
             else
                 was_piped = self.piped
                 if __pipe_idx == command.len - 1 then self.piped = false
+                self.piped = false
+                pd = self.piped
+                //if redircted then self.piped = true
                 self.old_stdout = self.stdout.values
                 self.stdout = []
                 for x in self.old_stdout
-                    parts_2 = parse_input(unformat_string(x.trim), true)
+                    parts_2 = parse_input(unformat_string(trim(x)), true)
 
                     result = cmd_obj.call(self, parts[1:] + parts_2)
+                    if redircted then
+                        if typeof(self.old_stdout) == "list" then redirctbuff = redirctbuff + self.old_stdout.join(char(10))
+                    end if
                     if not is_error(result) then 
                         had_success = true
                     else
@@ -315,6 +325,14 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                         print(self.last_error.trace())
                     end if
                 end for
+                if redircted then
+                    self.piped = pd
+                    prev = ""
+                    if not fullRedirect then prev = redirectFile.get_content + char(10)
+                    redirectFile.set_content(prev + unformat_string(redirctbuff))
+                    redircted = false
+                    fullRedirect = false
+                end if
             end if
 
             if not self.raw_piped then
