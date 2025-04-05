@@ -400,8 +400,8 @@ Kernel.load_tools = function()
 
             self.print("    "+ "$T;Loaded $T2;" + "$T2;(" + tool.version + ")<b> $S;" + tool.name + " $T2;" + tool.loaded_commands + " $T;/$T2; " + tool.total_commands)
  
-            custom_obj.remove("result")
         end for
+        custom_obj.remove("result")
     end for
     print(" ")
     self.print("$P;Loaded a total of $S;<b>" + self.tools.len + " </b>$P;tools.")

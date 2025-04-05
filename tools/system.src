@@ -323,7 +323,7 @@ cat_function = function(a)
     content = file.get_content
     if not a.kernel.piped then 
         if file.path[-3:] == "src" or a.format then
-            result = parse_syntax(uncolor_string(content), true).replace("\\n", "\<b></b>n")
+            result = parse_syntax(content, true).replace("\\n", "\<b></b>n")
             seperated = result.split(char(10))
             steps = 400
             for x in range(0,ceil(len(seperated)/steps)-1)
@@ -2140,11 +2140,13 @@ update_cmd.long_description  = "Check if there are available updates"
 
 concat_args = [
     RestArg.New().Info("Strings to join together"),
-    Kwarg.New("delimiter", "string").Default("").Alias("d").Info("Character to join the strings together")
+    Kwarg.New("delimiter", "string").Default("").Alias("d").Info("Character to join the strings together"),
+    Kwarg.New("inverted", "bool").Default(false).Alias("i").Info("Join them togehter in a reversed order")
 ]
 
 concat_func = function(a)
-    return a.rest.join(a.delimiter)
+    if a.inverted then a.rest.reverse
+    print(a.rest.join(a.delimiter))
 end function
 
 concat_cmd = mytool.standalone_command("concat", concat_args, @concat_func)

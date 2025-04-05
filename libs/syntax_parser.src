@@ -345,7 +345,7 @@ parse_syntax = function(text, line_number=false)
 
         last = ""
         word = ""
-        
+
         for chr in line + " "
             // If it's a comment, basically just add it
             if is_comment then 
@@ -368,10 +368,10 @@ parse_syntax = function(text, line_number=false)
             if chr == "/" and not is_string then
                 if last == "/" then 
                     is_comment = true
-                    result = result + "/" 
+                    result = result + comment_color + "//" 
                     continue
                 else
-                    result = result + comment_color + "/"
+                    // result = result + "/"
                     last = "/"
                     continue
                 end if
