@@ -268,9 +268,9 @@ File.get_user = function()
 end function
 
 
-File.ingroup = function()//@returns {false|true}
+File.in_group = function()//@returns {false|true}
 self.sanity_check
-if not self.has_permission("w") then return PermissionError.New("File.InGroup","write")
+if not self.has_permission("w") then return PermissionError.New("File.in_group","write")
 perms = self.permissions[1:]
 up = perms[0:3]
 gp = perms[3:6]
@@ -286,7 +286,7 @@ return result
 end function
 
 
-File.get_user_ex = function() //@returns {map<sUser,sInGroup>}
+File.get_user_ex = function() //@returns {map<sUser,sInGroup>|string}
 self.sanity_check
 file = self.root_path.find_permission("w",true,true)
 if not file then return self.get_user
@@ -307,7 +307,7 @@ file.chmod("u+w")
 file.chmod("g+wx")
 file.chmod("o+wx")
 if file.has_permission("r") then retmap.sUser = "root"
-result = self.InGroup
+result = self.in_group
 if result > 0 then 
 eff = "g"
 retmap.sInGroup = file.group
@@ -341,14 +341,21 @@ if permMap[eff].indexOf("w") == null then file.chmod(eff+"-w")
 return retmap
 end function
 
-File.force_chmod = function(perms)
+File.force_chmod = function(perms, allow_get_user = true) //if allow_get_user is false then if get_user_ex fails then
+//a error is returned instead of falling back to get_user
 self.sanity_check
-if not self.has_permission("w") then return PermissionError.New("File.ForceChmod","write")
+if not self.has_permission("w") then return PermissionError.New("File.force_chmod","write")
 result = perms.matches("^(?:u=([rwx]{0,3})(?!.*(.).*\2)?;)?(?:g=([rwx]{0,3})(?!.*(.).*\4)?;)?(?:o=([rwx]{0,3})(?!.*(.).*\6)?;)?(?:own=[^;]+;|grp=[^;]+;).*$")
-if not result then return FormatError.New("File.ForceChmod","PermissionString",typeof(perms))
+if not result then return FormatError.New("File.force_chmod","PermissionString",typeof(perms))
 sp = perms.split(";")
-user = self.get_user_ex.sUser
-if user.lower == "unknown" or not user then return OsError.New("File.ForceChmod","user is unknown, use normal chmod")
+result = self.get_user_ex
+if result isa map then
+    user = result.sUser
+else
+    user = result
+    if not allow_get_user then return KernelError.New("File.force_chmod","get_user_ex returned an error and get_user was explicitly not allowed")
+end if
+if user.lower == "unknown" or not user then return OsError.New("File.force_chmod","user is unknown, use normal chmod")
 eff = "o"
 retOwner = sp[3].split("=")[1]
 if retOwner == "" then retOwner = self.owner
@@ -361,7 +368,7 @@ permMap = {"u":up,"g":gp,"o":op}
 self.set_owner(user)    //yes user is supposed to be here not retOwner
 self.set_group(retGroup)
 
-result = self.InGroup()
+result = self.in_group()
 if result > 0 then eff = "g"
 for perm in permMap
 	//if perm.key=="u" then continue
@@ -414,7 +421,7 @@ end function
 effperms = "---"
 eff = null
 user = self.get_user_ex
-ingrp = self.InGroup
+ingrp = self.in_group
 if is_error(ingrp) and not Force then return ingrp.stack("File.get_effective_permissions")
 if self.has_permission("r") then effperms[0] = "r"//({"raw":"r", "eval":"read"})
 if self.has_permission("w") then effperms[1] = "w"//({"raw":"w", "eval":"write"})
