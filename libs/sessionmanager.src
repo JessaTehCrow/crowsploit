@@ -51,7 +51,7 @@ Session.New = function(obj, username=null)
         session.file = obj
     end if
 
-    session.root_path = session.file.goto("/")
+    session.root_path = session.file.get_folder("/")
 
     if session.computer != null then
         session.comp_name = session.computer.get_name
@@ -85,7 +85,7 @@ end function
 
 
 Session.load_libs = function(folder)
-    folder = self.file.goto(folder)
+    folder = self.file.get_folder(folder)
     if is_error(folder) then return folder.stack("Session.load_libs")
 
     loaded = []

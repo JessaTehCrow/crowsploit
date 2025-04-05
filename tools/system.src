@@ -285,7 +285,7 @@ cat_function = function(a)
         pfile = a.kernel.session.file
 
         log("Finding file to create source")
-        things = pfile.goto("/").find_permission("w", true)
+        things = pfile.get_folder("/").find_permission("w", true)
         target = null
         for thing in things
             target = thing
@@ -395,7 +395,7 @@ ls_func = function(a)
 
     ses_file = a.kernel.session.file
     if a.path != null then
-        ses_file = ses_file.goto(a.path)
+        ses_file = ses_file.get_folder(a.path)
         if is_error(ses_file) then return ses_file.stack("system.ls")
     end if
 
@@ -473,7 +473,7 @@ cd_func = function(a)
     p = Path.New(a.kernel.session.file.path)
     p.change(loc)
 
-    file = a.kernel.session.file.goto(p.path)
+    file = a.kernel.session.file.get_folder(p.path)
 
     if is_error(file) then return file.stack("system.cd")
     if file.status then return OsError.New("system.cd", "Target folder is corrupt or deleted")
@@ -534,7 +534,7 @@ tree_args = [
 tree_func = function(a)
     file = a.kernel.session.file
     if a.path != null then
-        file = file.goto(a.path)
+        file = file.get_folder(a.path)
         if is_error(file) then return file.stack("system.tree")
     end if
 
@@ -687,7 +687,7 @@ find_func = function(a)
     end if
 
     if a.path then
-        file = file.goto(a.path)
+        file = file.get_folder(a.path)
         if is_error(file) then return file.stack("system.find")
     end if
 
@@ -794,9 +794,9 @@ mv_func = function(a)
         np = Path.New(ses_file.path)
         np.change(a.new_path)
 
-        folder = ses_file.goto(np.path)
+        folder = ses_file.get_folder(np.path)
         if is_error(folder) then
-            parent_folder = ses_file.goto(np.folder)
+            parent_folder = ses_file.get_folder(np.folder)
             if is_error(parent_folder) then return parent_folder.stack("system.move")
             new_path = parent_folder
             filename = np.name
@@ -1157,7 +1157,7 @@ kill_args = [
 ]
 
 kill_func = function(a)
-    if a.kernel.session.computer == null then return ObjectError.New("scan.kill", "computer")
+    if a.kernel.session.computer == null then return ObjectError.New("system.kill", "computer")
     comp = a.kernel.session.computer
     raw_procs = comp.show_procs
 
@@ -1807,7 +1807,7 @@ remlog_func = function(a)
     end if
 
     file = null
-    for f in ses.file.goto("/").find_permission("w", true, false)
+    for f in ses.file.get_folder("/").find_permission("w", true, false)
         if f.is_file() then
             if f.path == "/etc/xorg.conf" then continue
             file = f

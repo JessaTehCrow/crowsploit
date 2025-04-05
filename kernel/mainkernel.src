@@ -242,8 +242,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 redirected = true
                 session_file = self.session.file
                 path = parts[-1].eval_value
-                temp = session_file.get_file(parts[-1].eval_value)
-
+                temp = session_file.get_file(path)
                 if path[0] != "/" then path = session_file.path + "/" + path
                     comp = self.session.computer
 
@@ -315,7 +314,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                     parts_2 = parse_input(unformat_string(trim(x)), true)
 
                     result = cmd_obj.call(self, parts[1:] + parts_2)
-                    if redircted then
+                    if redirected then
                         if typeof(self.old_stdout) == "list" then redirctbuff = redirctbuff + self.old_stdout.join(char(10))
                     end if
                     if not is_error(result) then 
@@ -325,12 +324,12 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                         print(self.last_error.trace())
                     end if
                 end for
-                if redircted then
+                if redirected then
                     self.piped = pd
                     prev = ""
                     if not fullRedirect then prev = redirectFile.get_content + char(10)
                     redirectFile.set_content(prev + unformat_string(redirctbuff))
-                    redircted = false
+                    redirected = false
                     fullRedirect = false
                 end if
             end if

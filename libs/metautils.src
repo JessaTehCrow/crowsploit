@@ -147,7 +147,7 @@ object_enum = [
 
 perms_enum = [
     "unknown",
-    "none",
+    "None",
     "guest",
     "user",
     "root"

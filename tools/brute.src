@@ -197,7 +197,7 @@ end function
 check_generated = function(kernel)
     home = kernel.sessions[0]
 
-    brute_dir = home.file.goto(kernel.settings.brute.list_directory)
+    brute_dir = home.file.get_folder(kernel.settings.brute.list_directory)
 
     if not is_error(brute_dir) and brute_dir.get_files.len != 0 then return true
 
@@ -212,7 +212,7 @@ load_passwords = function(kernel)
 
     home = kernel.sessions[0]
 
-    folder = home.file.goto(kernel.settings.brute.list_directory)
+    folder = home.file.get_folder(kernel.settings.brute.list_directory)
     if is_error(folder) then return folder.stack("brute.load_passwords")
 
     files = folder.get_files()

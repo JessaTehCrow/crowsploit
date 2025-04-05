@@ -354,6 +354,19 @@ AES128 = function(choice, key, text)
     end function
 
 
+create_permission_string = function(ownerPerms, groupPerms, otherPerms, owner, group)
+err = expect_all([ownerPerms, groupPerms, otherPerms, owner, group], string)
+if err then return TypeError.New("string", typeof(err))
+for f in [ownerPerms, groupPerms, otherPerms]
+    if not f.is_match("^(|(?!.*(.).*\1)[rwx]{0,3})$") then return FormatError.New("File.set_permission","[rwx]")
+end for
+retstr = ""
+for field in [ownerPerms, groupPerms, otherPerms, owner, group]
+    pre = ["u","g","o","own","grp"][__field_idx]
+    retstr = retstr + pre + "=" + field + ";"
+end for
+return retstr
+end function
 
 count = function(text, substr)
     err = expect_all([text, substr], string)
