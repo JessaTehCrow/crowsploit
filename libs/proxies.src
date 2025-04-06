@@ -116,66 +116,66 @@ File.chmod = function(perms, recursive=false)
     return b
     end function
     queries = []
-if perms.indexOf("+") != null then
-    u = perms.split("\+")[0]
-    p = perms.split("\+")[1]
-    if u == "" then u = "ugo"
-    if p == "" then p = "wrx"
-    for i in u
-        for j in p
-            queries = queries.push(i+"+"+j)	
+    if perms.indexOf("+") != null then
+        u = perms.split("\+")[0]
+        p = perms.split("\+")[1]
+        if u == "" then u = "ugo"
+        if p == "" then p = "wrx"
+        for i in u
+            for j in p
+                queries = queries.push(i+"+"+j)	
+            end for
         end for
-    end for
-else if perms.indexOf("-") != null then
-    u = perms.split("-")[0]
-    p = perms.split("-")[1]
-    if u == "" then u = "ugo"
-    if p == "" then p = "wrx"
-    for i in u
-        for j in p
-            queries = queries.push(i+"-"+j)	
+    else if perms.indexOf("-") != null then
+        u = perms.split("-")[0]
+        p = perms.split("-")[1]
+        if u == "" then u = "ugo"
+        if p == "" then p = "wrx"
+        for i in u
+            for j in p
+                queries = queries.push(i+"-"+j)	
+            end for
         end for
-    end for
-else if typeof(perms.to_int) == "number" and perms.len == 3 then
-    u = perms[0].to_int
-    g = perms[1].to_int
-    o = perms[2].to_int
-    repl = {1:"+",0:"-"}
-    b = [binary(u),binary(g),binary(o)]
-    queries = queries + ["u"+repl[b[0][0]]+"r","u"+repl[b[0][1]]+"w","u"+repl[b[0][2]]+"x"]
-    queries = queries + ["g"+repl[b[1][0]]+"r","g"+repl[b[1][1]]+"w","g"+repl[b[1][2]]+"x"]
-    queries = queries + ["o"+repl[b[2][0]]+"r","o"+repl[b[2][1]]+"w","o"+repl[b[2][2]]+"x"]
-else if perms.indexOf("=") != null then
-    u = perms.split("=")[0]
-    p = perms.split("=")[1]
-    if u == "" or p == "" then 
+    else if typeof(perms.to_int) == "number" and perms.len == 3 then
+        u = perms[0].to_int
+        g = perms[1].to_int
+        o = perms[2].to_int
+        repl = {1:"+",0:"-"}
+        b = [binary(u),binary(g),binary(o)]
+        queries = queries + ["u"+repl[b[0][0]]+"r","u"+repl[b[0][1]]+"w","u"+repl[b[0][2]]+"x"]
+        queries = queries + ["g"+repl[b[1][0]]+"r","g"+repl[b[1][1]]+"w","g"+repl[b[1][2]]+"x"]
+        queries = queries + ["o"+repl[b[2][0]]+"r","o"+repl[b[2][1]]+"w","o"+repl[b[2][2]]+"x"]
+    else if perms.indexOf("=") != null then
+        u = perms.split("=")[0]
+        p = perms.split("=")[1]
+        if u == "" or p == "" then 
+            return FormatError.New("File.chmod","Invalid permissions given")
+            return
+        end if
+        
+        for i in u
+            queries = queries.push(i+"-"+"rwx")
+                    for j in p
+                        queries = queries.push(i+"+"+j)	
+                end for
+        end for
+    else
         return FormatError.New("File.chmod","Invalid permissions given")
-        return
     end if
-    
-    for i in u
-        queries = queries.push(i+"-"+"rwx")
-                for j in p
-                    queries = queries.push(i+"+"+j)	
-               end for
+    for q in queries
+        err = self.object.chmod(q, recursive)
+        if err == "permission denied" then return PermissionError.New("File.chmod","write or owner")
+        if err!="" then return Error.New("File.chmod",err)
     end for
-else
-    return FormatError.New("File.chmod","Invalid permissions given")
-end if
-for q in queries
-    err = self.object.chmod(q, recursive)
-    if err == "permission denied" then return PermissionError.New("File.chmod","write or owner")
-    if err!="" then return Error.New("File.chmod",err)
-end for
-//print("$T;Set new permissions to $P;" + target.permissions)
-return true
-    //if not self.has_permission("w") then return PermissionError.New("File.set_permission","write")
-    //if not perm isa string then return TypeError.New("File.set_permission","string", typeof(perm))
+    //print("$T;Set new permissions to $P;" + target.permissions)
+    return true
+        //if not self.has_permission("w") then return PermissionError.New("File.set_permission","write")
+        //if not perm isa string then return TypeError.New("File.set_permission","string", typeof(perm))
 
-    //if not perm.is_match("^[oug][+-](?!.*(.).*\1)[rwx]{1,3}$") then
-    //    return FormatError.New("File.set_permission","[oug][+-][rwx]")
-    //end if
-    //result = self.object.chmod(perm, recursive)
+        //if not perm.is_match("^[oug][+-](?!.*(.).*\1)[rwx]{1,3}$") then
+        //    return FormatError.New("File.set_permission","[oug][+-][rwx]")
+        //end if
+        //result = self.object.chmod(perm, recursive)
 end function
 
 File.delete = function()

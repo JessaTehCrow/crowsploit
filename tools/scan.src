@@ -108,7 +108,7 @@ end function
 
 // End util funcs
 
-scantool = Tool.New("scan", "1.4.2")
+scantool = Tool.New("scan", "1.4.3")
 scantool.short_description = "Scan ports and libraries for versions & exploits"
 scantool.long_description = "Scan ports and libraries for versions & exploits"
 
@@ -287,7 +287,8 @@ $S;scan $string;112.2.54.12 -p 80,21"
 // Lan
 
 lan_args = [
-    Kwarg.New("no-ports", "bool").Alias("n").Info("Don't scan ports")
+    Kwarg.New("no-ports", "bool").Alias("n").Info("Don't scan ports"),
+    Kwarg.New("refresh", "bool").Default(false).Alias("r").Info("Refresh network cache")
 ]
 
 lan_func = function(a)
@@ -316,7 +317,14 @@ lan_func = function(a)
     type_cols.camera = "$status_active;"
     type_cols.unknown = "$T;"
 
-    ips = scan_lan(get_router)
+    ips = null
+    if not a.kernel.session.hasIndex("scanlan") or a.refresh then
+        ips = scan_lan(get_router)
+        a.kernel.session.scanlan = ips
+    else
+        print("$P;Using cached lan")
+        ips = a.kernel.session.scanlan
+    end if
     
     tab_data = []
     for x in ips

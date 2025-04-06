@@ -50,6 +50,7 @@ parse_input = function(text, evaluate=false, keep_quotes=false)
     temp = ""
     quote = null
     backs = false
+    last = null
 
     temp_last = null
     for x in text

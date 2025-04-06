@@ -9,6 +9,11 @@ body {
     width:100%;
 }
 
+.superroot {
+  text-shadow: 0px 0px 30px #880000;
+  color:red;
+}
+
 #banner {
     background-color:#182035;
     width:100%;
@@ -32,9 +37,24 @@ body {
 
 #footer {
     text-align: center;
+    /* padding-top: 15px; */
     width:100%;
     background-color:#182035;
     height:50px;
+}
+
+.tryit {
+    padding:10px;
+    width:200px;
+    font-size: 20px;
+    color:#b2d6ff;
+    background-color:#182035;
+    border:2px solid #232c44;
+    border-radius: 5px;
+}
+
+.tryit:hover {
+    background-color: #334063;
 }
 
 .section {
@@ -114,7 +134,7 @@ h2 {
     display: none;
 }
 
-input {
+#discordinput {
     background-color:rgba(0,0,0,0);
     border:none;
     color:#b2d6ff;
@@ -195,6 +215,111 @@ summary:hover {
 }
 
 
+/* * {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+} */
+
+/* body {
+    overflow-y: scroll;
+    background-color: black;
+} */
+
+#terminal {
+    background-color: black;
+    line-height: 25px;
+    width: 100%;
+    height:auto;
+    color:#888;
+    padding-left:10px;
+    padding-top:10px;
+    font-size: 20px;
+    letter-spacing: .1em;
+    white-space: pre;
+    word-wrap: break-word;
+}
+
+#input-box {
+    line-height: 25px;
+    width:100%;
+    margin-top:0;
+    height: 50px;
+    background-color: black;
+    border: none;
+    font-size: 20px;
+    color:white;
+    letter-spacing: .1em;
+    vertical-align: middle;
+    padding-left: 10px;
+}    
+
+#input-box input {
+    max-width: 100%;
+    line-height: 25px;
+    height: 25px;
+    border: none;
+    font-size: 20px;
+    color:#bcf;
+    display: inline-block;
+    letter-spacing: .1em;
+    background-color:rgba(50,50,50,0);
+    padding: 0;
+    margin: 0;
+    caret-color: red;
+    text-align: left;
+    font-weight: normal;
+}
+
+#prefix {
+    height:50px;
+    /* line-height: 0px; */
+    font-size: 20px;
+    margin-top: 0px;
+    display: inline;
+}
+
+/* Colors for printing */
+span {
+    white-space: pre;
+    letter-spacing: .1em;
+    margin:0;
+}
+
+.P {color:#08f}
+.S {color:#0cc}
+.T {color:#669}
+.T2 {color:#99c}
+.input {color:#bcf}
+.root {color:#f60}
+.error {color:#e05}
+.lsfolder { color:#08f}
+.lsbinary { color:#0e8}
+.lsfile { color:#aad}
+.string { color:#d63}
+.int { color:#39d}
+.float { color:#b5e}
+.bool { color:#35f}
+.ip { color:#d44}
+.rest { color:#557}
+.big {font-size: 50px; line-height: 50px;}
+
+#wowzers {
+    /* position: absolute; */
+    left:0;
+    top:0;
+    overflow-y: scroll;
+    height: 100vh;
+    width: 100vw;
+    display: none;
+    background-color: black;
+    margin: 0px;
+    padding:0px;
+}
+
+.black {
+    background-color: black;
+}
 </style>
 
 <html>
@@ -202,7 +327,6 @@ summary:hover {
     <div id="banner">
         Crowsploit
     </div>
-
     <div id="content">
         <div id="menu">
             <button id="crowsploit_btn" onclick="crowsploit()" class="active">Crowsploit</button>
@@ -215,6 +339,7 @@ summary:hover {
             <p>Crowsploit is a modular tool dedicated to allowing the end-user to dictate how to use the tool. This is done through a modular settings file much alike the .bashrc you would see in linux. As well as giving the end-user kernel access using the command API. </p>
             <p>This means that the user can create their own scripts with built-in error handling, argument parsing, and system control with little to no effort.</p>
             <p><b>For installation, see install</b></p>
+            <button class="tryit" onclick="show_terminal()">Try the demo!</button></br>
             <h2>Changelogs</h2>
             <br>
             <br>
@@ -310,6 +435,7 @@ summary:hover {
             <p>This filters the buffer to only lines that include the word <span class="string">"root"</span> and cans the other lines that don't</p>
             <span class="code"><span class="p">crack</span></span>
             <p>This is the final piece. This cracks the filtered hash from the <span class="code">/etc/passwd</span> and shows the final password for you to escalate from</p>
+            <button class="tryit" onclick="show_terminal()">Try it in the interactive demo!</button></br>
         </div>
         <div class="section hidden" id="install">
             <h1>Install</h1>
@@ -321,18 +447,53 @@ summary:hover {
             <p>When you have moved the files to that directory, you can launch crowsploit again and you'll have a working crowsploit interface!</p>
         </div>
     </div>
-
     <div id="footer">
-        <p>Join the discord!! <input type="text" onclick="selectText()" id="input" value=" discord.gg/qW5Uv2SAmq "> (you can select and copy this link)</p>
+        <p>Join the discord!! <input type="text" onclick="selectText()" id="discordinput" value=" discord.gg/qW5Uv2SAmq "> (you can select and copy this link)</p>
     </div>
+    <div id="wowzers">
+        <div id="terminal"></div>
+        <div id="input-box">
+            <span id="prefix">(/root) user@comp > </span>
+            <input id="input" type="text" autofocus/>
+        </div>
+    </div>
+
     <script>
         const sect_crowsploit = document.getElementById("crowsploit");
         const sect_commands = document.getElementById("commands");
         const sect_install = document.getElementById("install");
+        const content = document.getElementById("content")
+        const wowzers = document.getElementById("wowzers")
+        const footer = document.getElementById("footer")
+        const banner = document.getElementById("banner")
 
         const crowsploit_btn = document.getElementById("crowsploit_btn")
         const commands_btn = document.getElementById("commands_btn")
         const install_btn = document.getElementById("install_btn")
+        let finished_minigame = false
+
+        let color = 0
+        function rotate() {
+            let nodeList = document.querySelectorAll(".godroot")
+        
+            color += 15
+
+            //let red = 0-255-0
+            let red = color<255 ? color : Math.max(0,255-(color-255))
+            let green = color<510 ? Math.max(0, color-255) : Math.max(0,255-(color-510))
+            let blue = color<765 ? Math.max(0, color-510) : Math.max(0,255-(color-765))
+            if (color<255){
+                blue = 255-color
+            }
+            let color_attr = "rgb("+[red,green,blue].join(",")+")"
+            color = color % 765
+            //const nodeList = document.querySelectorAll(".example");
+            for (let i=0; i<nodeList.length;i++) {
+                nodeList[i].style.color = color_attr;
+                //earInterval(int)
+            }
+        }
+        setInterval(rotate, 300)
 
         function hideme(elem) {
             elem.style.display = "none";
@@ -374,6 +535,1199 @@ summary:hover {
             elem.select();
         }
 
+        const radius = 30
+        const input = document.getElementById("input")
+        const input_box = document.getElementById("input-box")
+        const body = document.body
+        const term = document.getElementById("terminal")
+        const prefix = document.getElementById("prefix")
+
+        function show_terminal() {
+            if (finished_minigame) {return}
+            wowzers.style.display = "block"
+            content.style.display = "none"
+            footer.style.display = "none"
+            banner.style.display = "none"
+            var width = prefix.offsetWidth * 2
+            input.style.width = "calc(100vw - "+width+"px)"
+            input.focus()
+            // // document.body.style.backgroundColor = "black"
+        }
+        function hide_terminal() {
+            wowzers.style.display = "none"
+            content.style.display = "block"
+            footer.style.display = "block"
+            banner.style.display = "block"
+            // document.body.style.backgroundColor = "#0e1320"
+        }
+
+        let stdout = []
+        let old_stdout = []
+
+        let user = "Demo"
+        let group = "Guest"
+        let comp = "matrix"
+        let pwd = null
+        let silent = false
+        let hidden = false
+        let hash_que = 0
+
+        let hashes = {
+            "52a516ca6df436828d9c0d26e31ef704":"extremelysecure",
+            "af88a0ae641589b908fa8b31f0fcf6e1":"password01",
+            "8920f6c23684578ff4165e9c8cf829cc":"Jwfh32HJdwe",
+            "e400de465f4fad636dfed8c3e3158ef7":"O32dwDoij93",
+            "c87e2d389954f62469031dd9cd7004f4":"lovecrows",
+            "72b302bf297a228a75730123efef7c41":"cawcawcaw",
+            "23749edea0ae7a96e29af9db504bfa0b":"birdbrainfrfr",
+            "f6dcdd85ecf9632ba88f6be57dcd7c85":"whenwillitend",
+            "a1c799f3da141a4331f5aa0166e0bd84":"$error;There is a command called$/; $superroot;'secret'$/;$error; that isn't listed in the help?"
+        }
+
+        let passwords = {
+            "root": "52a516ca6df436828d9c0d26e31ef704",
+            "Demo": "af88a0ae641589b908fa8b31f0fcf6e1",
+            "Jessa": "c87e2d389954f62469031dd9cd7004f4",
+            "godroot": "f6dcdd85ecf9632ba88f6be57dcd7c85",
+        }
+
+        let groups = {
+            "root":"root",
+            "Jessa":"root",
+            "Demo":"Guest",
+            "godroot":"$superroot;godroot:f6dcdd85ecf9632ba88f6be57dcd7c85"
+        }
+
+        let helps = {}
+        helps.help = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;help$/;",
+            "$P;help $string;cmd",
+            "$T2;------------------------( Args )------------------------",
+            "$T;name     Type       Optional     Info",
+            "$P;cmd       $string;string      $S;True          $T2;Command to show ",
+            " ",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Lists help for commands",
+            "",
+            "$P;Examples:",
+            "$S;help",
+            "$S;help $string;grep",
+            "$S;help $string;cd",
+            "$T2;--------------------------------------------------------",
+            
+        ]
+
+        helps.ls = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;LS",
+            "$P;ls $bool;-la",
+            "$T2;------------------------( Args )------------------------",
+            "",
+            "$T2;-----------------------( Kwargs )----------------------",
+            "$T;name         Type       Alias     Info",
+            "$P;--longall    $bool;bool       $S;-la        $T2;Shows more info" ,
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Show files and folders",
+            "",
+            "$P;Examples:",
+            "$S;ls",
+            "$S;ls $bool;-la",
+            "$T2;--------------------------------------------------------",
+        ]
+
+        helps.clear = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;Clear",
+            "$P;clear",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Clear screen",
+            "",
+            "$P;Examples:",
+            "$S;clear",
+            "$T2;--------------------------------------------------------",
+        ]
+
+        helps.cd = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;cd",
+            "$P;cd $string;path",
+            "$T2;------------------------( Args )------------------------",
+            "$T;name     Type       Optional     Info",
+            "$P;path       $string;string     $S;False          $T2;Path to change into",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Change working directory",
+            "",
+            "$P;Examples:",
+            "$S;cd $string;..",
+            "$S;ls $string;/home/Demo",
+            "$T2;--------------------------------------------------------",
+        ]
+
+        helps.cat = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;cat",
+            "$P;cat $string;file",
+            "$T2;------------------------( Args )------------------------",
+            "$T;name     Type       Optional     Info",
+            "$P;file        $string;string      $S;False          $T2;File to display",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Display file content to terminal",
+            "",
+            "$P;Examples:",
+            "$S;cat $string;/etc/passwd",
+            "$S;ls $string;/root/readme.txt",
+            "$T2;--------------------------------------------------------",
+        ]
+
+        helps.grep = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;grep",
+            "$P;grep $string;pattern $rest;rest",
+            "$T2;------------------------( Args )------------------------",
+            "$T;name      Type       Optional     Info",
+            "$P;pattern    $string;string     $S;False          $T2;Pattern to match",
+            "$P;rest         $rest;rest        $S;False          $T2;Data to be matched",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Filter data",
+            "",
+            "$P;Examples:",
+            "$S;cat $string;/etc/passwd $T;|$S; grep $string;root $T;>> Only get the root user from passwd",
+            "$T2;--------------------------------------------------------",
+        ]
+
+        helps.echo = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;echo",
+            "$P;grep $rest;rest",
+            "$T2;------------------------( Args )------------------------",
+            "$T;name      Type       Optional     Info",
+            "$P;rest         $rest;rest        $S;True           $T2;Message to display",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Display a message to the terminal",
+            "",
+            "$P;Examples:",
+            "$S;echo $string;Hello there how are ya!",
+            "$T2;--------------------------------------------------------",
+        ]
+
+        helps.rf = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;rf",
+            "$P;grep $string;sep fmt $rest;rest",
+            "$T2;------------------------( Args )------------------------",
+            "$T;name      Type       Optional     Info",
+            "$P;sep         $string;string      $S;False          $T2;String to split data by",
+            "$P;fmt         $string;string      $S;False          $T2;Output format",
+            "$P;rest        $rest;rest         $S;True           $T2;Data to reformat",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Reformat data",
+            "",
+            "$P;Examples:",
+            "$S;echo $string;one#two#three $T;| $S;rf $string; \"#\" \"{0}-{1}-{2}\" $T;>> one-two-three",
+            "$S;echo $string;yes no yes yes $T;| $S;rf $string; \" \" \"{0} {2} {3}\" $T;>> yes yes yes",
+            "$T2;--------------------------------------------------------",
+        ]
+
+        helps.crack = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;crack",
+            "$P;grep $string;hash",
+            "$T2;------------------------( Args )------------------------",
+            "$T;name      Type       Optional     Info",
+            "$P;hash         $string;string    $S;False          $T2;Hash to crack",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Reformat data",
+            "",
+            "$P;Examples:",
+            "$S;crack $string;",
+            "$T2;--------------------------------------------------------",
+        ]
+
+        helps.exit = [
+            "$T2;--------------------------------------------------------",
+            "$error;$big;exit",
+            "$error;exit",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Exit back to the website",
+            "",
+            "$P;Examples:",
+            "$S;Exit",
+            "$T2;--------------------------------------------------------",
+        ]
+
+        helps.su = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;su",
+            "$P;su $string;user pass",
+            "$T2;------------------------( Args )------------------------",
+            "$T;name      Type       Optional     Info",
+            "$P;user         $string;string    $S;False          $T2;Username to log in to",
+            "$P;pass         $string;string    $S;False          $T2;Password of user",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Login as another user",
+            "",
+            "$P;Examples:",
+            "$S;su $string;root password",
+            "$S;su $string;Demo password01",
+            "$T2;--------------------------------------------------------",
+        ] 
+
+        helps.useradd = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;useradd",
+            "$P;useradd $string;user pass",
+            "$T2;------------------------( Args )------------------------",
+            "$T;name      Type       Optional     Info",
+            "$P;user         $string;string    $S;False          $T2;Username of the new user",
+            "$P;pass         $string;string    $S;False          $T2;Password for the new user",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Add a new user to the system",
+            "",
+            "$P;Examples:",
+            "$S;useradd $string;user password",
+            "$S;useradd $string;Demo password01",
+            "$T2;--------------------------------------------------------",
+        ]  
+
+        helps.groups = [
+            "$T2;--------------------------------------------------------",
+            "$P;$big;groups",
+            "$P;groups $string;user",
+            "$T2;------------------------( Args )------------------------",
+            "$T;name      Type       Optional     Info",
+            "$P;user         $string;string    $S;False          $T2;User to view groups for",
+            "$T2;---------------------( Description )--------------------",
+            "$T2;Login as another user",
+            "",
+            "$P;Examples:",
+            "$S;groups $string;root",
+            "$S;groups $string;Demo",
+            "$T2;--------------------------------------------------------",
+        ]   
+
+        // class definitions
+        function PathObject(name, type) {
+            this.name = name
+            this.size = "0MB"
+            this.parent = null
+            this.owner = "root"
+            this.group = "root"
+            if (type == "folder") {
+                this.permissions = "drwxr-xr-x"
+            } else {
+                this.permissions = "-rwxr-xr-x"
+            }
+            this.type = type
+            this.content = ""
+            this.files = []
+            this.folders = []
+            
+            this.check_permission = function(part, type, extra) {
+                let offset = 1
+                if (part == "g") {offset += 3}
+                if (part == "o") {offset += 6}
+                let perms = this.permissions.slice(offset,offset+3)
+                if ((this.owner == "superroot" || this.group == "superroot") && !(extra == "superroot" || extra == "godroot")) {return false}
+                if ((this.owner == "godroot" || this.group == "godroot") && (extra != "godroot")) {return false}
+
+                if (part=="g" && extra != this.group && extra != "root") {return false}
+                if (part=="u" && extra != this.owner && extra != "root") {return false}
+
+                for (let p in type) {
+                    if (perms.indexOf(type[p]) == -1) {return false}
+                }
+                return true
+            }
+            this.get_content = function(user, group) {
+                let ru = this.check_permission("u", "rwx", user)
+                let rg = this.check_permission("g", "r", group)
+                let ro = this.check_permission("o", "r")
+                if (ru || rg || ro) {
+                    return this.content
+                } else {
+                    return null
+                }
+            }
+            this.path = function() {
+                if (this.parent == null) {return "/"}
+                let parent_path = this.parent.path()
+                if (this.type == "folder") {
+                    return parent_path + this.name + "/"
+                } else {
+                    return parent_path + this.name
+                }
+            }
+            this.mkdir = function(name) {
+                let temp = new PathObject(name, "folder")
+                temp.parent = this
+                temp.size = "9.3MB"
+                temp.owner = this.owner
+                temp.group = this.group
+                temp.permissions = this.permissions
+                this.folders.push(temp)
+                return temp
+            }
+            this.touch = function(name) {
+                let temp = new PathObject(name, "file")
+                temp.parent = this
+                temp.owner = this.owner
+                temp.group = this.group
+                temp.permissions = "-"+this.permissions.slice(1)
+                this.files.push(temp)
+                return temp
+            }
+            this.build = function(name) {
+                let temp = new PathObject(name, "binary")
+                temp.parent = this
+                temp.size = "3.5MB"
+                temp.owner = this.owner
+                temp.group = this.group
+                temp.permissions = "-"+this.permissions.slice(1)
+                this.files.push(temp)
+                return temp
+            }
+            this.get_all = function() {
+                return this.folders.concat(this.files)
+            }
+            this.find_folder = function(name) {
+                for (let f in this.folders) {
+                    if (this.folders[f].name == name) {return this.folders[f]}
+                }
+            }
+            this.find_file = function(name) {
+                for (let f in this.files) {
+                    if (this.files[f].name == name) {return this.files[f]}
+                }
+            }
+            this.find_any = function(name) {
+                let items = this.folders.concat(this.files)
+                for (let f in items) {
+                    if (items[f].name == name) {return items[f]}
+                }
+            }
+        }
+
+        // System map
+        let root_ob = new PathObject("/", "folder")
+        let god_pwd = root_ob.mkdir("godroot")
+        god_pwd.permissions = "drwx------"
+        god_pwd.owner = "godroot"
+        god_pwd.group = "godroot"
+        let more = god_pwd.touch("there.txt").content = [
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+        ]
+        god_pwd.touch("is.txt").content = [
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "a1c799f3da141a4331f5aa0166e0bd84",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+        ]
+        god_pwd.touch("always.txt").content = [
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+        ]
+        god_pwd.touch("more.txt").content = [
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+            "$superroot;thereisalwaysmore thereisalwaysmore thereisalwaysmore",
+        ]
+    
+        let etc = root_ob.mkdir("etc")
+        etc.touch("xorg.conf")
+        etc.touch("fstab")
+        etc.mkdir("apt").touch("sources.txt")
+        let crow_dir = etc.mkdir("crow")
+        let tool_dir = crow_dir.mkdir("tools")
+        tool_dir.build("system")
+        tool_dir.build("exploit")
+        let lib_dir = crow_dir.mkdir("libs")
+        lib_dir.build("metaxploit.so")
+        lib_dir.build("aptclient.so")
+        lib_dir.build("crypto.so")
+        lib_dir.build("librshell.so")
+        crow_dir.mkdir("exdb")
+        crow_dir.mkdir("plist")
+        let secret = crow_dir.mkdir("secret")
+        secret.permissions = "drwx------"
+        secret.owner = "superroot"
+        secret.group = "superroot"
+        secret.touch("secret.txt").content = [
+            "Cool!! Nice find.",
+            "Send me a screenshot of this on discord, and you'll",
+            "get a cool role in the crowsploit discord server :D",
+            "discord.gg/qW5Uv2SAmq"
+        ]
+
+        let passwd = etc.touch("passwd")
+        passwd.content = ["Demo:af88a0ae641589b908fa8b31f0fcf6e1", "Jessa:c87e2d389954f62469031dd9cd7004f4"]
+
+        let bin = root_ob.mkdir("bin")
+        bin.permissions = "drwxr-xr-x"
+        bin.build("sudo")
+        bin.build("ls")
+        bin.build("cd")
+        bin.build("mkdir")
+        bin.build("touch")
+        bin.build("rmdir")
+        bin.build("ps")
+
+        let home = root_ob.mkdir("home")
+        let home_demo = home.mkdir("Demo")
+        home_demo.owner = "Demo"
+        home_demo.group = "Demo"
+        home_demo.touch("hello.txt").content = ["$P;Welcome to the crowsploit demo!!$/;",
+            "",
+            "This is a completely $T2;simulated$/; environment.",
+            "All $lsfile;files$/;, $lsfolder;folders$/; and $lsbinary;binaries$/; are $error;fake.",
+            "",
+            "This is created purely to give the users a demo of $S;crowsploit$/;!",
+            "To see what you can do, use the $T2;help$/; command",
+            " ",
+            "$error;Beware, this is not *entirely* representative of crowsploit",
+            "$error;This is merely an interface example of crowsploit"
+        ]
+        home_demo.touch("commands.txt").content = [
+            "$P;Crowsploit has command piping!",
+            "",
+            "This means, that by default, crowsploit allows you to do some cool things",
+            "Such as:",
+            "$P;cd $string;Config $T;&& $P;ls $bool;-la $T; | $P;rf $string;\" \" \"{4}\" $T;| $P;cat $T;|$P; crack",
+            "",
+            "Or!",
+            "$P;cat $string;/etc/passwd $T;| $P;grep $string;Jessa $T;| $P;crack",
+        ]
+        home_demo.touch("mission.txt").content = [
+            "Hey! For this demo, can you find you way to escalate to root?"
+        ]
+        home_demo.mkdir(".Trash")
+        home_demo.mkdir("Desktop")
+        home_demo.mkdir("Downloads").touch("hot_takes.txt").content = ["Viper is shit"]
+
+        let demo_config = home_demo.mkdir("Config")
+        demo_config.touch("Mail.txt").content = ["Demo@jixetaxaz.org:8920f6c23684578ff4165e9c8cf829cc"]
+        demo_config.touch("Bank.txt").content = ["ARpNSA3G-jixetaxaz.org:e400de465f4fad636dfed8c3e3158ef7"]
+
+        let home_jess = home.mkdir("Jessa")
+        home_jess.permissions = "drwx------"
+        home_jess.owner = "Jessa"
+        home_jess.group = "Jessa"
+        home_jess.touch("root_password.txt").content = [
+            "Note to self:",
+            "root password is no longer in /etc/passwd",
+            "Don't create a new account, or it will regenerate"
+        ]
+        let jess_config = home_jess.mkdir("Config")
+        jess_config.touch("Mail.txt").content = ["Jessa@jixetaxaz.org:72b302bf297a228a75730123efef7c41"]
+        jess_config.touch("Bank.txt").content = ["JDWOiedw-jixetaxaz.org:23749edea0ae7a96e29af9db504bfa0b"]
+
+        let jess_downloads = home_jess.mkdir("Downloads")
+        jess_downloads.build("crows.jpg")
+        jess_downloads.build("crows2.jpg")
+        jess_downloads.build("crows1.jpg")
+        jess_downloads.touch("crow_transcript.txt").content = [
+            "$P;Caw caw. $S;Craw$P; caa",
+            "",
+            "$T2;Caw caw ca-caw caw. caw caw!",
+            "$S;Craaaa!! $T2;caw cawcaw caw c-caw",
+            "",
+            "$T2;Caw caw. Ca-caw caw.. caw!"
+        ]
+        jess_downloads.build("crows32.jpg")
+        jess_downloads.build("crows16.jpg")
+        jess_downloads.build("crows30.jpg")
+        jess_downloads.build("crows18.jpg")
+        jess_downloads.build("crows12.jpg")
+        jess_downloads.touch("remember.txt").content = [
+            "You are great, for looking through all the files!",
+            "You're cool, you know that?"
+        ]
+        jess_downloads.build("crows9.jpg")
+        jess_downloads.build("crows7.jpg")
+        home_jess.mkdir(".Trash")
+        let desktop_jess = home_jess.mkdir("Desktop")
+        desktop_jess.build("Terminal.exe")
+        desktop_jess.build("Mail.exe")
+        desktop_jess.build("Browser.exe")
+        desktop_jess.build("Trash.exe")
+
+        
+        let lib = root_ob.mkdir("lib")
+        lib.build("metaxploit.so")
+        lib.build("apt-client.so")
+        lib.build("kernel_module.so")
+        lib.build("net.so")
+        lib.build("init.so")
+        
+        let sys = root_ob.mkdir("sys")
+        sys.permissions = "drwxr-x---"
+        sys.build("xorg.sys")
+        sys.build("config.cfg")
+        sys.build("network.sys")
+
+        let usr = root_ob.mkdir("usr")
+        let usrbin = usr.mkdir("bin")
+        usrbin.build("Terminal.exe")
+        usrbin.build("Mail.exe")
+        usrbin.build("Manual.exe")
+        usrbin.build("Browser.exe")
+        usrbin.build("Notepad.exe")
+        usrbin.build("Settings.exe")
+
+        let boot = root_ob.mkdir("boot")
+        boot.permissions = "drwx------"
+        boot.build("System.map")
+        boot.build("initrd.img")
+        boot.build("kernel.img")
+        boot.build("config.sys")
+
+        let root_pwd = root_ob.mkdir("root")
+        root_pwd.permissions = "drwxr-xr--"
+        root_pwd.mkdir("Desktop")
+        root_pwd.mkdir("Downloads")
+        root_pwd.mkdir(".Trash")
+
+        let readme = root_pwd.touch("readme.txt")
+        readme.content = [
+            "$S;Well done! You escalated to root!",
+            "$T2;I think you should join the crowsploit discord!:",
+            " ",
+            "$P; discord.gg/qW5Uv2SAmq ",
+            " ",
+            "$T2;Also, can you find the two secrets in this system?"
+        ]
+        readme.permissions = "-rwx------"
+        root_pwd.build("crowsploit")
+        pwd = home_demo
+
+        // functions
+        function hide_input() {
+            input_box.style.display = "none";
+            hidden = true
+        }
+        function show_input() {
+            input_box.style.display = "block";
+            input.focus()
+            input.value = ""
+            hidden = false
+        }
+        function parse_path(path, ob) {
+            let start = ob
+            if (path[0] == "/") {
+                start = root_ob
+            }
+
+            let parts = path.split("/")
+            for (let i in path.split("/")) {
+                let part = parts[i]
+
+                if (part == "") {continue}
+                else if (part == "..") {start = start.parent}
+                else {
+                    let temp = start.find_any(part)
+                    if (temp == null) {return false}
+                    start = temp
+                }
+            }
+            return start
+        }
+
+        function parse_cmd(cmd) {
+            let out = []
+            let backs = 0
+            let temp = ""
+            let quote = null
+            let last = null
+            let temp_last = null
+            
+            for (let i in cmd) {
+                let chr = cmd[i]
+                last = temp_last
+                temp_last = chr
+                
+                if (last != "\\" && backs) {
+                    temp = temp.slice(0, -1) + "\\" + temp.slice(-1)
+                    backs = false
+                }
+                
+                if (chr == "\\") {
+                    backs = !backs
+                    if (backs == false) {
+                        temp += "\\"
+                    }
+                    continue
+                }
+                
+                if (chr == "'" || chr == "\"") {
+                    if (backs) {
+                        backs = false
+                        temp += chr
+                        continue
+                    }
+                    
+                    if (quote == null) {
+                        quote = chr
+                        if (temp != "") {
+                            out.push(temp)
+                        }
+                        temp = ""
+                        continue
+                    } else if (quote != null && quote != chr) {
+                        temp += chr
+                        continue
+                        
+                    } else {
+                        quote = null
+                        out.push(temp)
+                        temp = ""
+                        continue
+                    }
+                }
+                
+                if (chr == " " && temp != "" && quote == null) {
+                    out.push(temp)
+                    temp = ""
+                    continue
+                } else if (chr == " " && quote == null) {
+                    continue
+                }
+                
+                temp += chr
+            }
+            if (temp != "") {out.push(temp)}
+            return out
+        }
+
+        function parse_color(text) {
+            let result = text
+            result = result.replace(/\$\/;/g, "</span>")
+            let matches = text.match(/\$.+?;/g)
+            if (matches == null) {return text}
+
+            for (let elem in matches) {
+                let raw = matches[elem]
+                let val = raw.slice(1, -1)
+                let regex = new RegExp("\\"+raw, "g");
+                result = result.replace(regex, "<span class='"+val+"'>", "g")
+            }
+            return result
+        }
+
+        function remove_color(text) {
+            let result = text
+            let matches = text.match(/<\/?span.*?>/g)
+            for (let i in matches) {
+                let raw = matches[i]
+                result = result.replace(raw, "")
+            }
+            return result
+        }
+
+        function write(text, dont_stdout) {
+            let parsed = parse_color(text.toString())
+            if (dont_stdout!=true) {stdout.push(remove_color(parsed))}
+            if (silent == false) {
+                term.innerHTML += "</br>" + parse_color(text.toString())
+            }
+        }
+
+        function get_input() {
+            let user_col = "$P;"
+            if (user == "root") {user_col = "$root;"}
+            if (user == "superroot") {user_col = "$superroot;"}
+            if (user == "godroot") {user_col = "$godroot;"}
+            return parse_color("$T;("+pwd.path()+")$/; " + user_col + user+"$/;$T;@$/;$S;"+comp+"$/;$T; >$/; ")
+        }
+
+        function repeat(string, count) {
+            let result = ""
+            for (let x =0; x<count; x++) {
+                result += string
+            }
+            return result
+        }
+
+        function fakehash() {
+            let result = ""
+            let chars = "0123456789abcdef"
+            for (let i=0; i<32; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result
+        }
+
+        // Commands
+        function clear_cmd(args) {term.innerHTML = ""}
+        function help_cmd(args) {
+            if (args.length == 0) {
+                write("$T2;--------------( commands )--------------")
+                write("$T;Command     Args                Description")
+                write("")
+                write("$P;help             $string;cmd                 $T2;Show this menu")
+                write("$P;clear                                   $T2;Clear screen")
+                write("$P;ls                 $bool;-la                   $T2;Show files and folders")
+                write("$P;echo             $rest;rest                 $T2;Write stuff to terminal")
+                write("$P;cd                $string;path                $T2;Change directory")
+                write("$P;cat               $string;file                  $T2;Ouput file content to terminal")
+                write("$P;rf                 $string;sep  fmt  $rest;rest    $T2;Reformat piped data")
+                write("$P;crack            $string;hash                $T2;Crack a hash")
+                write("$P;su                $string;user pass          $T2;Login as another user")
+                write("$P;useradd        $string;user pass          $T2;Add another user to the system")
+                write("$P;groups         $string;username          $T2;View what groups a user is in")
+                write("$P;grep             $string;pattern $rest;rest      $T2;Filter data")
+                write("$error;exit                                     $T2;Go back to the website")
+                write(" ")
+            } else if (args[0] in helps) {
+                for (let i in helps[args[0]]) {
+                    write(helps[args[0]][i])
+                }
+
+            } else {
+                return "Command not found"
+            }
+        }
+        function stdout_cmd(args) {
+            for (let i in stdout) {
+                write(stdout[i])
+            }
+        }
+        function ls_cmd(args) {
+            if (args.length > 1) {return "Too many arguments"}
+            let result = [[]]
+            let temp = []
+            let items = pwd.get_all()
+            if (args.length > 0 && args[0] == "-la") {
+                for (let i in items) {
+                    let item = items[i]
+                    if (item.owner == "godroot" && !(user == "superroot" || user == "godroot")) {continue}
+                    write("$T2;" + item.permissions + " $T;"+item.size+" $"+item.owner+";"+item.owner+" $/;$"+item.group+";"+item.group+" $/;$ls"+item.type+";" + item.name)
+                }
+            } else {
+                for (let i in items) {
+                    if (temp.join("  ").length > 50) {
+                        result.push([])
+                        temp = []
+                    }
+                    let item = items[i]
+                    if (item.owner == "godroot" && (user != "superroot" && user != "godroot")) {continue}
+                    temp.push(item.name)
+                    result[result.length-1].push("$ls"+item.type+";"+item.name)
+                }
+                for (let i in result) {
+                    write("$P;" + result[i].join("  "))
+                }
+            }
+            write(" ", true)
+        }
+        function echo(args) {
+            write(args.join(" "))
+        }
+        function cd_cmd(args) {
+            if (args.length < 1) {return "Not enough arguments"}
+            let res = parse_path(args[0], pwd)
+            if (res == false) {
+                return "Folder not found"
+            }
+            if (res.type != "folder") {
+                return "Path is not a folder"
+            }
+            if (res.path() == "/godroot/" && user != "godroot") {return "You're not ready for that yet"}
+            pwd = res
+            prefix.innerHTML = get_input()
+        }
+        function cat_cmd(args) {
+            if (args.length < 1) {
+                return "Not enough arguments"
+            }
+            let file = parse_path(args[0], pwd)
+            if (file == false) {return "File not found"}
+            if (file.type != "file") {return "Cannot cat " + file.type}
+            let content = file.get_content(user, group)
+            if (content == null) {
+                return "No read permissions"
+            }
+
+            for (let l in content) {
+                write(content[l])
+            }
+        }
+        function grep_cmd(args) {
+            if (args.length < 1) {return "Not enough arguments"}
+            let regmatch = new RegExp(args[0], "g")
+            let temp_args = args.slice(1).join(" ")
+            if (temp_args.match(regmatch) != null) {
+                write(temp_args)
+            }
+        }
+        function rf_cmd(args) {
+            if (args.length < 3) {
+                return "Not enough arguments"
+            }
+            let sep = args[0]
+            let fmt = args[1]
+            let data = args.slice(2).join(" ").split(sep)
+            
+            for (let i in data) {
+                fmt = fmt.replace("\{"+i+"\}", data[i])
+            }
+            write(fmt)
+        }
+        function crack_display(hash, extra) {
+            let progress = 0
+            let bar_length = 35
+
+            let elem = document.createElement("span");
+            elem.innerHTML = hash
+            term.innerHTML += "<br/>"
+            term.appendChild(elem)
+
+            let interval = setInterval(do_render, 20)
+            function do_render() {
+                progress += 1
+                if (progress > 100) {
+                    clearInterval(interval)
+                    hash_que -= 1
+                    if (hash_que == 0) {
+                        setTimeout(show_input, 100)
+                    }
+
+                    if (extra != null ){
+                        write("$S;"+extra+" $T;: $P;"+hashes[hash])
+                    } else {
+                        write("$P;"+hashes[hash])
+                    }
+                } else {
+                    // write("Hello?")
+                    let bar_progress = Math.round(bar_length*(progress/100))
+                    // let bar_progress = Math.ceil(bar_length*(progress/100))
+                    let filled = repeat("#", bar_progress)
+                    let empty = repeat("--", bar_length-bar_progress)
+                    elem.innerHTML = "["+filled+empty+"]==["+progress+"%]"
+                    // elem.innerHTML = "[--]==["+progress+"%]"
+                }
+            }
+        }
+        function crack_cmd(args) {
+            if (args.length < 1) {
+                return "Not enough arguments"
+            }
+            let hash = args[0]
+            let extra = null
+            if (args[0].indexOf(":") != -1) {
+                let temp = args[0].split(":")
+                extra = temp[0]
+                hash = temp[1]
+            }
+
+            if (!(hash.match(/[a-fA-F0-9]{32}/g))) {
+                return "Invalid hash specified"
+            } else if (!(hash in hashes)) {
+                return "Hash not in fake database"
+            }
+
+            // write(extra +":"+hash)
+            if (hash_que == 0) {
+                crack_display(hash, extra)
+            } else {
+                setTimeout(lol, 2200*hash_que)
+                function lol() {
+                    crack_display(hash, extra)
+                }
+            }
+            hash_que += 1
+            hide_input()
+        }
+        function su_cmd(args) {
+            if (args.length < 2) {
+                return "Not enough arguments"
+            }
+            
+            let inp_user = args[0]
+            if (!(inp_user in passwords)) {return "User not found: $T;"+inp_user}
+
+            if (hashes[passwords[inp_user]] != args[1]) {return "Invalid password for user $T;" + inp_user}
+            user = inp_user
+            group = groups[inp_user]
+            prefix.innerHTML = get_input()
+        }
+        function useradd_cmd(args) {
+            if (args.length < 2) {return "Not enough arguments"}
+            if (group != "root") {return "Must at least have root group permissions"}
+            let user = args[0]
+            let pwd = args[1]
+            let hash = fakehash()
+            if (user == "godroot") {return "$big;$superroot;HahahAhahAhAAHAHahaHAh"}
+            if (user in passwords) {return "User already exists"}
+            passwords[user] = hash
+            hashes[hash] = pwd
+            write("$S;User created")
+
+            let passwd_content = []
+            for (let i in passwords) {
+                if (i == "godroot") {continue}
+                passwd_content.push(i+":"+passwords[i])
+            }
+            passwd.content = passwd_content
+
+            let temp_home = home.mkdir(user)
+            // temp_home.permissions = "drwx------"
+            temp_home.owner = user
+            temp_home.group = user
+            groups[user] = user
+            
+            temp_home.mkdir("Desktop")
+            temp_home.mkdir("Downloads")
+            temp_home.mkdir("Config")
+            temp_home.mkdir(".Trash")
+        }
+        function groups_cmd(args) {
+            if (args.length < 1) {return "Not enough arguments"}
+            if (!(args[0] in groups)) {return "User not found"}
+            write("$S;User $T;"+args[0]+" $S;has the following group(s):")
+            write("$P;"+groups[args[0]])
+        }
+        function secret_cmd(args) {
+            if (args.length < 1) {return "$superroot;Nuh uh-uh! What's the magic word?"}
+            if (args[0] == "please") {return "$superroot;That would be way too easy, wouldn't it?"}
+            if (args[0] != "thereisalwaysmore") {return "$superroot;Womp womp. That is incorrect~"}
+            hide_input()
+            input_box.innerHTML = ""
+
+            let count = 0
+            let messages = [
+                "thereisalwaysmorethereisalwaysmore",
+                "when will it end when will it end",
+                "72b302bf297a228a75730123efef7c41",
+                "getoutofmyheadgetoutofmyhead",
+                "hahAhAhhdHAhAhhaHahAhAHAHAHh",
+                "yey crows :D i like crows :)",
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            ]
+
+            function flash() {
+                count += 1;
+                term.innerHTML = parse_color("$superroot;$big;"+messages[Math.floor(Math.random() * messages.length)])
+                if (count >= 120) {
+                    clearInterval(flash_interval)
+                    clear_cmd()
+                    write("$P;$big;That's the last one..$/;$T;(or.. is it?)")
+                    write("$S;$big;Thank you for playing!")
+                    write("$T2;I really enjoyed making this, and i hope you enjoyed playing it")
+                    write("$T2;Either way.. Send me a message on discord, with a screenshot of this")
+                    write("$T2;You'll get a cool role in the crowsploit discord server lmao")
+                    write("$T2;Cya!")
+                    write(" ")
+                    write("$T;(The terminal will close in 30 seconds)")
+                    finished_minigame = true
+
+                    let buttons = document.querySelectorAll(".tryit")
+                    for (let i=0; i<buttons.length; i++) {
+                        buttons[i].innerHTML = "<span class='superroot'>thereisalwaysmore</span>"
+                        // buttons[i].style.textShadow = "0px 0px 30px #880000"
+                    }
+
+                    setTimeout(hide_terminal, 30000)
+                }
+            }
+            let flash_interval = setInterval(flash, 25)
+        }
+
+        // Command object
+        const command_map = {
+            "clear": clear_cmd,
+            "help": help_cmd,
+            "stdout": stdout_cmd,
+            "ls":ls_cmd,
+            "echo":echo,
+            "cd":cd_cmd,
+            "cat":cat_cmd,
+            "grep":grep_cmd,
+            "rf":rf_cmd,
+            "crack":crack_cmd,
+            "su":su_cmd,
+            "useradd":useradd_cmd,
+            "groups":groups_cmd,
+            "exit":hide_terminal,
+            "secret":secret_cmd
+        }
+
+        // Input handler
+
+        function run_command(cmd) {
+            write(get_input() + "<span style='color:#bcf'>"+cmd, true)
+            if (cmd == "") {return false}
+
+            let raw_commands = parse_cmd(cmd)
+            let commands = [[]]
+            let pipe = []
+
+            for (let i in raw_commands) {
+                let item = raw_commands[i]
+
+                if (item == "|" && pipe != []) {
+                    commands[commands.length-1].push(pipe)
+                    pipe = []
+                    
+                } else if (item == "&&") {
+                    if (pipe == [] && commands[commands.length-1] == []) {continue}
+                    if (pipe != []) {
+                        commands[commands.length-1].push(pipe)
+                        pipe = []
+                    }
+                    commands.push([])
+
+                } else {
+                    pipe.push(item)
+                }
+            }
+
+            if (pipe != []) {commands[commands.length-1].push(pipe)}
+
+            for (let i in commands) {
+                let chain = commands[i]
+                // write(chain, true)
+
+                for (let p in chain) {
+                    // write(p, true)
+                    old_stdout = stdout
+                    stdout = []
+
+                    let pipe_cmd = chain[p]
+                    let cmd = pipe_cmd[0]
+                    let args = pipe_cmd.slice(1)
+                    let piped = p>0
+                    silent = p<(chain.length-1)
+            
+                    if (cmd in command_map) {
+                        if (piped) {
+                            for (let s in old_stdout) {
+                                let extra = [old_stdout[s]]
+                                // write(extra, true)
+                                let cmd_res = command_map[cmd](args.concat(extra))
+                                if (typeof(cmd_res) == "string") {
+                                    write("$error;"+cmd_res)
+                                    break
+                                }
+                            }
+                            
+                        } else {
+                            let cmd_res = command_map[cmd](args)
+                            if (typeof(cmd_res) == "string") {
+                                write("$error;" + cmd_res)
+                                break
+                            }
+                        }
+                    } else {
+                        write("$error;Unknown command: $T;" + cmd)
+                        break
+                    }
+                }
+            }
+            var width = prefix.offsetWidth * 1.15
+            input.style.width = "calc(100vw - "+width+"px)"
+            return true
+        }
+
+        input.addEventListener("keydown", function(event) {
+            if (event.keyCode == 13 && !hidden) {
+                let temp = input.value
+                input.value = ""
+                while (run_command(temp) == null) {}
+            }
+        });
+
+        wowzers.addEventListener("click", function(event) {
+            input.focus()
+        })
+
+        // term.addEventListener("wheel", function(event) {
+        //     let temp = body.scrollTop + (event.deltaY / 10)
+        //     temp = Math.max(0, temp)
+        //     term.innerHTML += "<br/>" + typeof body.scrollTop
+        //     body.scrollTo(0, temp)
+        // });
+
+        // Initialization
+
+        prefix.innerHTML = get_input()
+
+        // Check if in greyhack or not
+        if (typeof(window) != "undefined") {
+            write("$error;(Running in vscode)")
+            write(" ")
+        }
+
+        run_command("cat hello.txt")
+        // run_command("help cat")
+        // run_command("help grep")
+        // run_command("help rf")
     </script>
 </body>
 </html>

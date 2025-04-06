@@ -324,4 +324,12 @@ end function
 
 repl_cmd = debug_tool.command("repl", repl_args, @repl_func)
 
+dump_cob = function(a)
+    for x in get_custom_object
+        print(x.key + " : " + x.value)
+    end for
+end function
+
+debug_tool.command("dumpcob", [], @dump_cob)
+
 debug_tool.init()

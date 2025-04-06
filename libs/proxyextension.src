@@ -559,40 +559,54 @@ end function
 
 import_code("./utils")
 
+// Do we really need this?
+// Would this not be better as a stand-alone tool?
 File.encrypt = function(key)
-    self.sanity_check
-    if not self.is_file then return TypeError.New("File.encrypt","file",self.file_type())
-    if not self.has_permission("r") then return PermissionError.New("File.encrypt","read / write")
-    if not self.parent.has_permission("w") then return PermissionError.New("File.encrypt","read / write")
-    err = expect_all([key], string)
-    if err then return TypeError.New("File.encrypt","string", typeof(err))
-    if key.len != 16 then return Error.New("File.encrypt","Key length must be exactly 16 characters long")
-    cont = self.get_content
-    if is_error(cont) then return cont.stack("File.encrypt")
-    r = AES128("encrypt", key, cont)
-    if r == null then return Error.New("file.encrypt","Unknown error")
-    result = self.set_content(str(r))
-    if is_error(result) then return result.stack("File.encrypt")
-    return true
-end function
+        self.sanity_check
 
+        if not self.is_file then return TypeError.New("File.encrypt","file",self.file_type())
+        if not self.has_permission("r") then return PermissionError.New("File.encrypt","read / write")
+        if not self.parent.has_permission("w") then return PermissionError.New("File.encrypt","read / write")
+
+        err = expect_all([key], string)
+        if err then return TypeError.New("File.encrypt","string", typeof(err))
+        if key.len != 16 then return Error.New("File.encrypt","Key length must be exactly 16 characters long")
+
+        cont = self.get_content
+        if is_error(cont) then return cont.stack("File.encrypt")
+
+        r = AES128("encrypt", key, cont)
+        if r == null then return Error.New("file.encrypt","Unknown error")
+
+        result = self.set_content(str(r))
+        if is_error(result) then return result.stack("File.encrypt")
+
+        return true
+end function
 
 File.decrypt = function(key)
-    self.sanity_check
+        self.sanity_check
+    
     if not self.is_file then return TypeError.New("File.decrypt","file",self.file_type())
-    if not self.has_permission("r") then return PermissionError.New("File.decrypt","read / write")
-    if not self.parent.has_permission("w") then return PermissionError.New("File.decrypt","read / write")
+        if not self.has_permission("r") then return PermissionError.New("File.decrypt","read / write")
+        if not self.parent.has_permission("w") then return PermissionError.New("File.decrypt","read / write")
+    
     err = expect_all([key], string)
-    if err then return TypeError.New("File.decrypt","string", typeof(err))
-    if key.len != 16 then return Error.New("File.decrypt","Key length must be exactly 16 characters long")
+        if err then return TypeError.New("File.decrypt","string", typeof(err))
+        if key.len != 16 then return Error.New("File.decrypt","Key length must be exactly 16 characters long")
+    
     cont = self.get_content
-    if is_error(cont) then return cont.stack("File.decrypt")
+        if is_error(cont) then return cont.stack("File.decrypt")
+    
     r = AES128("decrypt", key, cont)
-    if r == null then return Error.New("file.decrypt","Unknown error")
+        if r == null then return Error.New("file.decrypt","Unknown error")
+    
     result = self.set_content(str(r))
-    if is_error(result) then return result.stack("File.decrypt")
+        if is_error(result) then return result.stack("File.decrypt")
+        
     return true
 end function
+
 
 Computer.get_user = function()
     all_files = self.File("/").tree(true, 15, 0, true)
