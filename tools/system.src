@@ -2154,6 +2154,45 @@ $P;concat $string;'hello' 'how' 'are' 'you' $T;>> 'hellohowareyou'
 $P;concat $string;--delimter ':' $WAN 21 $T>> '32.12.53.2:21'
 $P;concat $string;--delimter '@' $USER wuwuvik.com $T>> 'user@wuwuvik.com'"
 
+// file
+
+file_args = [
+    Arg.New("file","string").Info("target file path")
+]
+
+file_func = function(a)
+    sess_file = a.kernel.session.file
+    file = sess_file.get_path(a.file)
+    if is_error(file) then return file.stack("system.file")
+    file_info = [["name:", file.name], ["path: ", file.path], ["size:", round(to_int(file.size)/1048576, 2) + "MB"], ["owner:", file.owner], ["group:", file.group], ["perms:", file.permissions], ["effective:", file.get_effective_permissions], ["type:", file.file_type]]
+    if file.is_folder then file_info.push(["items: ", (file.get_files + file.get_folders).len])
+    is_sym = file.is_symlink
+    file_info.push(["symlink:", ["no","yes"][is_sym]])
+    if is_sym then file_info.push(["target:", file.path(true)])
+    print(tabulate_data(file_info,["",""]).string.split(char(10))[1:].join(char(10)))
+end function
+
+file_cmd = mytool.standalone_command("file", file_args, @file_func)
+file_cmd.short_description = "View detailed file information such as permissions, file type, and effective permissions"
+file_cmd.long_description = "
+$PUsage: system file $string;testfile.txt$P; >>
+name: testfile.txt           
+path: /root/test/testfile.txt           
+size: 0MB   
+owner: root        
+group: root        
+perms: -rwxr-xr-x
+effective: read, write(Full), execute
+type: file      
+//items: 12(showed when type is folder)          
+symlink: no
+//target: /root/target(shown when type is symlink)"
+
+
+
+
+
+
 // init
 
 mytool.init()
