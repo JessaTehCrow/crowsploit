@@ -2166,9 +2166,15 @@ file_func = function(a)
     sess_file = a.kernel.session.file
     file = sess_file.get_path(a.file)
     if is_error(file) then return file.stack("system.file")
-    file_info = [["name:", file.name], ["path: ", file.path], ["size:", round(to_int(file.size)/1048576, 2) + "MB"], ["owner:", file.owner], ["group:", file.group], ["perms:", file.permissions], ["effective:", file.get_effective_permissions], ["type:", file.file_type]]
-    if file.is_folder then file_info.push(["items: ", (file.get_files + file.get_folders).len])
+    file_info = [["name:", file.name], ["path: ", file.path], ["size:", round(to_int(file.size)/1048576, 2) + "MB"], ["owner:", file.owner], ["group:", file.group], ["perms:", file.permissions], ["effective:", file.get_effective_permissions]]
+    if file.is_folder then file_info.push(["subitems: ", (file.get_files + file.get_folders).len])
     is_sym = file.is_symlink
+    if is_sym then 
+        temp_file = file.get_path(file.path(true))
+        result = "[Deleted]"
+        if not is_error(temp_file) then result = temp_file.file_type
+        file_info.push(["type:", result])
+    end if
     file_info.push(["symlink:", ["no","yes"][is_sym]])
     if is_sym then file_info.push(["target:", file.path(true)])
     print(tabulate_data(file_info,["",""]).string.split(char(10))[1:].join(char(10)))
@@ -2186,7 +2192,7 @@ group: root
 perms: -rwxr-xr-x
 effective: read, write(Full), execute
 type: folder      
-items: 2          
+subitems: 2          
 symlink: yes
 target: /root/target"
 
