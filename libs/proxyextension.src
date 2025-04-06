@@ -456,6 +456,7 @@ File.get_effective_permissions = function(Force = true,raw = false)
     if idx != null then
         StringPerms = StringPerms.insert(idx + offset, "(" + GetWriteLevel(self, raw) + ")")
     end if
+    if StringPerms == "" then StringPerms = "none"
     if not user isa map and (user.lower == "unknown" or not user) then return StringPerms+":"+eff
     if user.sUser == self.owner then return StringPerms+":u"
     if ingrp == 1 then return StringPerms+":g"
