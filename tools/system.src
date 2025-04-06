@@ -2177,18 +2177,18 @@ end function
 file_cmd = mytool.standalone_command("file", file_args, @file_func)
 file_cmd.short_description = "View detailed file information such as permissions, file type, and effective permissions"
 file_cmd.long_description = "
-$PUsage: system file $string;testfile.txt$P; >>
-name: testfile.txt           
-path: /root/test/testfile.txt           
-size: 0MB   
+$P;Usage: system file $string;testfolder$P; >>
+name: testfolder         
+path: /root/test/testfolder          
+size: 1.2MB   
 owner: root        
 group: root        
 perms: -rwxr-xr-x
 effective: read, write(Full), execute
-type: file      
-//items: 12(showed when type is folder)          
-symlink: no
-//target: /root/target(shown when type is symlink)"
+type: folder      
+items: 2          
+symlink: yes
+target: /root/target"
 
 
 
