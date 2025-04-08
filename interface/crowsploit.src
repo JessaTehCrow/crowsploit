@@ -31,6 +31,10 @@ update_libs = function(kernel, session, path)
 
     loaded = session.load_libs(path)
 
+    // Find and copy rshell in /lib
+    rshell = session.file.get_file("/lib/librshell.so")
+    if not is_error(rshell) and typeof(include_lib(rshell.path)) == "service" then rshell.copy(path, "librshell.so")
+    
     // Find and copy apt in /lib
     if session.apt == null then
         file = session.file.get_file("/lib/aptclient.so")

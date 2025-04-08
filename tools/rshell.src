@@ -129,7 +129,7 @@ rshell_server_func = function(a)
             return result.stack("rshell.server")
         end if
     else
-        file = a.kernel.session.file.get_file(rshell_download_path)
+        file = a.kernel.session.file.get_file(rshell_path)
         if is_error(file) then return file.stack("rshell.server")
     end if
 
