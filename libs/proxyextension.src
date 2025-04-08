@@ -238,8 +238,7 @@ File.get_path = function(target)
     
     folder = self.get_folder(p.folder)
     if is_error(folder) then return folder.stack("File.get_file")
-
-    if folder.path == target then return folder
+    if folder.path == target or (folder.path == "/" and p.slices.len == 0) then return folder
 
     for file in folder.object.get_files + folder.object.get_folders
         if file.name.is_match("^"+p.name+"$") then return File.New(file, self.root_path)
