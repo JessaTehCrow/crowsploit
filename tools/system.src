@@ -2170,12 +2170,13 @@ file_func = function(a)
     file_info = [["name:", file.name], ["path: ", file.path], ["size:", round(to_int(file.size)/1048576, 2) + "MB"], ["owner:", file.owner], ["group:", file.group], ["perms:", file.permissions], ["effective:", file.get_effective_permissions]]
     if file.is_folder then file_info.push(["subitems: ", (file.get_files + file.get_folders).len])
     is_sym = file.is_symlink
+    type = file.file_type
     if is_sym then 
         temp_file = file.get_path(file.path(true))
-        result = "[Deleted]"
-        if not is_error(temp_file) then result = temp_file.file_type
-        file_info.push(["type:", result])
+        type = "[Deleted]"
+        if not is_error(temp_file) then type = temp_file.file_type
     end if
+    file_info.push(["type:", type])
     file_info.push(["symlink:", ["no","yes"][is_sym]])
     if is_sym then file_info.push(["target:", file.path(true)])
     print(tabulate_data(file_info,["",""]).string.split(char(10))[1:].join(char(10)))

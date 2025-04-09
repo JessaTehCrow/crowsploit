@@ -305,9 +305,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
             else
                 was_piped = self.piped
                 if __pipe_idx == command.len - 1 then self.piped = false
-                self.piped = false
                 pd = self.piped
-                //if redircted then self.piped = true
                 self.old_stdout = self.stdout.values
                 self.stdout = []
                 for x in self.old_stdout
