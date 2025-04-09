@@ -2159,11 +2159,12 @@ $P;concat $string;--delimter '@' $USER wuwuvik.com $T>> 'user@wuwuvik.com'"
 // file
 
 file_args = [
-    Arg.New("file","string").Info("target file path")
+    OptionalArg.New("file","string").Info("target file path")
 ]
 
 file_func = function(a)
     sess_file = a.kernel.session.file
+    if a.file == null then a.file = "."
     file = sess_file.get_path(a.file)
     if is_error(file) then return file.stack("system.file")
     file_info = [["name:", file.name], ["path: ", file.path], ["size:", round(to_int(file.size)/1048576, 2) + "MB"], ["owner:", file.owner], ["group:", file.group], ["perms:", file.permissions], ["effective:", file.get_effective_permissions]]
