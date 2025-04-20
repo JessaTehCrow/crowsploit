@@ -127,8 +127,9 @@ main_args = [
 
 main_func = function(a)
     // Get data
+    if not a.kernel.active_session.computer.is_network_active then return OsError.New("scan.main","No internet connection")
     if a.host == "localhost" or a.host == "127.0.0.1" then
-        if a.kernel.session.computer == null then return ObjectError.New("scan.main", "shell")
+        if a.kernel.session.computer == null then return ObjectError.New("scan.main", "computer")
         a.host = a.kernel.session.computer.local_ip
     end if
     
@@ -487,6 +488,8 @@ for_func = function(a)
 
     if a.count == 0 then a.count = 999999999
     if a["max-iterations"] == 0 then a["max-iterations"] = 99999
+
+    if not a.kernel.active_session.computer.is_network_active then return OsError.New("scan.for","No internet connection")
 
     libraries = []
     if a.library != null then
