@@ -393,19 +393,26 @@ end function
 // @description Force - If false, the function returns an error object when lacking write permissions. (default: true)
 // @param {bool} Raw
 // @description Raw - Return permissions in 'rwx' format instead o human readable strings
+// @param {string} user
+// @description user - do not use get_user/get_user_ex but instead the passed user
 // @returns {string|Error}
 // @description **Returns:** a human readable string of permissions. If access is denied and Force is false, an Error object is returned instead.
-File.get_effective_permissions = function(Force = true,raw = false)
-    GetWriteLevel = function(file, raw)
+File.get_effective_permissions = function(Force = true,raw = false, user = null)
+    GetWriteLevel = function(file, raw, isOwner)
         level = 0
         if file.parent.has_permission("w") then level = level + 1
-        if file.has_permission("w") then level = level + 2
+        if file.has_permission("w") or isOwner then level = level + 2
         levels = ["None", "Parent", "File", "Full"]
         if raw then return level else return levels[level]
     end function
 
 
-    CRE = function(perms)
+    CRE = function(perms, isOwner)
+        if isOwner and perms.indexOf("w") == null then 
+            perms = perms.values
+            perms[1] = "w"
+            perms = perms.join("")
+        end if
         temp = []
         order = "rwx"
         sortedPerms = ""
@@ -430,11 +437,12 @@ File.get_effective_permissions = function(Force = true,raw = false)
 
     effperms = ""
     eff = null
-    user = self.get_user_ex
+    if not user then user = self.get_user_ex
+    isown = user == self.owner
     ingrp = self.in_group
     if is_error(ingrp) and not Force then return ingrp.stack("File.get_effective_permissions")
     if self.has_permission("r") then effperms = effperms + "r" else effperms = effperms + "-" //({"raw":"r", "eval":"read"})
-    if self.has_permission("w") then effperms = effperms + "w" else effperms = effperms + "-"//({"raw":"w", "eval":"write"})
+    if self.has_permission("w") or self.parent.has_permission("w") then effperms = effperms + "w" else effperms = effperms + "-"//({"raw":"w", "eval":"write"})
     if self.has_permission("x") then effperms = effperms + "x" else effperms = effperms + "-"//({"raw":"x", "eval":"execute"})
     prevp = self.permissions[1:]
     up = prevp[0:3]
@@ -444,7 +452,7 @@ File.get_effective_permissions = function(Force = true,raw = false)
     for f in permMap
         if f.value == effperms then eff = f.key
     end for
-    StringPerms = CRE(effperms)
+    StringPerms = CRE(effperms, isown)
     if raw then 
         offset = 1
         idx = StringPerms.indexOf("w")
@@ -452,12 +460,15 @@ File.get_effective_permissions = function(Force = true,raw = false)
         offset = 5
         idx = StringPerms.indexOf("write")
     end if
+    writelvl = GetWriteLevel(self, raw, isown)
     if idx != null then
-        StringPerms = StringPerms.insert(idx + offset, "(" + GetWriteLevel(self, raw) + ")")
+        StringPerms = StringPerms.insert(idx + offset, "(" + GetWriteLevel(self, raw, isown) + ")")
     end if
+
     if StringPerms == "" then StringPerms = "none"
-    if not user isa map and (user.lower == "unknown" or not user) then return StringPerms+":"+eff
-    if user.sUser == self.owner then return StringPerms+":u"
+    if user isa map then user = user.sUser
+    if (user.lower == "unknown" or not user) then return StringPerms+":"+eff
+    if user == self.owner then return StringPerms+":u"
     if ingrp == 1 then return StringPerms+":g"
     return StringPerms+":o"
 end function
