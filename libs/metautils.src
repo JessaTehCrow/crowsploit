@@ -649,7 +649,7 @@ full_scan = function(metax, library, router, silent=false, existing=null, skip_e
                 r = select_prompt("What elevation did it have?", ["root", "user"])
                 if r != null then exploit.objperms = r
             else if exploit.object == "Password" and silent then
-                exploit.objperms = "Unknown"
+                exploit.objperms = "unknown"
             end if
 
             if exploit.object != "Unknown" then
