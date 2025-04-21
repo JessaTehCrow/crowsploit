@@ -403,7 +403,7 @@ end function
 
 min = function(a,b)
     if not a isa number and not a isa list then return TypeError.New("min","number | list", typeof(a))
-    if a isa number and not b isa number then return TypeError("number", typeof(b))
+    if a isa number and not b isa number then return TypeError.New("number", typeof(b))
     
     if a isa number then return [a,b][a>b]
 
