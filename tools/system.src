@@ -1503,17 +1503,29 @@ download_func = function(a)
     
     if session == a.kernel.session then return OsError.New("system.download", "Cannot download from same session")
     if session == null then return OsError.New("system.download", "Session with id '"+a["from"]+"' not found")
-    if session.shell == null then return OsError.New("system.download", "Target session needs shell access")
+    if a.kernel.session.computer == null then return OsError.New("system.download", "Current session needs computer access")
     if not a.kernel.session.file.has_permission("w") then OsError.New("system.download", "Current session path needs write access")
     file = session.file.get_path(a.file)
     if is_error(file) then return file.stack("system.download")
+
+    file_overwrite = false
+    if file.has_permission("r") and file.is_file then file_overwrite = true
+
+    if session.shell == null and not file_overwrite then return OsError.New("system.download", "Source session needs shell access")
+
     if not file.has_permission("r") then return OsError.New("system.download", "File needs read access")
 
     log(file.path)
     log(a.kernel.session.file.path)
-
-    res = session.shell.scp(file.path, a.kernel.session.file.path, a.kernel.session.shell)
-    if is_error(res) then return res.stack("system.download")
+    if not file_overwrite then
+        res = session.shell.scp(file.path, a.kernel.session.file.path, a.kernel.session.shell)
+        if is_error(res) then return res.stack("system.download")
+    else
+        a.kernel.session.computer.touch(a.kernel.session.file.path, file.name)
+        f = a.kernel.session.file.get_file(a.kernel.session.file.path + "/" + file.name)
+        if is_error(f) then return f.stack("system.download")
+        f.set_content(file.get_content)
+    end if
 end function
 
 download = mytool.standalone_command("download", download_args, @download_func)
