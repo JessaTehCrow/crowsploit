@@ -1,7 +1,7 @@
 import_code("./proxies")
 Path = {}
 Path.slices = null
- 
+Path.is_raw = false
 Path.New = function(full_path)
     if not full_path isa string then return TypeError.New("Path.new", "string", typeof(full_path))
     if full_path == "" then return FormatError.New("Path.New", "Full system path", "Empty string")
@@ -10,16 +10,16 @@ Path.New = function(full_path)
     p = new self
     p.slices = []
     slices = full_path.split("/")[1:]
-
+    if slices.indexOf("..") != null or slices.indexOf(".") != null then raw = true else raw = false
     temp = slices.join("/")
     if temp != "" then
-        p.change(slices.join("/"))
+        p.change(slices.join("/"), raw)
     end if
 
     return p
 end function
 
-Path.change = function(new_path)
+Path.change = function(new_path,raw = false)
     if not new_path isa string then return TypeError.New("Path.change", "string", typeof(new_path))
     if new_path == "" then return FormatError.New("Path.New", "System path", "Empty string")
 
@@ -30,13 +30,21 @@ Path.change = function(new_path)
         self.slices = NewPath.slices
         return
     end if
-
+    self.is_raw = raw
+    if new_path[0:2] == "./" or new_path[0:2] == ".\" then 
+        self.is_raw = true
+        new_path = new_path[2:]
+    end if
     slices = new_path.split("/")
     for slice in slices
-        if slice == ".." then
-            self.slices.pop()
-        else if slice == "." or slice == "" then
-            continue
+        if not self.is_raw then
+            if slice == ".." then
+                self.slices.pop()
+            else if slice == "." or slice == "" then
+                continue
+            else
+                self.slices.push(slice)
+            end if
         else
             self.slices.push(slice)
         end if
@@ -189,10 +197,15 @@ File.find_group = function(group, recursive=false, first=false)
 end function
 
 
-File.get_folder = function(target)
+File.get_folder = function(target, raw)
     self.sanity_check
+    if target == "." then return self
     p = Path.New(self.path)
-    result = p.change(target)
+    if target[0:2] == "./" or target[0:2] == ".\" then 
+        raw = true
+        target = target[2:]
+    end if
+    result = p.change(target, raw)
     if is_error(result) then return result.stack("File.get_folder")
     temp = self.root_path
     if target == "/" then return File.New(temp, temp)
@@ -216,12 +229,17 @@ File.get_folder = function(target)
 end function
 
 
-File.get_file = function(target)
+File.get_file = function(target, raw)
     self.sanity_check
+    if target == "." then return OsError.New("File.get_file","No file found at path : " + self.path)
     p = Path.New(self.path)
-    p.change(target)
+    if target[0:2] == "./" or target[0:2] == ".\" then 
+        raw = true
+        target = target[2:]
+    end if
+    p.change(target, raw)
 
-    folder = self.get_folder(p.folder)
+    folder = self.get_folder(p.folder, raw)
     if is_error(folder) then return folder.stack("File.get_file")
 
     for file in folder.object.get_files
@@ -231,15 +249,18 @@ File.get_file = function(target)
 end function
 
 
-File.get_path = function(target)
+File.get_path = function(target, raw)
     self.sanity_check
+    if target == "." then return self
     p = Path.New(self.path)
-    p.change(target)
-    
-    folder = self.get_folder(p.folder)
+    if target[0:2] == "./" or target[0:2] == ".\" then 
+        raw = true
+        target = target[2:]
+    end if
+    p.change(target, raw)
+    folder = self.get_folder(p.folder, raw)
     if is_error(folder) then return folder.stack("File.get_file")
     if folder.object.path == target or (folder.object.path == "/" and p.slices.len == 0) then return folder
-
     for file in folder.object.get_files + folder.object.get_folders
         if file.name.is_match("^"+p.name+"$") then return File.New(file, self.root_path)
     end for

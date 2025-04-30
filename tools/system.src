@@ -966,19 +966,20 @@ mkdir_func = function(a)
     if a.kernel.session.computer == null then return ObjectError.New("system.mkdir", "computer")
     ses_file = a.kernel.session.file
     ses_comp = a.kernel.session.computer
-
-    target = ses_file.get_path(a.name)
+    p = Path.New(ses_file.path)
+    p.change(a.name)
+    target = ses_file.get_path(p.path)
     if not is_error(target) then return OsError.New("system.mkdir", "Folder already exists")
 
     err = null
-    if a.name[0] == "/" then
-        err = ses_comp.create_folder(parent_path(a.name), a.name.split("/")[-1])
+    if p.path[0] == "/" then
+        err = ses_comp.create_folder(parent_path(p.path), p.path.split("/")[-1])
     else
-        err = ses_comp.create_folder(ses_file.path, a.name)
+        err = ses_comp.create_folder(ses_file.path, p.path)
     end if
     if is_error(err) then return err.stack("system.mkdir")
 
-    print("$T;Created folder $lsfolder;" + a.name)
+    print("$T;Created folder $lsfolder;" + p.path)
 end function
 
 mkdir = mytool.standalone_command("mkdir", mkdir_args, @mkdir_func)
@@ -2165,7 +2166,9 @@ file_args = [
 file_func = function(a)
     sess_file = a.kernel.session.file
     if a.file == null then a.file = "."
-    file = sess_file.get_path(a.file)
+    p = Path.New(sess_file.path)
+    p.change(a.file)
+    file = sess_file.get_path(p.path)
     if is_error(file) then return file.stack("system.file")
     user = a.kernel.session.user 
     if user == "unknown" then user = null
