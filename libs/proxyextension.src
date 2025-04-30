@@ -246,7 +246,7 @@ File.get_file = function(target, raw)
     for file in files
         if file.name == p.name then return File.New(file, self.root_path)
     end for
-
+    if p.name == "." or p.name == ".." then return
     for file in files
         if file.name.is_match("^"+p.name+"$") then return File.New(file, self.root_path)
     end for
@@ -271,6 +271,7 @@ File.get_path = function(target, raw)
     for file in files
         if file.name == p.name then return File.New(file, self.root_path)
     end for
+    if p.name == "." or p.name == ".." then return
     for file in files
         if file.name.is_match("^"+p.name+"$") then return File.New(file, self.root_path)
     end for
