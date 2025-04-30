@@ -242,7 +242,12 @@ File.get_file = function(target, raw)
     folder = self.get_folder(p.folder, raw)
     if is_error(folder) then return folder.stack("File.get_file")
 
-    for file in folder.object.get_files
+    files = folder.object.get_files
+    for file in files
+        if file.name == p.name then return File.New(file, self.root_path)
+    end for
+
+    for file in files
         if file.name.is_match("^"+p.name+"$") then return File.New(file, self.root_path)
     end for
     return OsError.New("File.get_file", "No file found at path : " + p.path)
@@ -261,7 +266,12 @@ File.get_path = function(target, raw)
     folder = self.get_folder(p.folder, raw)
     if is_error(folder) then return folder.stack("File.get_file")
     if folder.object.path == target or (folder.object.path == "/" and p.slices.len == 0) then return folder
-    for file in folder.object.get_files + folder.object.get_folders
+
+    files = folder.object.get_files + folder.object.get_folders
+    for file in files
+        if file.name == p.name then return File.New(file, self.root_path)
+    end for
+    for file in files
         if file.name.is_match("^"+p.name+"$") then return File.New(file, self.root_path)
     end for
     return OsError.New("File.get_path", "No file found at path : " + p.path)
