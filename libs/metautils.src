@@ -247,7 +247,7 @@ Exploit.execute = function(library, extra=null)
     else if exploit_result isa string then
         return Error.New("exploit.execute", exploit_result)
     end if
-
+    if is_error(perm) then perm = "unknown"
     return [object, perm, exploit_result]
 end function
 
