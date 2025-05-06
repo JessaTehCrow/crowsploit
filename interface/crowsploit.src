@@ -52,6 +52,10 @@ update_libs = function(kernel, session, path)
             hackshop = null
 
             kernel.print("$T2;Searching a hackshop...")
+            if not session.computer.is_network_active then
+                kernel.print("$error;Error while searching: No internet connection")
+                return
+            end if
             while hackshop == null
                 router = get_router(kernel.env.RAND_IP)
                 if router == null then continue

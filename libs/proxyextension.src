@@ -1,36 +1,38 @@
 import_code("./proxies")
 Path = {}
 Path.slices = null
-Path.is_raw = false
-Path.New = function(full_path)
+Path.is_raw = null
+Path.New = function(full_path,raw)
     if not full_path isa string then return TypeError.New("Path.new", "string", typeof(full_path))
     if full_path == "" then return FormatError.New("Path.New", "Full system path", "Empty string")
     if full_path[0] != "/" then return FormatError.New("Path.New", "Full system path", full_path)
-
     p = new self
     p.slices = []
     slices = full_path.split("/")[1:]
-    if slices.indexOf("..") != null or slices.indexOf(".") != null then raw = true else raw = false
+    if raw == null then
+        if slices.indexOf("..") != null or slices.indexOf(".") != null then raw = true// else raw = false
+    end if
     temp = slices.join("/")
     if temp != "" then
+        // print("Path.New:call change")
         p.change(slices.join("/"), raw)
     end if
 
     return p
 end function
 
-Path.change = function(new_path,raw = false)
+Path.change = function(new_path,raw)
     if not new_path isa string then return TypeError.New("Path.change", "string", typeof(new_path))
     if new_path == "" then return FormatError.New("Path.New", "System path", "Empty string")
 
-    relative = false
     if new_path[0] == "/" then
-        NewPath = Path.New(new_path)
+        NewPath = Path.New(new_path, raw)
         if not NewPath then return Error.New("path.change", "Input string is invalid")
         self.slices = NewPath.slices
+        self.is_raw = NewPath.is_raw
         return
     end if
-    self.is_raw = raw
+    if raw != null then self.is_raw = raw
     if new_path[0:2] == "./" or new_path[0:2] == ".\" then 
         self.is_raw = true
         new_path = new_path[2:]
@@ -197,14 +199,17 @@ File.find_group = function(group, recursive=false, first=false)
 end function
 
 
-File.get_folder = function(target, raw)
+File.get_folder = function(target, raw  = true)
     self.sanity_check
-    if target == "." then return self
-    p = Path.New(self.path)
+    path = self.path
+    sup = false
+    p = Path.New(path, raw)
     if target[0:2] == "./" or target[0:2] == ".\" then 
         raw = true
+        sup = true
         target = target[2:]
     end if
+    if target == "." or (target[path.len + 1:] == "." and sup) then return self
     result = p.change(target, raw)
     if is_error(result) then return result.stack("File.get_folder")
     temp = self.root_path
@@ -221,6 +226,7 @@ File.get_folder = function(target, raw)
             end if
         end for
         if not found then
+            if raw != false and sup == false then return self.get_folder(target, false)
             return OsError.New("File.get_folder", "Folder not found : " + target)
         end if
     end for
@@ -229,14 +235,17 @@ File.get_folder = function(target, raw)
 end function
 
 
-File.get_file = function(target, raw)
+File.get_file = function(target, raw = true)
     self.sanity_check
-    if target == "." then return OsError.New("File.get_file","No file found at path : " + self.path)
-    p = Path.New(self.path)
-    if target[0:2] == "./" or target[0:2] == ".\" then 
+    if target == "." or (target[self.path.len + 1:] == ".") then return OsError.New("File.get_file","No file found at path : " + self.path)
+    sup = false
+    p = Path.New(self.path, raw)
+    if target[0:2] == "./" or target[0:2] == ".\" then
+        sup = true
         raw = true
         target = target[2:]
     end if
+    
     p.change(target, raw)
 
     folder = self.get_folder(p.folder, raw)
@@ -250,16 +259,19 @@ File.get_file = function(target, raw)
     for file in files
         if file.name.is_match("^"+p.name+"$") then return File.New(file, self.root_path)
     end for
+    if raw != false and sup == false then return self.get_file(target, false)
     return OsError.New("File.get_file", "No file found at path : " + p.path)
 end function
 
 
-File.get_path = function(target, raw)
+File.get_path = function(target, raw = true)
     self.sanity_check
-    if target == "." then return self
+    if target == "." or (target[self.path.len + 1:] == ".") then return self
+    sup = false
     p = Path.New(self.path)
     if target[0:2] == "./" or target[0:2] == ".\" then 
         raw = true
+        sup = true
         target = target[2:]
     end if
     p.change(target, raw)
@@ -275,6 +287,7 @@ File.get_path = function(target, raw)
     for file in files
         if file.name.is_match("^"+p.name+"$") then return File.New(file, self.root_path)
     end for
+    if raw != false and sup == false then return self.get_path(target, false)
     return OsError.New("File.get_path", "No file found at path : " + p.path)
 end function
 

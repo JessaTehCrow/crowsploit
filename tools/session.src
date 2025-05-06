@@ -21,7 +21,7 @@ settings.set("alias", {
 ses_tool.settings = settings
 
 
-ses_data = function(session, active, current, active_sessions)
+ses_data = function(session, active, current, active_sessions, all = false)
     status = " "
     if session == active then
         status = _global.kernel.color("$status_active;Active")
@@ -31,7 +31,7 @@ ses_data = function(session, active, current, active_sessions)
         status = _global.kernel.color("$status_parses;Parent")
     end if
 
-    return [
+    result = [
         "<#4af>"+session.id,
         status,
         session.user,
@@ -44,9 +44,15 @@ ses_data = function(session, active, current, active_sessions)
         ["<#4fa>Yes", "<#fa4>No"][session.crypto == null],
         ["<#4fa>Yes", "<#fa4>No"][session.apt == null],
     ]
+    if all then
+        result.insert(4,session.wan)
+        result.insert(4,session.lan)
+    end if
+    return result
+
 end function
 
-sesinfo = function(sessions, active, current, active_sessions)
+sesinfo = function(sessions, active, current, active_sessions, all = false)
     tab_data = []
 
     if not sessions isa list then
@@ -55,7 +61,7 @@ sesinfo = function(sessions, active, current, active_sessions)
 
     for s in sessions
         log(s.id)
-        tab_data.push(ses_data(s, active, current, active_sessions))
+        tab_data.push(ses_data(s, active, current, active_sessions, all))
     end for
 
     titles = [
@@ -71,14 +77,17 @@ sesinfo = function(sessions, active, current, active_sessions)
         "Crypto",
         "Apt"
     ]
-
+    if all then
+        titles.insert(4,"Wan")
+        titles.insert(5,"Lan")
+    end if
     result = tabulate_data(tab_data, titles)
     if is_error(result) then return result.stack("session.sesinfo")
     print(result.string)
 end function
 
 list_sessions = function(a)
-    return sesinfo(a.kernel.sessions, a.kernel.active_session, a.kernel.session, a.kernel.active_sessions)
+    return sesinfo(a.kernel.sessions, a.kernel.active_session, a.kernel.session, a.kernel.active_sessions,a.all)
 end function
 
 ask_session = function(sessions)
@@ -99,12 +108,15 @@ ask_session = function(sessions)
 
     return sessions[result]
 end function
+info_args = [
+    Kwarg.New("all","bool").Alias("a").Default(0).Info("show wan and lan ips")
+]
 
 info_func = function(a)
-    return sesinfo(a.kernel.session, a.kernel.active_session, a.kernel.session, a.kernel.active_sessions)
+    return sesinfo(a.kernel.session, a.kernel.active_session, a.kernel.session, a.kernel.active_sessions, a.all)
 end function
 
-info = ses_tool.main_command([], @info_func)
+info = ses_tool.main_command(info_args, @info_func)
 info.short_description = "Info"
 info.long_description = "Info"
 
@@ -149,7 +161,9 @@ reset.long_description = "Reset session info"
 
 // List
 
-list_args = []
+list_args = [
+    Kwarg.New("all","bool").Alias("a").Default(0).Info("show wan and lan ips")
+]
 
 list_func = function(a)
     list_sessions(a)
