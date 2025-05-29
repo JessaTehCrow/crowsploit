@@ -59,7 +59,7 @@ parse_input = function(text, evaluate=false, keep_quotes=false)
 
         // Check if escape was actually used, otherwise add before last character
         if last != "\" and backs then
-            temp = temp[:-1] + "\" + temp[-1]
+            if temp.len > 0  then temp = temp[:-1] + "\" + temp[-1]
             backs = false
         end if
 

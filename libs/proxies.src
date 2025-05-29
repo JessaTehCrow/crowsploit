@@ -155,8 +155,8 @@ File.chmod = function(perms, recursive=false)
         
         for i in u
             queries = queries.push(i+"-"+"rwx")
-                    for j in p
-                        queries = queries.push(i+"+"+j)	
+                for j in p
+                    queries = queries.push(i+"+"+j)	
                 end for
         end for
     else
