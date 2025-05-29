@@ -215,6 +215,9 @@ File.get_folder = function(target)
     return File.New(temp, self.root_path)
 end function
 
+// Backward compat
+File.goto = @File.get_folder
+
 
 File.get_file = function(target)
     self.sanity_check

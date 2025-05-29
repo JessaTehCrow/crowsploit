@@ -332,7 +332,7 @@ ExploitLibrary.New = function(library, version)
         lib.raw_version = to_int(version.replace("\.", ""))
 
     else
-        return TypeError.New("ExploitLibrary.New", "String | Library", "String or metaLibrary")
+        return TypeError.New("ExploitLibrary.New", "String | Library", typeof(library))
     end if
 
     return lib

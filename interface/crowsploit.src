@@ -155,6 +155,7 @@ else if hasIndex(custom_obj, "kernel") then
     kernel = custom_obj.kernel(simple_hash(current_date))
 
     kernel.print("$P;Crowsploit connected to kernel")
+    kernel.print("$T;Connected as $T2;" + active_user)
     custom_obj.remove("kernel")
 
     active = kernel.active_sessions[0]

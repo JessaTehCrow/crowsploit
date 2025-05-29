@@ -1947,7 +1947,7 @@ end function
 
 write_cmd = mytool.command("write", write_args, @write_function)
 
-// setup
+// install
 
 install_args = [
     Arg.New("service", "string").Info("Service library to install"),
@@ -1961,6 +1961,7 @@ install_func = function(a)
 
     file = a.kernel.session.file.get_file(a.service)
     if is_error(file) then return file.stack("system.install")
+    log("$T2;active user: $S;"+ active_user)
     lib = include_lib(file.path)
     if lib == null then return OsError.New("system.install", "Library " + a.service + " not found")
 
