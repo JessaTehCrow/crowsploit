@@ -234,6 +234,9 @@ File.get_folder = function(target, raw  = true)
     return File.New(temp, self.root_path)
 end function
 
+// Backward compat
+File.goto = @File.get_folder
+
 
 File.get_file = function(target, raw = true)
     self.sanity_check
@@ -387,7 +390,7 @@ File.get_user_ex = function() //@returns {map<sUser,sInGroup>|string}
 end function
 
 File.force_chmod = function(perms, allow_get_user = true) //if allow_get_user is false then if get_user_ex fails then
-//a error is returned instead of falling back to get_user
+    //a error is returned instead of falling back to get_user
     self.sanity_check
     if not self.has_permission("w") then return PermissionError.New("File.force_chmod","write")
     result = perms.matches("^(?:u=([rwx]{0,3})(?!.*(.).*\2)?;)?(?:g=([rwx]{0,3})(?!.*(.).*\4)?;)?(?:o=([rwx]{0,3})(?!.*(.).*\6)?;)?(?:own=[^;]+;|grp=[^;]+;).*$")
@@ -426,7 +429,6 @@ File.force_chmod = function(perms, allow_get_user = true) //if allow_get_user is
 
     if permMap["u"].indexOf("w") == null then self.chmod("u-w")
     if permMap[eff].indexOf("w") == null then self.chmod(eff+"-w")
-
 end function
 
 

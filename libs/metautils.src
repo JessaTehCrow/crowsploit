@@ -247,7 +247,7 @@ Exploit.execute = function(library, extra=null)
     else if exploit_result isa string then
         return Error.New("exploit.execute", exploit_result)
     end if
-
+    if is_error(perm) then perm = "unknown"
     return [object, perm, exploit_result]
 end function
 
@@ -332,7 +332,7 @@ ExploitLibrary.New = function(library, version)
         lib.raw_version = to_int(version.replace("\.", ""))
 
     else
-        return TypeError.New("ExploitLibrary.New", "String | Library", "String or metaLibrary")
+        return TypeError.New("ExploitLibrary.New", "String | Library", typeof(library))
     end if
 
     return lib
@@ -527,7 +527,7 @@ ExploitLibrary.display = function(kernel, relevant=false, short=false, ip=null)
         tab_data = [["No data"]]
     end if
 
-    kernel.print("<size=200%>$P;" + self.name)
+    kernel.print("<size=30px>$P;" + self.name)
     kernel.print("$T2;Version $T;: $S;" + self.raw_version)
     lines = tabulate_data(tab_data, tab_titles, colors, ["<i><u>"+kernel.color("$T2;")]).string.split(char(10))
     for x in lines

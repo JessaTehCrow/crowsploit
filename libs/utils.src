@@ -488,7 +488,9 @@ uncolor_string = function(text)
         "link",
         "#[0-9a-f]{3}",
         "#[0-9a-f]{6}",
+        "#[0-9a-f]{8}",
     ]
+
     new_value = text
     joined = tags.join("|")
     results = new_value.matches("<\/?("+joined+")(\s.*?|=.*?|.{0})>")
@@ -502,6 +504,7 @@ end function
 
 unformat_string = function(text)
     if not text isa string then return TypeError.New("unformat_string","string", typeof(text))
+
     tags = [
         "align",
         "alpha",
@@ -539,9 +542,11 @@ unformat_string = function(text)
         "#[0-9a-f]{3}",
         "#[0-9a-f]{6}",
     ]
+
     new_value = text
     joined = tags.join("|")
     new_value = new_value.replace("<\/?("+joined+")(\s.*?|=.*?|.{0})>", "")
+    
     return new_value
 end function
 
@@ -632,7 +637,7 @@ end function
 
 
 hex_chars = "0123456789abcdef"
-int_to_hex = function(val)
+int_to_hex = function(val, padding=0)
     result = []
     
     i = 0
@@ -642,7 +647,9 @@ int_to_hex = function(val)
         i = i + 1
     end while
 
-    return result.join("")
+    result = result.join("")
+    result = "0"*(padding-len(result))+result
+    return result
 end function
 
 

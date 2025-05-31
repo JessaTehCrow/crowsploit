@@ -259,16 +259,16 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
 
                 redirectFile = temp
                 if not fullRedirect then
-                    if not redirectFile.has_permission("rw") then
+                    if not redirectFile.has_permission("r") or not redirectFile.parent.has_permission("w") then
                         redirected = false
-                        self.last_error = temp.stack("Kernel.run_command")
+                        self.last_error = PermissionError.New("Kernel.run_command","read & write")
                         continue
                     end if
                 else 
-                    if not redirectFile.has_permission("w") then
+                    if not redirectFile.parent.has_permission("w") then
                         redirected = false
                         fullRedirect = false
-                        self.last_error = temp.stack("Kernel.run_command")
+                        self.last_error = PermissionError.New("Kernel.run_command","write")
                         continue
                     end if
                 end if

@@ -47,8 +47,7 @@ output_func = function(a)
     has_result = null
     while has_result != (not a.inverted)
         if has_result != null then
-            err = a.kernel.run_command("system wait " + a.delay, false, true)
-            if is_error(err) then return err.stack("until.output")
+            if a.delay != 0 then wait(a.delay)
         end if
         a.kernel.run_command(a.command, false, true)
         for x in a.kernel.stdout

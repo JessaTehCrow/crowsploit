@@ -265,7 +265,7 @@ find_func = function(a)
 
     list = a.kernel.password_list.values
     other = a.kernel.password_list.indexes
-    if a.query.trim.is_match("^[1234567890abcedf]{32}$") then
+    if a.query.trim.is_match("^[0-9a-f]{32}$") then
         list = a.kernel.password_list.indexes
         other = a.kernel.password_list.values
     end if   
@@ -444,9 +444,25 @@ service_args = [
     OptionalArg.New("user", "string").Default("root").Info("User to attempt"),
     Kwarg.New("service", "string").Default("ssh").Alias("s").Info("Service to connect to"),
     Kwarg.New("port", "int").Alias("p").Default(22).Info("Port to connect to"),
+    Kwarg.New("offset", "int").Default(0).Alias("o").Info("How far into the password list to start")
 ]
 
 service_func = function(a)
+    get_rate = function(index, elapsed)
+        return round(index/elapsed, 2)
+    end function
+
+    get_run_time = function(elapsed)
+        min = floor(elapsed/60)
+        sec = floor(elapsed)%60
+
+        return min +":" + "0"*(2-len(""+sec))+sec
+    end function
+
+    remaining_time = function(elapsed, total, index)
+        return round(((total-index)/(index/elapsed))/60, 2) + " minutes"
+    end function
+
     r = check_generated(a.kernel)
     if is_error(r) then return r.stack("brute.main")
     if not a.kernel.hasIndex("password_list") then
@@ -456,14 +472,32 @@ service_func = function(a)
 
     res = confirmation_prompt("This will take a <b>LONG</b> time. Are you sure you want to continue?")
     if not res then return
+    start_time = time
+    total_count = len(a.kernel.password_list)-a.offset
+    remaining = "unknown"
+    rate = "unknown"
 
-    for pass in a.kernel.password_list.values
+    for pass in a.kernel.password_list.values[a.offset:]
+        if (__pass_idx%1000 == 0) then 
+            elapsed = time - start_time
+            remaining = remaining_time(elapsed, total_count, __pass_idx)
+            rate = get_rate(__pass_idx, elapsed)
+
+        else if (__pass_idx%30) == 0 then
+            elapsed = time - start_time
+            perc = round((__pass_idx+a.offset)/(total_count+a.offset)*100, 2)
+            print(["<size=22.5px>$P;"+(__pass_idx+a.offset) + "/"+(total_count+a.offset)+"</size> $T;(" + perc + "%)" , "$T;Run time       : $T2;" + get_run_time(elapsed), "$T;Remaining time : $T2;" + remaining, "$T;Passrate / sec : $T2;" + rate + "<pos=0>$T2;<u><#00000000>" + "_"*38 + "</u></size>"].join(char(10)), true)
+        end if
+
+
         res = a.kernel.session.shell.object.connect_service(a.host, a.port, a.user, pass, a.service)
 
         if res == null then continue
         if res isa string then return Error.New("brute.service", res)
 
         if typeof(res) == "shell" then
+            print("$S;Password found in $P;" + round((time - start_time)/60, 2) + " minutes", true)
+            print("$P;"+ a.user + " $T;: " + pass + " $T;: " + "$T2;" + md5(pass))
             shell = Shell.New(res)
             session = Session.New(shell)
             a.kernel.new_session(session)

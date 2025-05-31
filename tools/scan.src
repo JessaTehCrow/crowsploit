@@ -32,11 +32,12 @@ ask_exploit = function(exlib, title, ip)
     res = tabulate_data(tab_data, titles)
     if is_error(res) then return res.stack("exploit.host")
 
-    print("<size=200%>$P;"+title)
+    print("<size=30px>$P;"+title)
     print(res.string)
 
     if len(exploits) == 0 then print("$error;No exploits found")
 end function
+
 
 port_data = function(router, ports, local=false)
     tab_data = []
@@ -142,6 +143,8 @@ main_func = function(a)
         router = get_router
     end if
 
+    router_ver = [router.kernel_version, "1.0.0"][router.kernel_version == null]
+
     if router == null then return Error.New("Unable obtain router")
 
     ports = null
@@ -153,7 +156,7 @@ main_func = function(a)
     if ports == false then return OsError.New("scan.main", "Ip address is not reachable")
 
     if ports isa Error then return ports.stack("scan.main")
-    if show_router_info then ports.insert(0,[0, "Open", "kernel_router", router.kernel_version, router.local_ip, "False"])
+    if show_router_info then ports.insert(0,[0, "Open", "kernel_router", router_ver, router.local_ip, "False"])
 
     if a.ports != null then
         scan_ports = []
@@ -195,6 +198,7 @@ main_func = function(a)
             end if
 
             existing = ExploitLibrary.New(lib)
+            if is_error(existing) then return existing.stack("scan.main")
             res = existing.load(a.kernel.sessions[0].computer, get_db_path(a.kernel))
             if is_error(res) then return res.stack("scan.main")
 
@@ -217,6 +221,7 @@ main_func = function(a)
         lib = service_libs[port[2]]
         version = port[3]
         exlib = ExploitLibrary.New(lib, version)
+        if is_error(exlib) then return exlib.stack("scan.main")
         err = exlib.load(a.kernel.sessions[0].computer, get_db_path(a.kernel))
 
         if is_error(err) then return err.stack("scan.main")
@@ -579,6 +584,7 @@ for_func = function(a)
             if lib_ver != "" and ver != lib_ver then continue
 
             exlib = ExploitLibrary.New(service_libs[lib], ver)
+            if is_error(exlib) then return exlib.stack("scan.for")
             exlib.load(a.kernel.sessions[0].computer, get_db_path(a.kernel))
             indb = exlib.exploits_with_version(ver) != []
 

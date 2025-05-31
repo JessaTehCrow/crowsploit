@@ -52,7 +52,7 @@ color ip_prompt     = <#d44>
 
 /////////////////
 // User prompt //
-input prompt = <voffset=2em> </voffset><pos=0><size=85%><voffset=1.4em>$S;$type $status $session $ip</voffset><pos=0></size>$T;($pwd) $P;$usr$T;@$S;$comp $T2;$suffix$input;
+input prompt = <voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$S;$type $status $session $ip</voffset><pos=0></size>$T;($pwd) $P;$usr$T;@$S;$comp $T2;$suffix$input;
 
 ///////////////////
 // Input sufixes //
