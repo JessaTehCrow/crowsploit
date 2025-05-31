@@ -1,0 +1,13 @@
+# April 9 2004
+
+- Fixed MAAANY o' bugs
+
+- Added > and >> functionality
+- Added `finf` command to see file info
+- Added sniffing
+- Silent RM
+- Lots of Backend optimizations
+- Deleted folders will no longer brick CS
+  
+- Changed `brute sudo` to `brute su` to match the base `su` command
+- And a lot more that i've forgotten since the vacation
