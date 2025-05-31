@@ -492,7 +492,7 @@ main_func = function(a)
     if a.macro != null then
         if not a.kernel.macros.hasIndex(a.macro) then return OsError.New("macro.main", "Macro not found")
         macro = a.kernel.macros[a.macro]
-        print("$P;<size=200%>" + macro.name + "</size>")
+        print("$P;<size=30px>" + macro.name + "</size>")
         print("$T2;" + macro.desc)
 
         tabdata = []

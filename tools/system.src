@@ -2,7 +2,7 @@ import_code("../kernel/toolkernel")
 import_code("../libs/sessionmanager")
 import_code("../libs/syntax_parser")
 
-mytool = Tool.New("system", "1.9.4")
+mytool = Tool.New("system", "1.9.6")
 
 mytool.short_description = "All default system commands"
 mytool.long_description = "All default system commands"
@@ -150,7 +150,7 @@ help_func = function(a)
         // Displaying
         a.kernel.line("", longest)
 
-        a.kernel.print("<size=200%>$P;" + command.name)
+        a.kernel.print("<size=30px>$P;" + command.name)
         a.kernel.print("$S;" + command.name + " " + arg_colors(command))
 
         // Display args
@@ -195,7 +195,7 @@ help_func = function(a)
                 if result isa Error then return result.stack("system.help")
 
                 a.kernel.line("", result.length)
-                print("$P;<size=200%>" + main.name)
+                print("$P;<size=30px>" + main.name)
                 print(main.long_description)
                 a.kernel.line("Commands", result.length)
                 print(result.string)
@@ -323,7 +323,7 @@ cat_function = function(a)
     content = file.get_content
     if not a.kernel.piped then 
         if file.path[-3:] == "src" or a.format then
-            result = parse_syntax(content, true).replace("\\n", "\<b></b>n")
+            result = parse_syntax(uncolor_string(content), true).replace("\\n", "\<b></b>n")
             seperated = result.split(char(10))
             steps = 400
             for x in range(0,ceil(len(seperated)/steps)-1)
@@ -1356,7 +1356,7 @@ ftp_func = function(a)
         user = user_input("<#888>Username: <#fff>")
     end if
     if pass == null then
-        pass = user_input("<#888>Password: <size=0.1%>")
+        pass = user_input("<#888>Password: <size=0.1px>")
     end if
 
     result = a.kernel.session.shell.connect_service(a.host, a.port, user, pass, "ftp")
@@ -1409,7 +1409,7 @@ ssh_func = function(a)
         host = host[1]
     end if
     if password == null then
-        password = user_input("<#888>Password: <size=0.1%>")
+        password = user_input("<#888>Password: <size=0.1px>")
     end if
     if a.username != null then
         host = a.host
@@ -1451,7 +1451,7 @@ su_args = [
 su_func = function(a)
     if a.kernel.session != a.kernel.active_session then return OsError.New("system.su", "Cannot escelate on a non-active system")
     if a.password == null then
-        a.password = user_input(a.kernel.color("$T2;Password $T;: <size=0.1%>"))
+        a.password = user_input(a.kernel.color("$T2;Password $T;: <size=0.1px>"))
     end if
 
     shell = get_shell(a.user, a.password)
@@ -2020,7 +2020,7 @@ passwd_func = function(a)
     if a.kernel.session.user != "root" then return PermissionError.New("system.passwd", "root")
 
     if a.password == null then
-        a.password = user_input("Password : <size=0.1%>")
+        a.password = user_input("Password : <size=0.1px>")
     end if
 
     res = a.kernel.session.computer.change_password(a.user, a.password)
@@ -2167,24 +2167,31 @@ file_func = function(a)
     sess_file = a.kernel.session.file
     if a.file == null then a.file = "."
     file = sess_file.get_path(a.file)
+
     if is_error(file) then return file.stack("system.file")
-    file_info = [["name:", file.name], ["path: ", file.path], ["size:", round(to_int(file.size)/1048576, 2) + "MB"], ["owner:", file.owner], ["group:", file.group], ["perms:", file.permissions], ["effective:", file.get_effective_permissions]]
+    user = a.kernel.session.user 
+    if user == "unknown" then user = null
+    file_info = [["name:", file.name], ["path: ", file.path], ["size:", round(to_int(file.size)/1048576, 2) + "MB"], ["owner:", file.owner], ["group:", file.group], ["perms:", file.permissions], ["effective:", file.get_effective_permissions(true,false,user)]]
     if file.is_folder then file_info.push(["subitems: ", (file.get_files + file.get_folders).len])
     is_sym = file.is_symlink
     type = file.file_type
-    if is_sym then 
+
+    if is_sym then
         temp_file = file.get_path(file.path(true))
         type = "[Deleted]"
         if not is_error(temp_file) then type = temp_file.file_type
     end if
+
     file_info.push(["type:", type])
     file_info.push(["symlink:", ["no","yes"][is_sym]])
+
     if is_sym then file_info.push(["target:", file.path(true)])
-    print(tabulate_data(file_info,["",""]).string.split(char(10))[1:].join(char(10)))
+
+    print(tabulate_data(file_info,["",""], a.kernel.color(["$T;", "$S;"])).string.split(char(10))[1:].join(char(10)))
 end function
 
-file_cmd = mytool.standalone_command("file", file_args, @file_func)
-file_cmd.short_description = "View detailed file information such as permissions, file type, and effective permissions"
+file_cmd = mytool.standalone_command("finf", file_args, @file_func)
+file_cmd.short_description = "View detailed file information"
 file_cmd.long_description = "
 $P;Usage: system file $string;testfolder$P; >>
 name: testfolder         

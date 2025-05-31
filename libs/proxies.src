@@ -351,6 +351,7 @@ end function
 Computer.connect_ethernet = function(netDevice, local, gateway)
     err = expect_all([netDevice, local, gateway],string)
     if err != null then return TypeError.New("Computer.connect_ethernet","string", err)
+    if not self.is_network_active then return OsError.New("Computer.connect_ethernet","No internet connection")
     result = self.object.connect_ethernet(netDevice, local, gateway)
     if result != "" then return Error.New("Computer.connect_ethernet",result)
 end function
@@ -428,6 +429,11 @@ Computer.groups = function(user)
 end function
 
 Computer.is_network_active = function()
+    file = self.File("/")
+    critfilepaths = ["/etc/xorg.conf","/lib/net.so","/lib/init.so","/sys/xorg.sys","/sys/config.sys","/sys/network.cfg","/boot/System.map","/boot/initrd.img","/boot/kernel.img"]
+    for path in critfilepaths
+        if is_error(file.get_path(path)) then return false
+    end for
     return self.object.is_network_active
 end function
 
@@ -577,6 +583,7 @@ Shell.connect_service = function(ip, port, user, password, service)
     err = expect_all([ip, user, password, service], string)
     if err != null then return TypeError.New("Shell.connect_service", typeof(err))
     if not port isa number then return TypError.New("Shell.connect_service", typeof(port))
+    if not self.host_computer.is_network_active then return OsError.New("Shell.connect_service","No internet connection")
 
     result = connect_service(self.object, ip, port, user, password, service)
     if result isa string then return Error.New("Shell.connect_service", result)

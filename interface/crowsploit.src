@@ -264,7 +264,7 @@ else
 
     print(char(10))
     kernel.print("$T;Fun fact")
-    kernel.print("$S;<size=80%>" + get_fact())
+    kernel.print("$S;<size=12px>" + get_fact())
     print(char(10))
     if session.crypto == null then
         kernel.print("$error;Crypto not found")

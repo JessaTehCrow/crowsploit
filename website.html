@@ -344,6 +344,19 @@ span {
             <br>
             <br>
             <details onclick="hideme(this)">
+                <summary><b>April 10 2004 (Major update)</b></summary>
+                <h3>Major update</h3>
+                <p>Fixed MANY bugs</p>
+                <p>Added > and >> functionality</p>
+                <p>Added <span class="code">finf</span> command to system</p>
+                <p>Added sniffing tool</p>
+                <p>Added silent rm functionality</p>
+                <p>Loooots of backend optimizations</p>
+                <p>Deleted folders will no longer L+Ratio the crowsploit instance</p>
+                <p>Changed <span class="code">brute sudo</span> to <span class="code">brute su</span></p>
+                <p>And a lot more that we didn't note down</p>
+            </details>
+            <details onclick="hideme(this)">
                 <summary><b>May 30 2001</b></summary>
                 <h3>Crowsploit Kernel</h3>
                 <p>(All kernel updates require all tools to update)</p>
@@ -1044,15 +1057,16 @@ span {
         home_demo.owner = "Demo"
         home_demo.group = "Demo"
         home_demo.touch("hello.txt").content = ["$P;Welcome to the crowsploit demo!!$/;",
-            "",
-            "This is a completely $T2;simulated$/; environment.",
-            "All $lsfile;files$/;, $lsfolder;folders$/; and $lsbinary;binaries$/; are $error;fake.",
-            "",
-            "This is created purely to give the users a demo of $S;crowsploit$/;!",
-            "To see what you can do, use the $T2;help$/; command",
-            " ",
-            "$error;Beware, this is not *entirely* representative of crowsploit",
-            "$error;This is merely an interface example of crowsploit"
+        "",
+        "This is a completely $T2;simulated$/; environment.",
+        "All $lsfile;files$/;, $lsfolder;folders$/; and $lsbinary;binaries$/; are $error;fake.",
+        "",
+        "This is created purely to give the users a demo of $S;crowsploit$/;!",
+        "To see what you can do, use the $T2;help$/; command",
+        " ",
+        "$error;Beware, this is not *entirely* representative of crowsploit",
+        "$error;This is merely an interface example of crowsploit",
+        "$error;## THIS IS ONLY A SMALL EXAMPLE OF WHAT CROWSPLOIT CAN DO ##",
         ]
         home_demo.touch("commands.txt").content = [
             "$P;Crowsploit has command piping!",
@@ -1344,6 +1358,7 @@ span {
                 write("$P;grep             $string;pattern $rest;rest      $T2;Filter data")
                 write("$error;exit                                     $T2;Go back to the website")
                 write(" ")
+                write("$error;Note: This is only a small example of what cs can do")
             } else if (args[0] in helps) {
                 for (let i in helps[args[0]]) {
                     write(helps[args[0]][i])
