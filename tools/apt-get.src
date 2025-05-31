@@ -1,6 +1,6 @@
 import_code("../kernel/toolkernel")
 
-apt_tool = Tool.New("apt-get", "1.2.1")
+apt_tool = Tool.New("apt-get", "1.3.0")
 apt_tool.short_description = "All apt client handling"
 apt_tool.long_description = "All apt client handling"
 

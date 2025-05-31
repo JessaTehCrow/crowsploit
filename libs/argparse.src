@@ -18,7 +18,7 @@ EvalType.evaluate = function()
         self.eval_value = self.value.val
         self.type = "float"
 
-    else if is_valid_ip(self.value) or self.value == "localhost" then
+    else if is_valid_ip(self.value) then
         self.eval_value = self.value
         self.type = "ip"
 

@@ -1,7 +1,7 @@
 import_code("../kernel/toolkernel")
 import_code("../libs/passlist")
 
-brute_tool = Tool.New("brute", "1.0.1")
+brute_tool = Tool.New("brute", "1.1.0")
 brute_tool.short_description = "Use a dictionary attack to crack passwords"
 brute_tool.long_description = "Use a dictionary attack to crack passwords"
 
