@@ -504,6 +504,7 @@ end function
 
 unformat_string = function(text)
     if not text isa string then return TypeError.New("unformat_string","string", typeof(text))
+
     tags = [
         "align",
         "alpha",
@@ -541,9 +542,11 @@ unformat_string = function(text)
         "#[0-9a-f]{3}",
         "#[0-9a-f]{6}",
     ]
+
     new_value = text
     joined = tags.join("|")
     new_value = new_value.replace("<\/?("+joined+")(\s.*?|=.*?|.{0})>", "")
+    
     return new_value
 end function
 

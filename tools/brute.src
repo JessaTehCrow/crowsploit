@@ -486,7 +486,7 @@ service_func = function(a)
         else if (__pass_idx%30) == 0 then
             elapsed = time - start_time
             perc = round((__pass_idx+a.offset)/(total_count+a.offset)*100, 2)
-            print(["<size=150%>$P;"+(__pass_idx+a.offset) + "/"+(total_count+a.offset)+"</size> $T;(" + perc + "%)" , "$T;Run time       : $T2;" + get_run_time(elapsed), "$T;Remaining time : $T2;" + remaining, "$T;Passrate / sec : $T2;" + rate + "<pos=0>$T2;<u><#00000000>" + "_"*38 + "</u></size>"].join(char(10)), true)
+            print(["<size=22.5px>$P;"+(__pass_idx+a.offset) + "/"+(total_count+a.offset)+"</size> $T;(" + perc + "%)" , "$T;Run time       : $T2;" + get_run_time(elapsed), "$T;Remaining time : $T2;" + remaining, "$T;Passrate / sec : $T2;" + rate + "<pos=0>$T2;<u><#00000000>" + "_"*38 + "</u></size>"].join(char(10)), true)
         end if
 
 

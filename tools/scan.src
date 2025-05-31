@@ -32,7 +32,7 @@ ask_exploit = function(exlib, title, ip)
     res = tabulate_data(tab_data, titles)
     if is_error(res) then return res.stack("exploit.host")
 
-    print("<size=200%>$P;"+title)
+    print("<size=30px>$P;"+title)
     print(res.string)
 
     if len(exploits) == 0 then print("$error;No exploits found")

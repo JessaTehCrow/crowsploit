@@ -527,7 +527,7 @@ ExploitLibrary.display = function(kernel, relevant=false, short=false, ip=null)
         tab_data = [["No data"]]
     end if
 
-    kernel.print("<size=200%>$P;" + self.name)
+    kernel.print("<size=30px>$P;" + self.name)
     kernel.print("$T2;Version $T;: $S;" + self.raw_version)
     lines = tabulate_data(tab_data, tab_titles, colors, ["<i><u>"+kernel.color("$T2;")]).string.split(char(10))
     for x in lines
