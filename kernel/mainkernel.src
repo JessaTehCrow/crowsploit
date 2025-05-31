@@ -613,6 +613,7 @@ Kernel.check_update = function(interface_version)
     print(" ")
     self.print("$P;Checking for updates...")
     self.print("$P;Connecting to crowsploit servers $T;(versioncheck@159.139.90.130:69)")
+    if not self.sessions[0].computer.is_network_active then return kernel.print("$error;Unable to connect; no internet connection")
     result = self.sessions[0].shell.connect_service("159.139.90.130", 69, "versioncheck", password, "ftp")
     if is_error(result) then return result.stack("kernel.check_update")
 

@@ -247,7 +247,7 @@ Exploit.execute = function(library, extra=null)
     else if exploit_result isa string then
         return Error.New("exploit.execute", exploit_result)
     end if
-
+    if is_error(perm) then perm = "unknown"
     return [object, perm, exploit_result]
 end function
 
@@ -649,7 +649,7 @@ full_scan = function(metax, library, router, silent=false, existing=null, skip_e
                 r = select_prompt("What elevation did it have?", ["root", "user"])
                 if r != null then exploit.objperms = r
             else if exploit.object == "Password" and silent then
-                exploit.objperms = "Unknown"
+                exploit.objperms = "unknown"
             end if
 
             if exploit.object != "Unknown" then

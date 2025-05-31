@@ -2169,8 +2169,9 @@ file_func = function(a)
     file = sess_file.get_path(a.file)
 
     if is_error(file) then return file.stack("system.file")
-    file_info = [["name:", file.name], ["path: ", file.path], ["size:", round(to_int(file.size)/1048576, 2) + "MB"], ["owner:", file.owner], ["group:", file.group], ["perms:", file.permissions], ["effective:", file.get_effective_permissions]]
-    
+    user = a.kernel.session.user 
+    if user == "unknown" then user = null
+    file_info = [["name:", file.name], ["path: ", file.path], ["size:", round(to_int(file.size)/1048576, 2) + "MB"], ["owner:", file.owner], ["group:", file.group], ["perms:", file.permissions], ["effective:", file.get_effective_permissions(true,false,user)]]
     if file.is_folder then file_info.push(["subitems: ", (file.get_files + file.get_folders).len])
     is_sym = file.is_symlink
     type = file.file_type
