@@ -109,7 +109,7 @@ end function
 
 // End util funcs
 
-scantool = Tool.New("scan", "1.4.3")
+scantool = Tool.New("scan", "1.5.0")
 scantool.short_description = "Scan ports and libraries for versions & exploits"
 scantool.long_description = "Scan ports and libraries for versions & exploits"
 
@@ -129,10 +129,6 @@ main_args = [
 main_func = function(a)
     // Get data
     if not a.kernel.active_session.computer.is_network_active then return OsError.New("scan.main","No internet connection")
-    if a.host == "localhost" or a.host == "127.0.0.1" then
-        if a.kernel.session.computer == null then return ObjectError.New("scan.main", "computer")
-        a.host = a.kernel.session.computer.local_ip
-    end if
     
     local = is_lan_ip(a.host)
     router = get_router(a.host)

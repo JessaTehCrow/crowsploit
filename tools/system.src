@@ -2,7 +2,7 @@ import_code("../kernel/toolkernel")
 import_code("../libs/sessionmanager")
 import_code("../libs/syntax_parser")
 
-mytool = Tool.New("system", "1.9.6")
+mytool = Tool.New("system", "1.10.0")
 
 mytool.short_description = "All default system commands"
 mytool.long_description = "All default system commands"
@@ -1578,7 +1578,7 @@ $P;upload $string;/user/Jessa/traffic_network "
 // ping
 
 ping_args = [
-    Arg.New("host", "string").Info("Host to ping")
+    Arg.New("host", "ip").Info("Host to ping")
 ]
 
 ping_func = function(a)

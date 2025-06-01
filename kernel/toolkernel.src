@@ -100,7 +100,21 @@ Command._parse_args = function(raw)
     parsed_args = []
     parsed_kwargs = {}
     last_kwarg = null
+    session = _global.kernel.session
     rest = []
+
+    parse_ip = function(value)
+        if value == "localhost" or value == "127.0.0.1" then
+            if session.computer == null then return ParseError.New("Command.parse_args", "Unable to retrieve localhost, no computer object found")
+            return session.computer.local_ip
+        else if value.is_match("(www\.)?\w+\.(org|net|com|info)") then
+            if value[:4] != "www." then
+                return nslookup("www."+value)
+            else
+                return nslookup(value)
+            end if
+        end if
+    end function
 
     for x in raw
         value = x.eval_value
@@ -114,11 +128,16 @@ Command._parse_args = function(raw)
             if not is_bool and command_kwarg.type == "bool" then
                 last_kwarg = null
             else
+                log(command_kwarg.type + ":" + type)
                 if type != command_kwarg.type then log(type + " | " + command_kwarg.type + " : " + value)
                 if type != "string" and command_kwarg.type == "string" and value != null then 
                     value = x.value
                     type = "string"
-                else if type == "string" and command_kwarg.type == "ip" and is_valid_ip(value) then
+
+                else if type == "string" and command_kwarg.type == "ip" then
+                    value = parse_ip(value)
+                    log(x.value + " => " + value)
+                    if is_error(value) then return value
                     type = "ip"
                 end if
 
@@ -176,7 +195,10 @@ Command._parse_args = function(raw)
             if type != "string" and arg.type == "string" and value != null then 
                 value = x.value
                 type = "string"
-            else if type == "string" and arg.type == "ip" and is_valid_ip(value) then
+            else if type == "string" and arg.type == "ip" then
+                value = parse_ip(x.value)
+                log(x.value + " => " + value)
+                if is_error(value) then return value
                 type = "ip"
             end if
 
@@ -240,7 +262,7 @@ Tool = {}
 
 Tool.name = "CrowTool"
 Tool.version = "1.0.0"
-Tool.tool_kernel = "1.2.2"
+Tool.tool_kernel = "1.3.0"
 Tool.has_main = false
 Tool.loaded_commands = 0
 Tool.total_commands  = 0
