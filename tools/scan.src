@@ -139,9 +139,9 @@ main_func = function(a)
         router = get_router
     end if
 
-    router_ver = [router.kernel_version, "1.0.0"][router.kernel_version == null]
+    if router == null then return Error.New("Unable obtain router", "Host not found " + a.host)
 
-    if router == null then return Error.New("Unable obtain router")
+    router_ver = [router.kernel_version, "1.0.0"][router.kernel_version == null]
 
     ports = null
     if local then
