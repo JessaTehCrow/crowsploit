@@ -1133,6 +1133,7 @@ iwlist_func = function(a)
 
     tab_data = []
     for x in wifis
+        if not x isa string then continue
         tab_data.push(x.split(" "))
     end for
     result = tabulate_data(tab_data, ["BSSID", "PWR", "ESSID"], a.kernel.color(["$T2;", "$S;", "$P;"]))
