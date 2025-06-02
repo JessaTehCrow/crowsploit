@@ -173,6 +173,8 @@ main_func = function(a)
     if a.exploits then
         if a.kernel.session.metax == null then return ObjectError.New("scan.main", "metaxploit")
         scanned = []
+        active_super_admin = null
+
         for port in ports
             net = a.kernel.session.metax.net_use(a.host, port[0])
             if net == null then 
@@ -205,6 +207,36 @@ main_func = function(a)
                 result = full_scan(a.kernel.sessions[0].metax, lib, router, a["no-ask"], existing, a["skip-existing"])
             end if
             if is_error(result) then return result.stack("scan.main")
+
+            log("## parsing results ##")
+            log(len(result.exploits))
+            all_guests = false
+            for x in result.exploits
+                perms = x.objperms
+                if perms == "unknown" or perms == "None" then continue
+                if perms == "guest" then
+                    all_guests = true
+                    continue
+                end if
+
+                log("No super admin active")
+                all_guests = false
+                break
+            end for
+
+            if all_guests and active_super_admin == null then
+                log("Possible super admin active")
+                active_super_admin = confirmation_prompt("All exploits resulted in guest. Was there a super admin?")
+
+            else if active_super_admin == null then
+                active_super_admin = false
+            end if
+
+            if active_super_admin then
+                for x in result.exploits
+                    x.objperms = "unknown"
+                end for
+            end if
 
             existing.merge(result)
             existing.display(a.kernel, true, false, a.host)
@@ -445,6 +477,36 @@ libs_func = function(a)
             result = full_scan(a.kernel.sessions[0].metax, lib, a.kernel.session.router, a["no-ask"], existing, a["skip-existing"])
         end if
         if is_error(result) then return result.stack("scan.libs")
+
+        log("## parsing results ##")
+        log(len(result.exploits))
+        all_guests = false
+        for x in result.exploits
+            perms = x.objperms
+            if perms == "unknown" or perms == "None" then continue
+            if perms == "guest" then
+                all_guests = true
+                continue
+            end if
+
+            log("No super admin active")
+            all_guests = false
+            break
+        end for
+
+        if all_guests and active_super_admin == null then
+            log("Possible super admin active")
+            active_super_admin = confirmation_prompt("All exploits resulted in guest. Was there a super admin?")
+
+        else if active_super_admin == null then
+            active_super_admin = false
+        end if
+
+        if active_super_admin then
+            for x in result.exploits
+                x.objperms = "unknown"
+            end for
+        end if
 
         existing.merge(result)
         existing.display(a.kernel, not a.full, a.short, a.kernel.session.lan)
