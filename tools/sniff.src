@@ -37,6 +37,7 @@ sniff_func = function(a)
     print("$S;"+dir+" data captured.")
     print("$S;"+source+" -> "+user+"@"+dest+":"+pro)
     print("$S;password("+encstat+") = "+pass.split(":")[1][1:])
+    if a.save then print("$S;Encode.src saved")
 end function
 
 sniff_cmd = sniff.main_command(sniff_args, @sniff_func)

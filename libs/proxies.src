@@ -75,9 +75,9 @@ File.is_binary = function()
     return self.object.is_binary
 end function
 
-File.file_type = function()
+File.file_type = function(resolve_symlink=false)
     self.sanity_check
-    if self.is_symlink then return "symlink"
+    if self.is_symlink and resolve_symlink == false then return "symlink"
     if self.is_folder then return "folder"
     if self.is_binary then return "binary"
     if self.is_file and self.name.is_match(".+\.src") then return "code"
