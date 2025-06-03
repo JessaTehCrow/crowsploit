@@ -42,8 +42,8 @@ $P;apt-get $S;addrepo $ip;138.32.12.3 $int;--port 1547 $bool;-u"
 // delrepo
 
 del_repo_args = [
-    Arg.New("host", "ip").Info("Repository address to add"),
-    Kwarg.New("update", "bool").Default(false).Alias("u").Info("Automatically update repo after adding")
+    Arg.New("host", "ip").Info("Repository address to remove"),
+    Kwarg.New("update", "bool").Default(false).Alias("u").Info("Automatically update repo after removing")
 ]
 
 del_repo_func = function(a)
@@ -63,7 +63,7 @@ del_repo_func = function(a)
 end function
 
 del_repo_cmd = apt_tool.command("delrepo", del_repo_args, @del_repo_func)
-del_repo_cmd.short_description = "Add new repository to current apt session"
+del_repo_cmd.short_description = "Remove repository from current apt session"
 del_repo_cmd.long_description = "$P;Usage:
 $P;apt-get $S;delrepo $ip;138.32.12.3
 $P;apt-get $S;delrepo $ip;138.32.12.3 $bool;--update
