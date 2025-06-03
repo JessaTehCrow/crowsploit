@@ -7,7 +7,7 @@ import_code("../constants/settings")
 Kernel = {}
 Kernel.DEBUG = false
 Kernel.nightly = false
-Kernel.version = "2.18.3"
+Kernel.version = "2.18.4"
 Kernel.keep_session = true
 
 Kernel.sessions = []
