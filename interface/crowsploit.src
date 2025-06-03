@@ -214,7 +214,7 @@ else
     session = Session.New(shell, active_user)
     if comp.is_network_active then session.router = get_router
 
-    session.path = launch_path
+    session.path = program_path
     session.file = session.file.get_folder(current_path)
 
     kernel.new_session(session)
