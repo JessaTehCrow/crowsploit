@@ -109,7 +109,7 @@ end function
 
 // End util funcs
 
-scantool = Tool.New("scan", "1.5.0")
+scantool = Tool.New("scan", "1.5.1")
 scantool.short_description = "Scan ports and libraries for versions & exploits"
 scantool.long_description = "Scan ports and libraries for versions & exploits"
 
@@ -457,6 +457,7 @@ libs_func = function(a)
 
     for lib in libs
         log(lib)
+        active_super_admin = false
         existing = ExploitLibrary.New(lib)
         if is_error(existing) then return existing.stack("scan.libs")
 
