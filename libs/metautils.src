@@ -444,15 +444,15 @@ ExploitLibrary.get_exploit = function(exploit)
 end function
 
 
-ExploitLibrary.merge = function(library)
+ExploitLibrary.merge = function(library, force_overwrite=false)
     for x in library.exploits
         e = self.get_exploit(x)
-                
-        if e == null then
+
+        if e == null or force_overwrite then
             self.exploits.push(x)
         else
-            other = (x.object == "Unknown") + (x.objperms == "unknown")
-            existing = (e.object == "Unknown") + (e.objperms == "unknown")
+            other = (x.object == "Unknown") + (x.objperms == "unknown" or x.objperms == "guest")
+            existing = (e.object == "Unknown") + (e.objperms == "unknown" or e.objperms == "guest")
 
             if other < existing then
                 e.object = x.object
