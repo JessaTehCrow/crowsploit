@@ -110,24 +110,23 @@ Kernel.parse_command = function(text)
             
             // Env variable parsing
             for t in temp
+                if t[-1] == "'" then ending = "'" else ending = ""
+                t = t.replace("'", "")
                 if t.is_match("^\$\w+$") then
                     env_val = t[1:]
                     if not self.env.hasIndex(env_val) then continue
                     result = @self.env[env_val]
-
                     if typeof(@result) == "function" then
-                        temp[__t_idx] = result()
+                        temp[__t_idx] = result() + ending
                     else if @result isa string and EvalType.New(result).type == "string" then
                         temp[__t_idx] = "'"+self.env[env_val].replace("'", "\'") + "'"
                     else
-                        temp[__t_idx] = self.env[env_val]
+                        temp[__t_idx] = self.env[env_val] + ending
                     end if
                     continue
                 end if
             end for
-
             val = temp.join(" ")
-
             commands[__command_idx][__pipe_idx] = val
             cmd = val.split(" ")[0]
 
