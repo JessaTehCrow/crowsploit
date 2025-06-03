@@ -7,7 +7,7 @@ import_code("../constants/settings")
 Kernel = {}
 Kernel.DEBUG = false
 Kernel.nightly = false
-Kernel.version = "2.18.3"
+Kernel.version = "2.18.4"
 Kernel.keep_session = true
 
 Kernel.sessions = []
@@ -110,24 +110,23 @@ Kernel.parse_command = function(text)
             
             // Env variable parsing
             for t in temp
+                if t[-1] == "'" then ending = "'" else ending = ""
+                t = t.replace("'", "")
                 if t.is_match("^\$\w+$") then
                     env_val = t[1:]
                     if not self.env.hasIndex(env_val) then continue
                     result = @self.env[env_val]
-
                     if typeof(@result) == "function" then
-                        temp[__t_idx] = result()
+                        temp[__t_idx] = result() + ending
                     else if @result isa string and EvalType.New(result).type == "string" then
                         temp[__t_idx] = "'"+self.env[env_val].replace("'", "\'") + "'"
                     else
-                        temp[__t_idx] = self.env[env_val]
+                        temp[__t_idx] = self.env[env_val] + ending
                     end if
                     continue
                 end if
             end for
-
             val = temp.join(" ")
-
             commands[__command_idx][__pipe_idx] = val
             cmd = val.split(" ")[0]
 
@@ -238,43 +237,53 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
             end if
             
             if parts.len > 2 and (parts[-2].value == ">>" or parts[-2].value == ">") then
-                if parts[-2].value == ">" then fullRedirect = true
-                redirected = true
-                session_file = self.session.file
                 path = parts[-1].eval_value
-                temp = session_file.get_file(path)
-                if path[0] != "/" then path = session_file.path + "/" + path
-                    comp = self.session.computer
-
-                if comp and is_error(temp) then 
-                    temp = comp.touch(parent_path(path),path.split("/")[-1])
+                if path != "" then 
+                    if parts[-2].value == ">" then fullRedirect = true
+                    redirected = true
+                    session_file = self.session.file
                     temp = session_file.get_file(path)
-                end if
+                    if temp.is_binary then
+                        if self.DEBUG then print(self.color("$error;Cannot redirect to binary files"))
+                    end if
+        
+                    if path[0] != "/" then path = session_file.path + "/" + path
+                        comp = self.session.computer
 
-                if is_error(temp) then
-                    redirected = false
-                    self.last_error = temp.stack("Kernel.run_command")
-                    continue
-                end if
+                    if comp and is_error(temp) then 
+                        temp = comp.touch(parent_path(path),path.split("/")[-1])
+                        temp = session_file.get_file(path)
+                    end if
 
-                redirectFile = temp
-                if not fullRedirect then
-                    if not redirectFile.has_permission("r") or not redirectFile.parent.has_permission("w") then
+                    if is_error(temp) then
                         redirected = false
-                        self.last_error = PermissionError.New("Kernel.run_command","read & write")
+                        self.last_error = temp.stack("Kernel.run_command")
                         continue
                     end if
-                else 
-                    if not redirectFile.parent.has_permission("w") then
-                        redirected = false
-                        fullRedirect = false
-                        self.last_error = PermissionError.New("Kernel.run_command","write")
-                        continue
+
+                    redirectFile = temp
+                    if not fullRedirect then
+                        if not redirectFile.has_permission("r") or not redirectFile.parent.has_permission("w") then
+                            redirected = false
+                            self.last_error = PermissionError.New("Kernel.run_command","read & write")
+                            continue
+                        end if
+                    else 
+                        if not redirectFile.parent.has_permission("w") then
+                            redirected = false
+                            fullRedirect = false
+                            self.last_error = PermissionError.New("Kernel.run_command","write")
+                            continue
+                        end if
                     end if
+                    for x in range(0,1)
+                        parts.pop()
+                    end for
+                else
+                    for x in range(0,1)
+                        parts.pop()
+                    end for
                 end if
-                for x in range(0,1)
-                    parts.pop()
-                end for
             end if
 
             if __pipe_idx == 0 then
