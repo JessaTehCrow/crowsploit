@@ -528,22 +528,23 @@ File.silent_rm = function() //@returns {Error|true}
     if self.path == "/" then return OsError.New("File.delete","file '/' cannot be deleted")
     if not self.parent.has_permission("w") then return PermissionError.New("File.silent_rm","write")
     if self.is_folder and not self.is_symlink then
-    self.move(self.path,"anyname")
-    return 1
+        self.move(self.path,"anyname")
+        return 1
     end if
     root = self.get_folder("/")
     if is_error(root) then return root
-    files = root.find_type("file",true)
+    files = root.find_type("file", true)
     target = null
     for file in files
         if target != null then break
         if file.parent.has_permission("w") and self.path != file.path then target = file
     end for
     if target == null then return OsError.New("File.silent_rm","no movable file found")
+    prevp = target.path
     prevn = target.name
     result = target.move(parent_path(self.path),self.name)
     if is_error(result) then return result.stack("File.silent_rm")
-    result = target.move(parent_path(target.path),prevn)
+    result = target.move(parent_path(prevp),prevn)
     if is_error(result) then return result.stack("File.silent_rm")
     return 1
 end function
