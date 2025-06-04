@@ -810,11 +810,12 @@ mv_func = function(a)
     if filename.len >= 128 then return OsError.New("system.mv", "Filename cannot be above 128 characters")
 
     dir = new_path.path
-
+    if dir != "/" then sep = "/" else sep = ""
+    type = target.file_type
     err = target.move(dir, filename)
     if is_error(err) then return err.stack("system.mv")
     if err isa string then return Error.New(err)
-    print("$T;Moved $ls" + target.file_type + ";" + old_name + " $T;to $ls" + target.file_type + ";" + dir + "/" + filename)
+    print("$T;Moved $ls" + type + ";" + old_name + " $T;to $ls" + type + ";" + dir + sep + filename)
 end function
 
 mv = mytool.standalone_command("mv", mv_args, @mv_func)

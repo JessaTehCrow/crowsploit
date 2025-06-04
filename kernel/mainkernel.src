@@ -110,8 +110,8 @@ Kernel.parse_command = function(text)
             
             // Env variable parsing
             for t in temp
-                if t[-1] == "'" then ending = "'" else ending = ""
-                t = t.replace("'", "")
+                if t[-1] == "'" or t[-1] == """" then ending = t[-1] else ending = ""
+                t = t.replace("'", "").replace("""", "")
                 if t.is_match("^\$\w+$") then
                     env_val = t[1:]
                     if not self.env.hasIndex(env_val) then continue
@@ -125,6 +125,7 @@ Kernel.parse_command = function(text)
                     end if
                     continue
                 end if
+                if t.len >= 2 and t[0] == "\" and t[1] == "$" then temp[__t_idx] = t[1:] + ending
             end for
             val = temp.join(" ")
             commands[__command_idx][__pipe_idx] = val
@@ -244,12 +245,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                     session_file = self.session.file
                     temp = session_file.get_file(path)
 
-                    if is_error(temp) then
-                        had_success = false
-                        self.last_error = temp
-                        break
-
-                    else if temp.is_binary then
+                    if not is_error(temp) and temp.is_binary then
                         had_success = false
                         self.last_error = OsError.New("stdout.redirect", "Invalid target: Binary")
                         break
@@ -262,7 +258,11 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                         temp = comp.touch(parent_path(path),path.split("/")[-1])
                         temp = session_file.get_file(path)
                     end if
-
+                    if is_error(temp) then
+                        had_success = false
+                        self.last_error = temp
+                        break
+                    end if
                     redirectFile = temp
                     if not fullRedirect then
                         if not redirectFile.has_permission("r") or not redirectFile.parent.has_permission("w") then
