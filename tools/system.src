@@ -1455,12 +1455,12 @@ su_func = function(a)
     if a.password == null then
         a.password = user_input(a.kernel.color("$T2;Password $T;: <size=0.1px>"))
     end if
-    //if a.user == "" or a.password == "" then
-    //    return IdiotError.New("system.su", "user and/or password cannot be empty")
-    //end if
+    if a.user == "" or a.password == "" then
+       return IdiotError.New("system.su", "User and/or password cannot be empty").message.replace("<#0ff>","")
+    end if
     shell = get_shell(a.user, a.password)
     if shell == null then return OsError.New("system.su", "Failed to login as " + a.user)
-    if a.user == "" then a.user = a.kernel.session.user
+    //if a.user == "" then a.user = a.kernel.session.user
     ses = Session.New(Shell.New(shell), a.user)
     if is_error(ses) then return ses.stack("system.su")
 
