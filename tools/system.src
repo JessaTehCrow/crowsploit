@@ -2,7 +2,7 @@ import_code("../kernel/toolkernel")
 import_code("../libs/sessionmanager")
 import_code("../libs/syntax_parser")
 
-mytool = Tool.New("system", "1.10.0")
+mytool = Tool.New("system", "1.10.1")
 
 mytool.short_description = "All default system commands"
 mytool.long_description = "All default system commands"
@@ -2193,8 +2193,8 @@ end function
 
 finf_cmd = mytool.standalone_command("finf", finf_args, @finf_func)
 finf_cmd.short_description = "View detailed file information"
-finf_cmd.long_description = "
-$P;Usage: system finf $string;testfolder$P; >>
+finf_cmd.long_description = "$P;Usage:
+$P;system $S;finf $string;testfolder$P; >>
 $P;name: $string;testfolder         
 $P;path: $string;/root/test/testfolder          
 $P;size: $string;1.2MB   
@@ -2208,9 +2208,293 @@ $P;symlink: $string;yes
 $P;target: $string;/root/target"
 
 
+sysmon_args = [
+    Kwarg.New("delay", "float").Default(0.25).Info("How long between checks")
+]
 
+// Probably the ugliest command in cs, but we'll keep it ;3
+sysmon_func = function(a)
+    c = confirmation_prompt("$error;WARNING; ONCE STARTED, YOU CAN NOT STOP THE SYSTEM MONITOR"+char(10)+"$P;Continue?")
+    if not c then return
 
+    colors = {
+        "file" : "<#aaa>",
+        "folder" : "<#08f>",
+        "binary" : "<#0e8>",
+        "symlink" : "<#c158d6>",
+        "new" : "<#0f4>",
+        "missing" : "<#f04>",
+        "changed" : "<#fa0>",
+        "normal" : "<#aaa>",
+        "misc" : "<#08f>",
+    }
 
+    get_type = function(file_ob)
+        if file_ob.is_folder then
+            return "folder"
+        else if file_ob.is_binary then
+            return "binary"
+        end if
+        return "file"
+    end function
+
+    true_type = function(ob)
+        if ob.is_symlink then
+            return "symlink"
+        end if
+        return get_type(ob)
+    end function
+
+    change = function(type, a, b)
+        return {
+            "type":type,
+            "original":a,
+            "new":b,
+        }
+    end function
+
+    F = {}
+    F.New = function(a)
+        f = new self
+        f.group = a.group
+        f.permissions = a.permissions
+        f.type = get_type(a)
+        f.size = a.size
+        f.path = a.path
+        f.owner = a.owner
+        f.content = null
+        f.name = a.name
+        f.truetype = true_type(a)
+        f.color = colors[f.truetype]
+
+        if f.type == "file" and a.has_permission("r") then
+            f.content = a.get_content()
+        end if
+
+        return f
+    end function
+
+    F.is = function(b)
+        if b.path != self.path then return false
+        if b.type != self.type then return false
+        
+        return true
+    end function
+
+    F.difference = function(b)
+        result = []
+        a = self
+
+        if b.size != a.size then 
+            result.push(change("size", b.size, a.size))
+        end if
+        if b.name != a.name then 
+            result.push(change("name", b.name, a.name))
+        end if
+        if b.group != a.group then 
+            result.push( change("group", b.group, a.group))
+        end if
+        if b.owner != a.owner then 
+            result.push(change("owner", b.owner, a.owner))
+        end if
+        if a.permissions != b.permissions then
+            result.push(change("permissions", b.permissions, a.permissions))
+        end if
+
+        if a.content != b.content and a.content != null then
+            result.push(change("content", a.content, b.content))
+        end if
+
+        return result
+    end function
+
+    F.similar = function(b)
+        result = 0
+        a = self
+        if a.type != b.type then return false
+        if a.size == b.size then result = result + 1
+        if a.name == b.name then result = result + 1
+        if a.group == b.group then result = result + 1
+        if a.owner == b.owner then result = result + 1
+        if a.permissions == b.permissions then result = result + 1
+        if a.content == b.content then result = result + 1
+        if a.path == b.path then result = result + 1
+
+        return result >= 5
+    end function
+
+    get_files = function(folder)
+        result = [F.New(folder)]
+        for x in folder.get_files
+            result.push(F.New(x))
+        end for
+        for x in folder.get_folders
+            result = result + get_files(x)
+        end for
+        return result
+    end function
+
+    list.copy = function()
+        result = []
+        for x in self
+            result.push(x)
+        end for
+        return result
+    end function
+
+    get_procs = function(c)
+        procs = c.show_procs.split(char(10))[1:]
+        result = []
+        for p in procs
+            temp = p.split(" ")
+            pid = temp[1]
+            command = temp[4]
+            result.push({"pid":pid, "command":command})
+        end for
+        return result
+    end function
+
+    list.difference_files = function(b)
+        new_items = []
+        missing_items = []
+        changed_items = {}
+
+        found_a = []
+        for x in self
+            found = false
+            for y in b
+                if x.is(y) and found_a.indexOf(__y_idx) == null then
+                    found_a.push(__y_idx)
+                    found = true
+                    dif = x.difference(y)
+                    if dif != [] then changed_items[x.path] = {"file":x,"change":dif}
+                    break
+                end if
+            end for
+
+            if not found then
+                new_items.push(x)
+            end if
+        end for
+
+        found_b = []
+        for x in b
+            found = false
+            for y in self
+                if x.is(y) and found_b.indexOf(__y_idx) == null then
+                    found_b.push(__y_idx)
+                    found = true
+                    dif = y.difference(x)
+                    if dif != [] then changed_items[x.path] = {"file":y,"change":dif}
+                    break
+                end if
+            end for
+
+            if not found then
+                missing_items.push(x)
+            end if
+        end for
+        return {"new":new_items,"missing":missing_items,"changed":changed_items.values}
+    end function
+
+    list.difference = function(b)
+        new_items = []
+        missing_items = []
+
+        found_a = []
+        for x in self
+            found = false
+            for y in b
+                if x == y and found_a.indexOf(__y_idx) == null then
+                    found_a.push(__y_idx)
+                    found = true
+                    break
+                end if
+            end for
+
+            if not found then
+                new_items.push(x)
+            end if
+        end for
+
+        found_b = []
+        for x in b
+            found = false
+            for y in self
+                if x == y and found_b.indexOf(__y_idx) == null then
+                    found_b.push(__y_idx)
+                    found = true
+                    break
+                end if
+            end for
+
+            if not found then
+                missing_items.push(x)
+            end if
+        end for
+        return {"new":new_items,"missing":missing_items}
+    end function
+
+    old_files = get_files(comp.File("/"))
+    old_processes = get_procs(comp)
+
+    print("$P;Monitoring has started"+char(10), true)
+    while true
+        new_files = get_files(comp.File("/"))
+        new_processes = get_procs(comp)
+
+        difference = new_files.difference_files(old_files)
+
+        skip = []
+        for x in difference.missing 
+            for y in difference["new"]
+                if x.similar(y) then
+                    skip.push(x)
+                    skip.push(y)
+                    print(colors.changed + "- " + x.color + x.path + colors.changed + " > " + x.color + y.path)
+                    break
+                end if
+            end for
+        end for
+
+        for x in difference.missing
+            if skip.indexOf(x) != null then continue
+            print(colors.missing + "x " + x.color + x.path)
+        end for
+
+        for x in difference["new"]
+            if skip.indexOf(x) != null then continue
+            print(colors["new"] + "+ " + x.color + x.path)
+        end for
+
+        for x in difference.changed
+            for y in x.change
+                if y.type == "content" then
+                    print(colors.changed + "? " + x.file.color + x.file.path + colors.normal + " : " + y.type)
+                else
+                    print(colors.changed + "? " + x.file.color + x.file.path + colors.normal + " : " + y.type + " : " + colors.misc + y.original + colors.changed + " > " + colors.misc + y["new"])
+                end if
+            end for
+        end for
+
+        difference = new_processes.difference(old_processes)
+        for x in difference["new"]
+            print(colors["new"] + "> " + colors.normal + x.command + "<#888> @ " + colors.normal + x.pid)
+        end for
+        for x in difference.missing
+            print(colors.missing + "- " + colors.normal + x.command + "<#888> @ " + colors.normal + x.pid)
+        end for
+
+        old_files = new_files
+        old_processes = new_processes
+        wait(1.5)
+    end while
+end function
+
+sysmon_cmd = mytool.command("monitor", sysmon_args, @sysmon_func)
+sysmon_cmd.small_description = "Monitor system for changes and display to terminal"
+sysmon_cmd.long_description = "$P;Usage:
+$P;monitor"
 
 // init
 
