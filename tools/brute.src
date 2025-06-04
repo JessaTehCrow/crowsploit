@@ -317,10 +317,10 @@ hash_func = function(a)
     user = null
     hash = a.hash
 
-    if a.hash.trim.is_match("^\w+:[1234567890abcdef]{32}$") then
+    if a.hash.trim.is_match("^.+:[1234567890abcdef]{32}$") then
         sep = a.hash.split(":")
-        user = sep[0]
-        hash = sep[1]
+        user = sep[:-1].join(":")
+        hash = sep[-1]
     end if
 
     if not hash.is_match("^[1234567890abcdef]{32}$") then
