@@ -277,6 +277,8 @@ end function
 File.set_group = function(group, recursive=false)
     self.sanity_check
     if not self.has_permission("w") then return PermissionError.New("File.set_group","write")
+    if not group then return OsError.New("File.set_group","Group cannot be empty")
+    if group.len > 15 then return OsError.New("File.set_group","Group cannot exceed 15 characters")
     result = self.object.set_group(group, recursive)
     if result == "Permission denied" then return PermissionError.New("File.set_group","write")
     if result == "" then return
@@ -286,6 +288,8 @@ end function
 File.set_owner = function(owner, recursive=false)
     self.sanity_check
     if not self.has_permission("w") then return PermissionError.New("File.set_owner","write")
+    if not owner then return OsError.New("File.set_owner","Owner cannot be empty")
+    if owner.len > 15 then return OsError.New("File.set_owner","Owner cannot exceed 15 characters")
     result = self.object.set_owner(owner, recursive)
     if result == "Permission denied" then return PermissionError.New("File.set_group","write")
     if result == "" then return
