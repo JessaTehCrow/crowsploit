@@ -7,7 +7,7 @@ import_code("../constants/settings")
 Kernel = {}
 Kernel.DEBUG = false
 Kernel.nightly = false
-Kernel.version = "2.18.4"
+Kernel.version = "2.18.5"
 Kernel.keep_session = true
 
 Kernel.sessions = []
@@ -243,8 +243,16 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                     redirected = true
                     session_file = self.session.file
                     temp = session_file.get_file(path)
-                    if temp.is_binary then
-                        if self.DEBUG then print(self.color("$error;Cannot redirect to binary files"))
+
+                    if is_error(temp) then
+                        had_success = false
+                        self.last_error = temp
+                        break
+
+                    else if temp.is_binary then
+                        had_success = false
+                        self.last_error = OsError.New("stdout.redirect", "Invalid target: Binary")
+                        break
                     end if
         
                     if path[0] != "/" then path = session_file.path + "/" + path
@@ -253,12 +261,6 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                     if comp and is_error(temp) then 
                         temp = comp.touch(parent_path(path),path.split("/")[-1])
                         temp = session_file.get_file(path)
-                    end if
-
-                    if is_error(temp) then
-                        redirected = false
-                        self.last_error = temp.stack("Kernel.run_command")
-                        continue
                     end if
 
                     redirectFile = temp
