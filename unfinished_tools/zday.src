@@ -1,0 +1,410 @@
+import_code("../kernel/toolkernel")
+import_code("../libs/0daysolver")
+
+// Date handling
+months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+days = [31,28,31,30,31,30,31,31,30,31,30,31]
+
+get_month = function(month, year)
+    return days[months.indexOf(month)] + (month == "Feb" and year%4==0)
+end function
+
+minutes_to_irl_seconds = function(mins)
+    return mins*(60/14)
+end function
+
+seconds_to_human_readable = function(secs)
+    days_until = floor(secs/3600/24)
+    hours_until = floor(secs/3600)%24
+    minutes_until = floor((secs/60))%60
+    seconds_until = floor(secs)%60
+
+    return {
+        "days":days_until,
+        "hours":hours_until,
+        "minutes":minutes_until,
+        "seconds":seconds_until
+    }
+end function
+
+get_next_0day_minutes = function(min, hour, day, month, year)
+    month_index = months.indexOf(month)+1
+    days_remaining = get_month(month) - day
+
+    if month_index%2 == 0 then 
+        days_remaining = days_remaining + get_month(months[month_index%len(months)])
+    end if
+
+    hours_remaining = 23-hour%24
+    minutes_remaining = 60-min
+    
+    hours_remaining =  hours_remaining + days_remaining*24
+    minutes_remaining = minutes_remaining + hours_remaining*60
+
+    return minutes_remaining
+end function
+
+parse_date = function(raw_date)
+    sep = raw_date.split("-")
+
+    time_string = sep[1].trim
+    date_string = sep[0].trim
+
+    hour = time_string.split(":")[0].to_int
+    min = time_string.split(":")[1].to_int
+
+    day = date_string.split("/")[0].to_int
+    month = date_string.split("/")[1]
+    year = date_string.split("/")[2].to_int
+    
+    return {
+        "day":day,
+        "month":month,
+        "year":year,
+        "hour":hour,
+        "min":min
+    }
+end function 
+
+calculate_0day = function(raw_date)
+    date = parse_date(raw_date)
+    minutes = get_next_0day_minutes(date.min, date.hour, date.day, date.month, date.year)
+    return seconds_to_human_readable(minutes_to_irl_seconds(minutes))
+end function
+
+remaining_0day = function(raw_date)
+    date = parse_date(raw_date)
+    month_index = months.indexOf(date.month) + 1
+    if month_index % 2 != 0 then return 0
+    if date.day >= 15 then return 0
+    
+    remaining_days = 14-date.day
+    remaining_hours = 24-date.hour + (remaining_days*24)
+    remaining_minutes = 60-date.min + (remaining_hours*60)
+
+    seconds = minutes_to_irl_seconds(remaining_minutes)
+    readable = seconds_to_human_readable(seconds)
+
+    return readable
+end function
+
+// Lib handling
+get_libs = function(session, target_path, recursive=false)
+    meta = session.metax
+    target = session.file.get_path(target_path)
+
+    if is_error(target) then return target.stack("zday.get_libs")
+
+    libraries = []
+    if target.is_folder then
+        log("Target is folder")
+        log("Recursive: " + recursive)
+
+        for x in target.tree(recursive)
+            if not x.is_binary then continue
+            lib = meta.load(x.path)
+            if lib == null then continue
+            libraries.push([x.path, lib])
+        end for
+    else    
+        lib = meta.load(target.path)
+        if lib == null then return ParseError.New("zday.get_libs", "Target is not a library")
+        libraries = [[target.path, lib]]
+    end if
+
+    return libraries
+end function
+
+display_libs = function(libraries)
+    kernel = _global.kernel
+    tab_data = []
+    patched = 0
+    for x in libraries
+        x = x[1]
+        patched = patched + x.is_patched
+        tab_data.push([x.lib_name, x.version, kernel.color(["$error;False", "$S;True"])[x.is_patched], ["", "$T2;"+x.is_patched(true)][x.is_patched]])
+    end for
+
+    result = tabulate_data(tab_data, ["Name", "Version", "Patched", "Until"], kernel.color(["$P;", "$T2;", "$T;"]))
+    kernel.line("", result.length)
+    kernel.print(result.string)
+    print(" ")
+    kernel.print("$T2;"+ patched +" $S;patched  $T2;"+ (len(libraries)-patched) +" $error;unpatched  $T2;" + len(libraries) + " $P;total")
+    kernel.line("", result.length)
+end function
+
+check_login = function(kernel)
+    if kernel.zday == null then 
+        kernel.print("$T2;No neurobox login credentials found. Input credentials below:")
+        kernel.run_command("zday login")
+        if kernel.zday == null then return Error.New("zday.check_login", "No neurobox credentials")
+    end if
+    return true
+end function
+
+// Define new tool
+zday = Tool.New("zday", "1.0.0")
+
+zday.settings = Settings.init()
+zday.settings.set("zday", {
+    "path":"/etc/crow/zday"
+})
+zday.settings.set("color", {
+    "zday": "<#c5b>"
+})
+zday.settings.set("input", {
+    "zday": "#"
+})
+
+
+zday.on_load = function(kernel)
+    if kernel.hasIndex("zday") then return
+    kernel.zday = null
+end function
+
+
+//login
+login_args = [
+    Kwarg.New("username", "string").Alias("u").Info("Neurobox username"),
+    Kwarg.New("password", "string").Alias("p").Info("Neurobox password")
+]
+
+login_func = function(a)
+    if a.username == null then
+        a.username = user_input(a.kernel.color("$P;Username $T2;: $input;"))
+    end if
+    if a.password == null then
+        a.password = user_input(a.kernel.color("$P;Password $T2;: $input;"))
+    end if
+
+    if a.username == "" and a.password == "" then return
+    print(" ")
+    p = confirmation_prompt("Is this correct?")
+    if not p then return
+
+    a.kernel.zday = {
+        "username": a.username.trim,
+        "password": a.password.trim,
+    }
+
+    print("$S;Login saved for this crowsploit instance")
+end function
+
+login_cmd = zday.command("login", login_args, @login_func)
+login_cmd.short_description = "Save neurobox creds to crowsploit instance"
+login_cmd.long_description = "$P;Usage:
+$P;zday $S;login
+$P;zday $S;login $string;-u Banana
+$P;zday $S;login $string;-u Banana -p Milkshake"
+
+
+//patch 
+patch_args = [
+    Arg.New("target", "string").Info("Library or Folder to patch"),
+    Kwarg.New("recursive", "bool").Alias("r").Default(0).Info("Find all libraries in folder (Only if target is a folder)")
+]
+
+patch_func = function(a)
+    result = check_login(a.kernel)
+    if is_error(result) then return result.stack("zday.patch")
+    ses = a.kernel.session
+
+    if ses.metax == null then return ObjectError.New("zday.patch", "metaxploit")
+    all_libraries = get_libs(a.kernel.session, a.target, a.recursive)
+
+    if is_error(all_libraries) then return all_libraries.stack("zday.patch")
+    log(len(all_libraries) + " libraries loaded")
+
+    tab_data = []
+    unpatched = []
+    for x in all_libraries
+        if x[1].is_patched then continue
+        unpatched.push(x)
+        tab_data.push([x[0], x[1].lib_name, x[1].version])
+    end for
+    result = tabulate_data(tab_data, ["Path", "Library", "Version"], a.kernel.color(["$T2;", "$P;", "$S;"]))
+
+    a.kernel.line("", result.length)
+    print(result.string)
+    print(" ")
+    print("$T2;"+len(unpatched) + " $error;unpatched")
+    a.kernel.line("", result.length)
+
+    c = confirmation_prompt("Attempt to patch all libraries?")
+    if not c then return
+
+    solver = ZeroDaySolver.New()
+
+    for l in unpatched
+        dir = l[0]
+        lib = l[1]
+
+        debug = lib.debug_tools(a.kernel.zday.username, a.kernel.zday.password)
+        if debug isa string then
+            a.kernel.zday = null
+            return Error.New("zday.patch", "Login credentials are invalid! (You have a max of 3 attempts)")
+        end if
+
+        log("Starting scan")
+        scan_result = debug.scan()
+        log("Starting solve")
+        solve_result = solver.solve(scan_result)
+
+        patch = solve_result[1]
+        incorect_lines = solve_result[0]
+
+        result = ses.computer.touch("/", "patch.src", patch.join(char(10)))
+        if is_error(result) then return result.stack("zday.patch")
+        file = ses.file.get_file("/patch.src")
+        if is_error(file) then return file.stack("zday.patch")
+
+        patch_result = debug.apply_patch(file.path)
+        if patch_result isa string and patch_result[:5] == "error" then
+            print("$error;Failed to patch $T2;" + dir + "$error; : " + patch_result[6:])
+        else
+            print("$S;Patched $T2;" + dir)
+        end if
+
+        file.delete()
+    end for
+end function
+
+patch_cmd = zday.command("patch", patch_args, @patch_func)
+patch_cmd.short_description = "Patch a library using your zero day credentials"
+patch_cmd.long_description  = "$P;Usage:
+$P;zday $string;patch /lib/libhttp.so
+$P;zday $string;patch /lib
+$P;zday $string;patch / $bool;-r"
+
+
+// info
+info_args = [
+    Arg.New("target", "string").Info("Library or Folder to patch"),
+    Kwarg.New("recursive", "bool").Alias("r").Default(0).Info("Find all libraries in folder (Only if target is a folder)")
+]
+
+info_func = function(a)
+    if a.kernel.session.metax == null then return ObjectError.New("zday.info", "metaxploit")
+    libraries = get_libs(a.kernel.session, a.target, a.recursive)
+
+    if is_error(libraries) then return libraries.stack("zday.info")
+    log(len(libraries) + " libraries loaded")
+
+    display_libs(libraries)
+end function
+
+info_cmd = zday.command("info", info_args, @info_func)
+info_cmd.short_description = "Show zeroday info of a library"
+info_cmd.long_description  = "$P;Usage:
+$P;zday $S;info $string;/lib/libhttp.so
+$P;zday $S;info $string;/lib
+$P;zday $S;info $string;/ $bool;-r"
+
+
+// unittest
+unit_args = [
+    Arg.New("target", "string").Info("Library or Folder to unittest"),
+    Kwarg.New("recursive", "bool").Alias("r").Default(0).Info("Find all libraries in folder (Only if target is a folder)")
+]
+
+unit_func = function(a)
+    result = check_login(a.kernel)
+    if is_error(result) then return result.stack("zday.unit")
+    ses = a.kernel.session
+
+    if ses.metax == null then return ObjectError.New("zday.unit", "metaxploit")
+    all_libraries = get_libs(a.kernel.session, a.target, a.recursive)
+
+    if is_error(all_libraries) then return all_libraries.stack("zday.unit")
+    log(len(all_libraries) + " libraries loaded")
+
+    tab_data = []
+    unpatched = []
+    for x in all_libraries
+        if x[1].is_patched then continue
+        unpatched.push(x)
+        tab_data.push([x[0], x[1].lib_name, x[1].version])
+    end for
+    result = tabulate_data(tab_data, ["Path", "Library", "Version"], a.kernel.color(["$T2;", "$P;", "$S;"]))
+
+    a.kernel.line("", result.length)
+    print(result.string)
+    print(" ")
+    print("$T2;"+len(unpatched) + " $error;unpatched")
+    a.kernel.line("", result.length)
+
+    c = confirmation_prompt("Attempt to patch all libraries?")
+    if not c then return
+
+    solver = ZeroDaySolver.New()
+
+    for l in unpatched
+        dir = l[0]
+        lib = l[1]
+
+        debug = lib.debug_tools(a.kernel.zday.username, a.kernel.zday.password)
+        if debug isa string then
+            a.kernel.zday = null
+            return Error.New("zday.unit", "Login credentials are invalid! (You have a max of 3 attempts)")
+        end if
+
+        log("Starting scan")
+        scan_result = debug.scan()
+        log("Starting solve")
+        solve_result = solver.solve(scan_result)
+
+        patch = solve_result[1]
+        incorect_lines = solve_result[0]
+
+        result = debug.unit_testing(incorect_lines)
+        if result[:5] == "error" or result[:5] == "Test " then
+            return Error.New("zday.unit", result)
+
+        else if result[:5] == "Start" then
+            print(result)
+
+        end if
+    end for
+end function
+zday.command("unit", unit_args, @unit_func)
+
+// counter
+counter_func = function(a)
+    active = remaining_0day(current_date)
+    if active != 0 then
+        print("$error;0day ends in")
+        print("$zday;Days    $T;: $T2;"+ active.days)
+        print("$zday;Hours   $T;: $T2;"+ active.hours)
+        print("$zday;Minutes $T;: $T2;"+ active.minutes)
+        print("$zday;Seconds $T;: $T2;"+ active.seconds)
+        print("$T;<i><size=13px>(IRL times)")
+    else
+        u = calculate_0day(current_date)
+        print("$P;0day Countdown")
+        print("$S;Days    $T;: $T2;"+ u.days)
+        print("$S;Hours   $T;: $T2;"+ u.hours)
+        print("$S;Minutes $T;: $T2;"+ u.minutes)
+        print("$S;Seconds $T;: $T2;"+ u.seconds)
+        print("$T;<i><size=13px>(IRL times)")
+    end if
+end function
+
+counter_cmd = zday.command("counter", [], @counter_func)
+counter_cmd.short_description = "Show duration until next zeroday"
+counter_cmd.long_description = "$P;Zero days only happen on even months
+
+$P;For example:
+$T;<i>ID   Month
+$T;2    $S;Feb
+$T;4    $S;Apr
+$T;6    $S;Jun
+$T;8    $S;Aug
+$T;10   $S;Oct
+$T;12   $S;Dec
+
+$P;Zero days only last for the first $T2;14$P; days in the month.
+$P;So $S;Feb $T2;1-14$P;, $S;Apr $T2;1-14$P; etc."
+
+// init
+
+zday.init()

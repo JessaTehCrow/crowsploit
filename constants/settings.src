@@ -22,6 +22,9 @@ color input = <#bcf>
 // Root color
 color root = <#f60>
 
+// Zday
+color zday = <#c6b>
+
 // Error color
 color error = <#e05>
 
@@ -63,13 +66,14 @@ input prompt = <voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$S;$t
 input shell    = >
 input computer = :
 input file     = -
+input zday     = #
 
 //////////////
 // Database //
 
 database location = /etc/crow/exdb
 brute list_directory = /etc/crow/plist
-
+zday path = /etc/crow/zday
 
 ///////////////////////
 // Library directory //

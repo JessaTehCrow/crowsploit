@@ -63,6 +63,7 @@ Path.is_parent_of = function(path)
 end function
 
 
+
 File.tree = function(recursive=false, max_depth=15, depth=0, raw=false)
     self.sanity_check
     if depth >= max_depth then return []
@@ -76,19 +77,21 @@ File.tree = function(recursive=false, max_depth=15, depth=0, raw=false)
     end if
 
     if raw then
-        raw_tree = function(fileob)
+        raw_tree = function(fileob, recursive=false, max_depth=15, depth=0)
             files = []
             for f in fileob.get_files
                 files.push(f)
             end for
             for d in fileob.get_folders
                 files.push(d)
-                files = files + raw_tree(d)
+                if not recursive or depth == max_depth then continue
+                files = files + raw_tree(d, recursive, max_depth, depth+1)
+
             end for
             return files
         end function
 
-        return raw_tree(self.object)
+        return raw_tree(self.object, recursive, max_depth)
 
     else
         for x in current.get_all
@@ -483,7 +486,6 @@ File.get_permission = function()
     return "user"
 end function
 
-
 File.get_all = function()
     self.sanity_check
     if not self.is_folder then return TypeError.New("File.get_all","folder", self.file_type)
@@ -571,55 +573,6 @@ File.touch = function(path, name)
     return newfile
 end function
 
-///import_code("./utils")
-
-// Do we really need this?
-// Would this not be better as a stand-alone tool?
-// File.encrypt = function(key)
-//         self.sanity_check
-
-//         if not self.is_file then return TypeError.New("File.encrypt","file",self.file_type())
-//         if not self.has_permission("r") then return PermissionError.New("File.encrypt","read / write")
-//         if not self.parent.has_permission("w") then return PermissionError.New("File.encrypt","read / write")
-
-//         err = expect_all([key], string)
-//         if err then return TypeError.New("File.encrypt","string", typeof(err))
-//         if key.len != 16 then return Error.New("File.encrypt","Key length must be exactly 16 characters long")
-
-//         cont = self.get_content
-//         if is_error(cont) then return cont.stack("File.encrypt")
-
-//         r = AES128("encrypt", key, cont)
-//         if r == null then return Error.New("file.encrypt","Unknown error")
-
-//         result = self.set_content(str(r))
-//         if is_error(result) then return result.stack("File.encrypt")
-
-//         return true
-// end function
-
-// File.decrypt = function(key)
-//         self.sanity_check
-    
-//     if not self.is_file then return TypeError.New("File.decrypt","file",self.file_type())
-//         if not self.has_permission("r") then return PermissionError.New("File.decrypt","read / write")
-//         if not self.parent.has_permission("w") then return PermissionError.New("File.decrypt","read / write")
-    
-//     err = expect_all([key], string)
-//         if err then return TypeError.New("File.decrypt","string", typeof(err))
-//         if key.len != 16 then return Error.New("File.decrypt","Key length must be exactly 16 characters long")
-    
-//     cont = self.get_content
-//         if is_error(cont) then return cont.stack("File.decrypt")
-    
-//     r = AES128("decrypt", key, cont)
-//         if r == null then return Error.New("file.decrypt","Unknown error")
-    
-//     result = self.set_content(str(r))
-//         if is_error(result) then return result.stack("File.decrypt")
-        
-//     return true
-// end function
 
 
 Computer.get_user = function()
