@@ -81,6 +81,7 @@ ZeroDaySolver.initialParse = function(scanResult)
 	program = []
 	info = []
 	for line in scanResult.split(char(10))
+		line = line.trim()
 		if line == "" or line == "Potential problems have been found in the following code:" then continue
 		if line.indexOf(":") == null then
 			info = info + line.split("\.")

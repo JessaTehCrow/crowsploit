@@ -1,0 +1,345 @@
+import_code("./sessionmanager")
+import_code("./error")
+
+// Partial interpreter
+
+PartialInterpreter = {}
+PartialInterpreter.New = function(kernel, debug, exploit, pfile, file_usr, pcomp, comp_usr, ip, path, metalib=null)
+    pi = new self
+    pi.kernel = kernel
+    pi.debug = debug
+    pi.exploit = exploit
+
+    pi.file_user = file_usr
+    pi.comp_user = comp_usr
+
+    pi.session = Session.New(null, kernel.color("$zday;Partial"))
+    pi.session.wan = ip
+    pi.session.lan = "unknown"
+    pi.session.comp_name = "unknown"
+    pi.session.partial_interpreter = pi
+
+    pi.set_computer(pcomp)
+    pi.set_file(pfile, path)
+
+    pi.metalib = metalib
+    
+    return pi
+end function
+
+PartialInterpreter.set_computer = function(pcomp)
+    self.session.computer = Computer.New(pcomp)
+    self.session.computer.partial = true
+end function
+
+PartialInterpreter.set_file = function(pfile, target)
+    self.session.file = File.New(pfile, pfile)
+    self.session.file.partial = true
+    self.session.file.path = target
+end function
+
+PartialInterpreter.update = function(interpreter)
+    self.session.overwrite(interpreter.session)
+    self.metalib = interpreter.metalib
+    self.debug = interpreter.debug
+    self.exploit = interpreter.exploit
+    self.file_user = interpreter.file_user
+    self.comp_user = interpreter.comp_user
+end function
+
+PartialInterpreter.command_shape = {}
+
+// Yes this is ugly, but whatever
+//                                               [desc, [[name, regex, optional], ...]]
+PartialInterpreter.command_shape.help          = ["Show help page", []]
+PartialInterpreter.command_shape.exit          = ["Exit zeroday session", []]
+PartialInterpreter.command_shape.clear         = ["Clears screen", []]
+PartialInterpreter.command_shape.target        = ["Change file target", [["path", "^[a-zA-Z0-9_/.]+$", false]]]
+PartialInterpreter.command_shape.session       = ["List sessions or optionally swap to other session", [["ID", "^\d+$", true]]]
+PartialInterpreter.command_shape.exploit       = ["Run exploit against target file (Only if target is a library)", []]
+PartialInterpreter.command_shape.payload       = ["Get new partial objects (Only if target is a library)", []]
+PartialInterpreter.command_shape.overflow      = ["Run a temp exploit on the target (Only if target is a library)", []]
+
+PartialInterpreter.command_shape.delete_group  = ["Delete a group from user", [["user", "^\w+$", false], ["group", "^\w+$", false]]]
+PartialInterpreter.command_shape.create_group  = ["Add a group to user", [["user", "^\w+$", false], ["group", "^\w+$", false]]]
+PartialInterpreter.command_shape.create_folder = ["Create a new folder", [["path", "^[a-zA-Z0-9_/.]+$", false]]]
+PartialInterpreter.command_shape.touch         = ["Create a new file", [["path", "^[a-zA-Z0-9_/.]+$", false]]]
+PartialInterpreter.command_shape.delete_user   = ["Delete user and optionally home folder", [["username", "^\w+$", false], ["removeHome", "^(true|false|0|1|True|False)$", true]]]
+PartialInterpreter.command_shape.create_user   = ["Create new user", [["username", "^\w+$", false], ["password", "^\w+$", false]]]
+PartialInterpreter.command_shape.rename        = ["Rename current file target", [["name", "^[a-zA-Z0-9._]+$", false]]]
+PartialInterpreter.command_shape.set_group     = ["Set group of current file target", [["group", "^\w+$", false], ["recursive", "^(true|false|0|1|True|False)$", true]]]
+PartialInterpreter.command_shape.move          = ["Move current file target to destination", [["path", "^[a-zA-Z0-9_/.]+$", false]]]
+PartialInterpreter.command_shape.set_owner     = ["Set owner of current file target", [["owner", "^\w+$", false], ["recursive", "^(true|false|0|1|True|False)$", true]]]
+PartialInterpreter.command_shape.chmod         = ["Change permissions of current file target", [["perms", "^.+$", false], ["recursive", "^(true|false|0|1|True|False)$", true]]]
+PartialInterpreter.command_shape.delete        = ["Delete current file target", []]
+
+PartialInterpreter.commands = {}
+
+// Computer
+PartialInterpreter.commands.delete_group = function(pi, args)
+    ses = pi.kernel.session
+    return ses.computer.delete_group(args[0], args[1])
+end function
+
+PartialInterpreter.commands.create_group = function(pi, args)
+    ses = pi.kernel.session
+    return ses.computer.create_group(args[0], args[1])
+end function
+
+PartialInterpreter.commands.create_folder = function(pi, args)
+    ses = pi.kernel.session
+    p = Path.New(args[0])
+    print("$T;Creating folder $lsfolder;" + p.path)
+    return ses.computer.create_folder(p.folder, p.name)
+end function
+
+PartialInterpreter.commands.touch = function(pi, args)
+    ses = pi.kernel.session
+    p = Path.New(args[0])
+    print("$T;Creating file $lsfile;" + p.path)
+    return ses.computer.touch(p.folder, p.name)
+end function
+
+PartialInterpreter.commands.delete_user = function(pi, args)
+    ses = pi.kernel.session
+    delhome = len(args)>1 and args[1].is_match("^(true|True|1)$")
+    return ses.computer.delete_user(args[0], delhome)
+end function
+
+PartialInterpreter.commands.create_user = function(pi, args)
+    ses = pi.kernel.session
+    return ses.computer.create_user(args[1], args[2])
+end function
+
+
+// File
+PartialInterpreter.commands.rename = function(pi, args)
+    ses = pi.kernel.session
+    s = ses.file.rename(args[0])
+    p = Path.New(ses.file.path)
+    if not is_error(s) then 
+        ses.file.path = p.folder + "/" + args[0]
+        pi.run_command("target " + p.folder + "/" + args[0])
+    end if
+    return s
+end function
+
+PartialInterpreter.commands.set_group = function(pi, args)
+    ses = pi.kernel.session
+    optional = len(args)>1 and args[1].is_match("^(true|True|1)$")
+    return ses.file.set_group(args[0], optional)
+end function
+
+PartialInterpreter.commands.delete = function(pi, args)
+    ses = pi.kernel.session
+    s = ses.file.delete()
+    if not is_error(s) then ses.file.path = "[DELETED]"
+    return s
+end function
+
+PartialInterpreter.commands.move = function(pi, args)
+    ses = pi.kernel.session
+    p = Path.New(args[0])
+    s = ses.file.move(p.folder, p.name)
+    if not is_error(s) then ses.file.path = p.path
+    return s
+end function
+
+PartialInterpreter.commands.set_owner = function(pi, args)
+    ses = pi.kernel.session
+    optional = len(args)>1 and args[1].is_match("^(true|True|1)$")
+    return ses.file.set_owner(args[0], optional)
+end function
+
+PartialInterpreter.commands.chmod = function(pi, args)
+    ses = pi.kernel.session
+    optional = len(args)>1 and args[1].is_match("^(true|True|1)$")
+    return ses.file.chmod(args[0], optional)
+end function
+
+
+// Interpreter / Session commands
+PartialInterpreter.commands.help = function(pi, args)
+    ses = pi.kernel.session
+    shapes = PartialInterpreter.command_shape
+
+    user_enum = {
+        "None":"None",
+        "guest": "guest",
+        "normal_user": "user",
+        "root": "root",
+    }
+
+    data = []
+    for item in shapes
+        name = item.key
+        obj_command = ses.file.__isa.hasIndex(name) or ses.computer.__isa.hasIndex(name)
+        color = ""
+        perm = "None"
+
+        if not obj_command then color = "$zday;"
+        if obj_command and not (ses.file.has(name) or ses.computer.has(name)) then continue
+        if obj_command then
+            target_type = ["file_user", "comp_user"][ses.computer.has(name)]
+            perm = pi[target_type]
+        end if
+
+        shape = item.value
+        desc = shape[0]
+        
+        cmd_args = []
+        for x in shape[1]
+            arg_name = x[0]
+
+            // check optional
+            if x[-1] then arg_name = arg_name + "?"
+            cmd_args.push(arg_name)
+        end for
+
+        data.push(kernel.color([
+            color+name,
+            cmd_args.join("$T;, $S;"),
+            perm_colors[user_enum[perm]],
+            desc
+        ]))
+    end for
+
+    result = tabulate_data(data, ["Command", "Args", "Permission", "Description"], kernel.color(["$P;", "$S;", "$T;", "$T2;"]))
+    print(result.string)
+end function
+
+PartialInterpreter.commands.exit = function(pi, args)
+    ses = pi.kernel.session
+    kernel.run_command("system exit", false)
+end function
+
+PartialInterpreter.commands.target = function(pi, args)
+    ses = pi.kernel.session
+    result = pi.debug.payload("0x"+pi.exploit.address, args[0])
+    if result isa string then
+        return ExploitError.New("zday.payload", result)
+    end if
+
+    pcomputer = result[0]
+    pfile = result[1]
+    metalib = null
+
+    if len(result) > 2 then
+        metalib = result[2]
+        data = fetch_data(metalib.lib_name, metalib.version)
+        print(" ")
+        exlib = ExploitLibrary.New(metalib)
+        exlib.load(pi.kernel.sessions[0].computer)
+        exlib.display(pi.kernel, true)
+
+        if data != null then 
+            print("")
+            display_partial(data)
+        end if
+    end if
+
+    pi.set_computer(pcomputer)
+    pi.set_file(pfile, args[0])
+    pi.metalib = metalib
+end function
+
+PartialInterpreter.commands.session = function(pi, args)
+    if len(args) == 0 then
+        pi.kernel.run_command("session list", false)
+    else
+        pi.kernel.run_command("session use " + args[0], false)
+    end if
+end function
+
+PartialInterpreter.commands.clear = function(pi, args)
+    clear_screen()
+end function
+
+PartialInterpreter.commands.exploit = function(pi, args)
+    if pi.metalib == null then return ExploitError.New("PartialInterpreter.exploit", "Target file is not a library")
+
+    result = exploit_process(pi.kernel, pi.metalib, pi.session.wan)
+    if is_error(result) then return result.stack("PartialInterpreter.exploit")
+    if result isa list then
+        pi.kernel.new_session(result[0])
+        pi.kernel.run_command("session use " + result[0].id, false)
+    end if
+end function
+
+PartialInterpreter.commands.payload = function(pi, args)
+    if pi.metalib == null then return ExploitError.New("PartialInterpreter.payload", "Target file is not a library")
+    if pi.metalib.is_patched then return ExploitError.New("PartialInterpreter.payload", "Cannot run payload on patched library")
+    
+    result = do_payload(pi.metalib, pi.session.wan)
+    if is_error(result) then return result.stack("PartialInterpreter.payload")
+    if result == null then return
+    pi.update(result)
+end function
+
+PartialInterpreter.commands.overflow = function(pi, args)
+    if pi.metalib == null then return ExploitError.New("PartialInterpreter.overflow", "Target file is not a library")
+
+    zday_path = pi.kernel.settings.zday.path
+    result = exploit_process(pi.kernel, pi.metalib, pi.session.wan, null, null, zday_path+"/exdb")
+
+    if not pi.metalib.is_patched and is_error(result) and result.message.is_match("No exploits found$") then
+        print("$error;No exploits found" + char(10))
+        do_scan = confirmation_prompt("Unit test and try again?")
+        if not do_scan then return error.stack("PartialInterpreter.overflow")
+
+        debug_libs = get_debug_libs([[pi.session.wan, pi.metalib]], false)
+        if is_error(debug_libs) then return debug_libs.stack("PartialInterpreter.overflow")
+        solved = solve_debug(pi.metalib, debug_libs[0][2])
+        if is_error(solved) then return result.stack("PartialInterpreter.overflow")
+
+        pi.run_command("overflow")
+        return
+    end if
+    if result == null or result == true then return
+    if result isa string then return Error.New("PartialInterpreter.overflow", result)
+    if is_error(result) then return result.stack("PartialInterpreter.overflow")
+
+    pi.kernel.new_session(result[0])
+    pi.kernel.run_command("session use " + result[0].id, false)
+end function
+
+// runner
+PartialInterpreter.run_command = function(cmd)
+    temp_args = cmd.trim.split(" ")
+    args = []
+    for x in temp_args[1:]
+        if x == "" then continue
+        args.push(x)
+    end for
+    
+    command = temp_args[0]
+    if not self.commands.hasIndex(command) then
+        print(Error.New("PartialInterpereter.run_command", "Command not found " + command).message)
+        return
+    end if
+
+    command_args = self.command_shape[command][1]
+    required = 0
+    for x in command_args
+        required = required + (not x[-1])
+    end for
+
+    if len(args) < required or len(args) > len(command_args) then 
+        print(Error.New("PartialInterpereter.run_command", "Invalid argument count " + command).message)
+        return
+    end if  
+
+    for x in args
+        fmt = command_args[__x_idx][1]
+        if not x.is_match(fmt) then 
+            print(Error.New("PartialInterpereter.run_command", "Argument doesn't fit format '" + fmt + "'  :  " + x).message)
+            return
+        end if
+    end for
+
+    callable = @self.commands[command]
+    result = callable(self, args)
+    if is_error(result) then
+        print(result.message)
+    end if
+end function

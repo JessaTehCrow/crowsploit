@@ -135,6 +135,14 @@ IdiotError.New = function(name, message)
     return error
 end function
 
+PartialObjectError = new Error
+PartialObjectError.New = function(object, func)
+    error = new self
+    error.stacktrace = []
+    error.message = type_col + "(PartialObjectError) " + text_col + "Partial " + object + " Does not have access to " + func
+    return error
+end function
+
 is_error = function(obj)
     if not obj isa map then return false
     return obj.indexes == ["__isa", "stacktrace", "message"]

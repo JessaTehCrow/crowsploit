@@ -1,4 +1,5 @@
 import_code("./proxyextension")
+import_code("./sessionmanager")
 import_code("./error")
 import_code("./utils")
 
@@ -103,6 +104,29 @@ service_libs.kernel_router = "kernel_router.so"
 service_libs.unknown = "unknown"
 service_libs.smartappliance = "libsmartappliance.so"
 service_libs.trafficnet = "libtrafficnet.so"
+
+library_names = [
+    "libssh.so",
+    "libftp.so",
+    "libhttp.so",
+    "libsql.so",
+    "libsmtp.so",
+    "libchat.so",
+    "libcam.so",
+    "librepository.so",
+    "blockchain.so",
+    "libadb.so",
+    "libsmartappliance.so",
+    "kernel_router.so",
+    "aptclient.so",
+    "kernel_module.so",
+    "init.so",
+    "net.so",
+    "libtrafficnet.so",
+    "metaxploit.so",
+    "crypto.so",
+    "librshell.so",
+]
 
 obj_colors = {
     "Unknown" : "<#444>Unknown",
@@ -321,10 +345,13 @@ ExploitLibrary = {}
 ExploitLibrary.New = function(library, version)
     lib = new self
     lib.exploits = []
+    lib.library = null
+
     if typeof(library) == "MetaLib" then        
         lib.name = library.lib_name
         lib.version = library.version.split("\.")[0]
         lib.raw_version = to_int(library.version.replace("\.", ""))
+        lib.library = library
 
     else if library isa string and version isa string then
         lib.name = library
@@ -529,6 +556,10 @@ ExploitLibrary.display = function(kernel, relevant=false, short=false, ip=null)
 
     kernel.print("<size=30px>$P;" + self.name)
     kernel.print("$T2;Version $T;: $S;" + self.raw_version)
+    if self.library != null then
+        patched = kernel.color(["$zday_unpatched;False","$zday_patched;True"][self.library.is_patched])
+        kernel.print("$T2;Patched $T;: "+patched)
+    end if
     lines = tabulate_data(tab_data, tab_titles, colors, ["<i><u>"+kernel.color("$T2;")]).string.split(char(10))
     for x in lines
         if __x_idx % 300 == 0 then wait(0.1)
@@ -536,6 +567,79 @@ ExploitLibrary.display = function(kernel, relevant=false, short=false, ip=null)
     end for
 end function
 
+
+parse_requirement = function(exploit, req)
+    sep = req.split(" ")
+
+    // Active account check
+    if req.is_match("\* Checking guest.+") then exploit.active = "Guest"
+    if req.is_match("\* Checking an active.+") then exploit.active = "User"
+    if req.is_match("\* Checking root.+") then exploit.active = "Root"
+
+    // Active dependency check
+    if req.is_match("\* Using.+") then
+        exploit.dependency = sep[3]
+        exploit.depversion = to_int(sep[-1].replace("\.", ""))
+    end if
+
+    // Amount of registered users
+    if req.is_match("\* Checking registered.+") then
+        exploit.registered = to_int(sep[-1][:-1])
+    end if
+
+    // Local
+    if req.is_match("\* Checking existing.+") then exploit.local = true
+
+    // Ports
+    if req.is_match("\* \d+ port.+") then
+        exploit.ports = to_int(sep[1])
+    end if
+
+    // Subcomputers
+    if req.is_match("\* \d+ computers.+") then
+        exploit.subcomputers = to_int(sep[1])
+    end if
+
+    // Path
+    if req.is_match("\* Checking path.+") then
+        exploit.exists = sep[3]
+    end if
+
+    // Groups
+    if req.is_match("\* \d+ user.+") then
+        exploit.group_count = to_int(sep[1])
+    end if
+end function
+
+parse_0day_unittest = function(lib, text)
+    get_partial_info = function(line)
+        return {
+            "type": line.split(" ")[1],
+            "user": line.matches("\[.+\]").values[0][1:-1],
+            "funcs": line.split(":")[1].replace(" ","").split(",")
+        }
+    end function
+
+    exlib = ExploitLibrary.New(lib)
+    exploit = Exploit.New()
+    exploit.address = text.split("found in address ")[1].split(char(10))[0][2:]
+    exploit.unsec = text.split("<b>")[1].split("</b>")[0]
+    exploit.version = to_int(lib.version.replace("\.", ""))
+    exploit.objperms = "guest"
+
+    raw_reqs = unformat_string(text).split("New vulnera")[1].split("\*")[1:]
+
+    for x in raw_reqs
+        parse_requirement(exploit, "* "+x.trim)
+    end for
+
+    exlib.register_exploit(exploit)
+
+    c = text.matches("^\* Computer.*$", "m").values[0]
+    f = text.matches("^\* File.*$", "m").values[0]
+
+    return [exlib, get_partial_info(c), get_partial_info(f)]
+end function
 
 get_exploits = function(metax, library, address)
     text = unformat_string(metax.scan_address(library, address))
@@ -550,46 +654,7 @@ get_exploits = function(metax, library, address)
         exploit.version = to_int(library.version.replace("\.", ""))
 
         for req in lines[1:]
-            sep = req.split(" ")
-
-            // Active account check
-            if req.is_match("\* Checking guest.+") then exploit.active = "Guest"
-            if req.is_match("\* Checking an active.+") then exploit.active = "User"
-            if req.is_match("\* Checking root.+") then exploit.active = "Root"
-
-            // Active dependency check
-            if req.is_match("\* Using.+") then
-                exploit.dependency = sep[3]
-                exploit.depversion = to_int(sep[-1].replace("\.", ""))
-            end if
-
-            // Amount of registered users
-            if req.is_match("\* Checking registered.+") then
-                exploit.registered = to_int(sep[-1][:-1])
-            end if
-
-            // Local
-            if req.is_match("\* Checking existing.+") then exploit.local = true
-
-            // Ports
-            if req.is_match("\* \d+ port.+") then
-                exploit.ports = to_int(sep[1])
-            end if
-
-            // Subcomputers
-            if req.is_match("\* \d+ computers.+") then
-                exploit.subcomputers = to_int(sep[1])
-            end if
-
-            // Path
-            if req.is_match("\* Checking path.+") then
-                exploit.exists = sep[3]
-            end if
-
-            // Groups
-            if req.is_match("\* \d+ user.+") then
-                exploit.group_count = to_int(sep[1])
-            end if
+            parse_requirement(exploit, req)
         end for
         exploits.register_exploit(exploit)
     end for
@@ -646,7 +711,8 @@ full_scan = function(metax, library, router, silent=false, existing=null, skip_e
 
             if exploit.object == "Password" and not silent then
                 print("<#fff>Password reset detected.")
-                r = select_prompt("What elevation did it have?", ["root", "user"])
+                r = select_prompt("What elevation did it have?", ["root", "user", "guest"])
+                if r == "guest" then r = null
                 if r != null then exploit.objperms = r
             else if exploit.object == "Password" and silent then
                 exploit.objperms = "unknown"
@@ -671,4 +737,196 @@ get_db_path = function(kernel, temp=false)
     end if
 
     return dir.replace("\$home", kernel.sessions[0].homepath)
+end function
+
+
+get_exploit = function(exlib, title, ip)
+    exploits = exlib.exploits_with_version()
+    tab_data = []
+
+    for exploit in exploits
+        data = exploit.data(ip)
+        tab_data.push([_global.kernel.color("$S;"+(len(tab_data)+1))] + data[3:])
+    end for
+
+    titles = [
+        "ID",
+        "Object",
+        "ObjPerms",
+        "Active",
+        "Users",
+        "Ports",
+        "Local",
+        "Subnet",
+        "Groups",
+        "Path",
+        "Dependency",
+        "Dep Version",
+    ]
+
+    res = tabulate_data(tab_data, titles)
+    if is_error(res) then return res.stack("exploit.host")
+
+    print("<size=30px>$P;"+title)
+    print(res.string)
+
+    log("Exploit count : " + len(exploits))
+    if len(exploits) == 0 then return Error.New("exploit.get_exploit", "No exploits found")
+
+    selection = select_index("",len(exploits))
+    if selection == null then return
+    return exploits[selection]
+end function
+
+
+do_exploit = function(exploit, lib, ip, extra=null)
+    if extra == null then
+        if exploit.object == "Computer" and ((is_lan_ip(ip) and ip[-2:] == ".1") or not is_lan_ip(ip)) then
+            extra = user_input(_global.kernel.color("$P;Ip to bounce to:$S; "))
+        else if exploit.object == "Password" then
+            extra = user_input(_global.kernel.color("$P;Password to set to:$S; "))
+        end if
+    end if
+
+    result = exploit.execute(lib, extra)
+    if is_error(result) then return result.stack("exploit.host")
+    log(result[0] + " | " + result[1])
+    log(exploit.object + " | " + exploit.objperms)
+    
+    update = false
+    if result[0] != exploit.object and result[0] != "Unknown" then
+        print("$error;Object result differs from database")
+        print("$P;Database")
+        print("  $S;" + exploit.object)
+        print("$P;Exploit result")
+        print("  $S;" + result[0])
+
+        if confirmation_prompt("Update database?") then
+            exploit.object = result[0]
+            update = true
+        end if
+    end if
+
+    if result[1] != exploit.objperms and result[1] != "unknown" then
+        print("$P;Object result differs from database")
+        print("$P;Database")
+        print("  $S;" + exploit.objperms)
+        print(" ")
+        print("$P;Exploit result")
+        print("  $S;" + result[1])
+        if confirmation_prompt("Update database?") then
+            exploit.objperms = result[1]
+            update = true
+        end if
+    end if
+
+    return [result[-1], update, extra]
+end function
+
+
+exploit_process = function(kernel, lib, ip, index=null, extra=null, db_path=null)
+    external = false
+    db_path = db_path
+    if db_path == null then
+        db_path = get_db_path(kernel)
+    end if
+
+    exlib = ExploitLibrary.New(lib)
+    if is_error(exlib) then return exlib.stack("scan.exploit_process")
+    e = exlib.load(kernel.sessions[0].computer, db_path)
+    if is_error(e) then return e.stack("exploit.process")
+
+    is_router = is_lan_ip(ip) == false
+    if not is_router then
+        is_router = get_router(ip) != null
+    end if
+
+    exploit = null
+    if index != null then
+        log("Index not null")
+        res = exlib.exploits_with_version()
+        if not res.hasIndex(index) then return Error.New("exploit.process", "Exploit index doesn't exist : " + index)
+        exploit = res[index]
+    else
+        log("Index null, asking exploit")
+        exploit = get_exploit(exlib, lib.lib_name, ip)
+        if is_error(exploit) then return exploit.stack("exploit.process")
+        log("Exploit selected : " + exploit)
+    end if
+    if exploit isa string then return exploit
+    if exploit == null then return
+    if is_router and exploit.object == "Computer" then
+        external = true
+    end if
+
+    log("$zday;Using address $T;: $S;'" + exploit.address+"'")
+    log("$zday;Using unsec   $T;: $S;'" + exploit.unsec+ "'")
+    result = do_exploit(exploit, lib, ip, extra)
+    if is_error(result) then return result.stack("exploit.exploit_process")
+    log(result[1])
+    log("Object perms : "+exploit.objperms)
+    log("Object : "+exploit.object)
+
+    if result[0] == 1 and exploit.object == "Unknown" then
+        print("<#fff>Detected Firewall")
+        exploit.object = "Firewall"
+        exlib.save_exploits(kernel.sessions[0].computer, db_path)
+        
+    else if result[0] == 0 and exploit.object == "Unknown" then
+        print("<#fff>Detected Password")
+        exploit.object = "Password"
+        print("<#444>[<#f4c>1<#444>]<#6af> root")
+        print("<#444>[<#f4c>2<#444>]<#6af> user")
+        result = select_index("<#fa0>What elevation did it have?", 2)
+        if result == 0 then
+            exploit.objperms = "root"
+        else if result == 1 then
+            exploit.objperms = "user"
+        end if
+        exlib.save_exploits(kernel.sessions[0].computer, db_path)
+
+        if confirmation_prompt("Try exploit again with password?") then
+            result = do_exploit(exploit, lib, ip, extra)
+        end if
+
+    else if result[0] == null and exploit.object == "Unknown" and is_router then
+        if confirmation_prompt("Is this a bounce?") then
+            exploit.object = "Computer"
+            exlib.save_exploits(kernel.sessions[0].computer, db_path)
+
+            if confirmation_prompt("Try again with ip bounce?") then
+                result = do_exploit(exploit, lib, ip, extra)
+            end if
+        end if
+    end if
+
+    if is_error(result) then return result.stack("exploit.process")
+
+    host = ip
+    if is_lan_ip(result[2]) then
+        host = result[2]
+    end if
+
+    if result[1] == true then
+        log("Updating database")
+        exlib.save_exploits(kernel.sessions[0].computer, db_path)
+    end if
+    if result[0] == null or result[0] == 0 then
+        return Error.New("<#e88>Failed to exploit")
+    end if
+    if result[0] == true then
+        //return "<#8e8>Successfully exploited"
+        return true
+    end if
+
+    newses = Session.New(result[0])
+    if is_error(newses) then return newses.stack("exploit.process")
+
+    if is_lan_ip(host) then
+        newses.lan = host
+    else
+        newses.wan = host
+    end if
+
+    return [newses, external]
 end function

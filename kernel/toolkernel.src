@@ -103,23 +103,6 @@ Command._parse_args = function(raw)
     session = _global.kernel.session
     rest = []
 
-    parse_ip = function(value)
-        if value == "localhost" or value == "127.0.0.1" then
-            if session.computer == null then return ParseError.New("Command.parse_args", "Unable to retrieve localhost, no computer object found")
-            return session.computer.local_ip
-        else if value.is_match("(www\.)?\w+\.(org|net|com|info)") then
-            result = null
-            if value[:4] != "www." then
-                result = nslookup("www."+value)
-            else
-                result = nslookup(value)
-            end if
-            if result != "IP not found" then return result
-        end if
-
-        return ParseError.New("Command.parse_args", "Invalid host specified: " + value)
-    end function
-
     for x in raw
         value = x.eval_value
         type = x.type

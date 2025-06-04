@@ -5,6 +5,7 @@ Session = {}
 Session.user = "Unknown"
 Session.comp_name = "Unknown"
 Session.id = null
+Session.partial_interpreter = null
 Session.shell = null
 Session.computer = null
 Session.file = null
@@ -27,15 +28,16 @@ Session.wan = null
 Session.lan = null
 
 
-Session.New = function(obj, username=null)
-    success = obj.hasIndex("object")
+Session.New = function(obj=null, username=null)
+    success = obj == null or obj.hasIndex("object")
 
     if obj isa string then return TypeError.New("Session.New","shell,computer,file", typeof(obj))
     if not success then return TypeError.New("Session.New","shell,computer,file", typeof(obj))
 
     session = new self
-
     session.user = username
+    if obj == null then return session
+
     if username == null then session.user = obj.get_user()
     
     if obj.type == "shell" then
@@ -46,12 +48,12 @@ Session.New = function(obj, username=null)
     else if obj.type == "computer" then
         session.computer = obj
         session.file = obj.File("/")
+        session.root_path = session.computer.File("/")
 
     else if obj.type == "file" then
         session.file = obj
+        session.root_path = session.file.get_folder("/")
     end if
-
-    session.root_path = session.file.get_folder("/")
 
     if session.computer != null then
         session.comp_name = session.computer.get_name
@@ -59,6 +61,7 @@ Session.New = function(obj, username=null)
         session.wan = session.computer.public_ip
     end if
 
+    session.file.show_corrupt = true
     return session
 end function
 

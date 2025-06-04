@@ -588,10 +588,12 @@ Computer.get_user = function()
 
     if selected == null then return "unknown"
 
-    self.touch(selected.path, "Sources.txt")
-    check = self.File(selected.path + "/Sources.txt")
+    self.create_folder(selected.path, "cs_user_enum")
+    check = self.File(selected.path + "/cs_user_enum")
 
     if is_error(check) then return "unknown"
+    owner = check.owner
+    check.move(selected.path + "/utest", "utest")
     return check.owner
 end function
 
