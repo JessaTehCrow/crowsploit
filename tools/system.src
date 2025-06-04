@@ -2212,12 +2212,18 @@ $P;symlink: $string;yes
 $P;target: $string;/root/target"
 
 
+
+
+// monitor 
+// sysmon
 sysmon_args = [
     Kwarg.New("delay", "float").Default(0.25).Info("How long between checks")
 ]
 
 // Probably the ugliest command in cs, but we'll keep it ;3
 sysmon_func = function(a)
+    if a.delay < 0.1 then return ParseError.New("system.monitor", "Delay can not be less than 0.1")
+    if a.delay > 300 then return ParseError.New("system.monitor", "Delay can not be greater than 300")
     c = confirmation_prompt("$error;WARNING; ONCE STARTED, YOU CAN NOT STOP THE SYSTEM MONITOR"+char(10)+"$P;Continue?")
     if not c then return
 
@@ -2491,7 +2497,7 @@ sysmon_func = function(a)
 
         old_files = new_files
         old_processes = new_processes
-        wait(1.5)
+        wait(a.delay)
     end while
 end function
 
