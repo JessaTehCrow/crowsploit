@@ -5,7 +5,7 @@ import_code("../constants/motd")
 
 if program_path == "/etc/crow/tools/crowsploit" then exit("<#f00>crowsploit detected running as a tool. Quitting loop")
 
-interface_version = "1.4.2"
+interface_version = "1.4.3"
 
 get_fact = function()
     fact = fun_facts[random(0,fun_facts.len-1)]
@@ -14,6 +14,24 @@ get_fact = function()
         fact = "$error;" + secret_facts[random(0, secret_facts.len-1)]
     end if
     return fact
+end function
+
+show_motd = function(kernel)
+    print(char(10))
+    kernel.print(motd)
+    print(char(10))
+    kernel.line("Info", 47)
+    kernel.print("              $P;By <b><u>JessaTehCrow" + char(10))
+    kernel.print("       $S;Kernel version $T;: $T2;" + kernel.version)
+    kernel.print("    $S;Interface version $T;: $T2;" + interface_version)
+    if kernel.nightly then
+        kernel.print("          $S;Kernel type$T; : $error;Nightly")
+        kernel.print("$T;<i>    (Some features may not be stable)")
+    end if
+
+    print(char(10))
+    kernel.print("$T;Fun fact")
+    kernel.print("$S;<size=14px>" + get_fact())
 end function
 
 custom_obj = get_custom_object
@@ -206,7 +224,7 @@ else if params == ["setup"] then
         print(e.trace())
     else
         print("<#4fa>Setup complete")
-        print("<#999>Move the <#4af>system<#999> and <#4af>exploit<#999> tools into the <#4af>/etc/crow/tools<#999> folder and restart crowsploit")
+        print("<#999>Move the <#4af>system<#999> and <#4af>exploit<#999> tools into the <#4af>/etc/crow/tools<#999> folder and restart crowsploit as root")
     end if
     exit()
 else
@@ -250,22 +268,6 @@ else
     update_libs(kernel, session, kernel.settings.library.path)
     session.load_libs(kernel.settings.library.path)
 
-    print(char(10))
-    kernel.print(motd)
-    print(char(10))
-    kernel.line("Info", 47)
-    kernel.print("              $P;By <b><u>JessaTehCrow" + char(10))
-    kernel.print("       $S;Kernel version $T;: $T2;" + kernel.version)
-    kernel.print("    $S;Interface version $T;: $T2;" + interface_version)
-    if kernel.nightly then
-        kernel.print("          $S;Kernel type$T; : $error;Nightly")
-        kernel.print("$T;<i>    (Some features may not be stable)")
-    end if
-
-    print(char(10))
-    kernel.print("$T;Fun fact")
-    kernel.print("$S;<size=12px>" + get_fact())
-    print(char(10))
     if session.crypto == null then
         kernel.print("$error;Crypto not found")
     end if
@@ -274,8 +276,7 @@ else
     end if
     kernel.load_tools()
 
-    kernel.print()
-    kernel.print("$S;Join the discord: $T2;discord.gg/qW5Uv2SAmq $S;for help and more info!")
+    show_motd(kernel)
 
     if kernel.settings.update.check == "true" then
         res = kernel.check_update(interface_version)
@@ -283,7 +284,15 @@ else
         print("")
         kernel.print("$T2;!! You can turn off update checker in the .crowrc file !!")
     end if
+    print(" ")
+    kernel.print("$S;Join the discord: $T2;discord.gg/qW5Uv2SAmq $S;for help and more info!")
+    print(" ")
     
+    if kernel.session.user != "root" then
+        kernel.print("$error;WARNING:: You are not running as root. This could lead to crowsploit not working properly")
+        kernel.print("$T;Unable to update metaxploit.so")
+    end if
+
     while kernel.keep_session
         custom_obj.kernel = kernel
         shell.launch(program_path, "main")
