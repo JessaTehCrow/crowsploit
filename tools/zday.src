@@ -519,16 +519,16 @@ zday.on_load = function(kernel)
 end function
 
 
-//login
+// login
 login_args = [
     Kwarg.New("username", "string").Alias("u").Info("Neurobox username"),
     Kwarg.New("password", "string").Alias("p").Info("Neurobox password")
 ]
 
 login_func = function(a)
-    // if remaining_0day(current_date) == false then
-    //     return ParseError.New("zday.login", "There is no active zero day cycle")
-    // end if
+    if remaining_0day(current_date) == false then
+        return ParseError.New("zday.login", "There is no active zero day cycle")
+    end if
     status_check()
     status = get_status()
     if status.failed_attempts >= 3 then return KernelError.New("zday.get_debug_libs", "Max failed attempts reached. Unable to unit or payload until next cycle")
@@ -648,10 +648,6 @@ info_args = [
 ]
 
 info_func = function(a)
-    if remaining_0day(current_date) == false then
-        return ParseError.New("zday.info", "There is no active zero day cycle")
-    end if
-
     if a.kernel.session.metax == null then return ObjectError.New("zday.info", "metaxploit")
     ip = parse_ip(a["target|ip"])
 

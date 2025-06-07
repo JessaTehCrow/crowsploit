@@ -9,7 +9,6 @@ File.partial = false
 File.show_corrupt = false
 
 File.has = function(name)
-    result = self.object.__isa.hasIndex(name)
     return self.object.__isa.hasIndex(name)
 end function
 
