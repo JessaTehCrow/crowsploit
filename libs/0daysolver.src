@@ -1,0 +1,381 @@
+// part of functional.src lib which i used
+contains = function(a, item)
+    return a.indexOf(item) != null
+end function
+
+distinct = function(arr)
+    newList = []
+    for item in arr
+        if not contains(newList, item) then newList.push(item)
+    end for
+    return newList
+end function
+
+startsWith = function(a, b) 
+    return a[:len(b)] == b
+end function
+
+// Made by Delta (@ide1ta)
+ZeroDaySolver = {}
+ZeroDaySolver.debug = null
+ZeroDaySolver.lineTypes = {
+	"FUNCTION": "function",
+	"IF": "if",
+	"FOR": "for",
+	"LIST_PUSH": "listPush",
+	"LIST_SET": "listSet",
+	"END": "end",
+	"OTHER": "other"
+}
+
+ZeroDaySolver.getLineType = function(line)
+	if startsWith(line, "func_") then return self.lineTypes.FUNCTION
+	if startsWith(line, "if ") then return self.lineTypes.IF
+	if startsWith(line, "for ") then return self.lineTypes.FOR
+	if contains(line, "push") then return self.lineTypes.LIST_PUSH
+	if contains(line, "[") and contains(line, "]") then return self.lineTypes.LIST_SET
+	if contains(line, "end") then return self.lineTypes.END
+	return self.lineTypes.OTHER
+end function
+
+ZeroDaySolver.mathReplacements = {
+	"is equal to ": "== ",
+	"is not equal to ": "!= ",
+	"is greater than or equal to ": ">= ",
+	"is less than or equal to ": "<= ",
+	"is greater than ": "> ",
+	"is less than ": "< ",
+	"minus ": "- ",
+	"plus ": "+ ",
+	"multiplied by ": "* ",
+	"multiplying it by ": "{VARNAME} * ",
+	"divided by ": "/ ",
+	"dividing it by ": "{VARNAME} / "
+}
+
+ZeroDaySolver.parseEquation = function(s, varName = "{VARNAME}")
+	for r in self.mathReplacements
+		s = s.replace(r.key, r.value)
+	end for
+	s = s.replace("{VARNAME}", varName)
+
+	sList = s.split(" ")
+	if sList.len == 3 and sList[1] == "*" or sList == "+" then
+		if sList[2] == "i" then
+			sList.reverse()
+		else if sList[2].len > sList[1].len then
+			sList.reverse()
+		end if
+	end if
+	s = sList.join(" ")
+
+	return s
+end function
+
+ZeroDaySolver.parseForRange = function(s)
+	s = s.split(" to ")
+	return "range(" + s[0] + ", " + s[1] + ")"
+end function
+
+ZeroDaySolver.initialParse = function(scanResult)
+	program = []
+	info = []
+	for line in scanResult.split(char(10))
+		line = line.trim()
+		if line == "" or line == "Potential problems have been found in the following code:" then continue
+		if line.indexOf(":") == null then
+			info = info + line.split("\.")
+		else
+			line = line[line.indexOf(":")+2:]
+			program.push(line)
+		end if
+	end for
+
+	return {"program": program, "info": info}
+end function
+
+ZeroDaySolver.simularityTest = function(a, b)
+	aStr = a
+	bStr = b
+	a = a.split(" ")
+	b = b.split(" ")
+	simularityAmount = 0
+	for x in a
+		if b.indexOf(x) != null then simularityAmount += x.len + 0.1
+	end for
+	for x in b
+		if a.indexOf(x) == null then simularityAmount -= 0.1
+	end for
+	simularityAmount -= abs(aStr.len - bStr.len) / 10
+
+	return simularityAmount
+end function
+
+ZeroDaySolver.wrongTokens = function(a, b)
+	aAll = a.split(" ")
+	bAll = b.split(" ")
+	a = []
+	b = []
+	for x in aAll
+		if a.indexOf(x) == null then a.push(x)
+	end for
+	for x in bAll
+		if b.indexOf(x) == null then b.push(x)
+	end for
+
+	simularTokensAmount = 0
+	for x in a
+		if b.indexOf(x) != null then simularTokensAmount += 1
+	end for
+	return (a.len - simularTokensAmount + b.len - simularTokensAmount)/2
+end function
+
+ZeroDaySolver.fixIndentationAndAddArgs = function(infoParsed, args)
+	newInfoParsed = [] 
+
+	indent = "    "
+	i = 0
+	for n in range(0, infoParsed.len-1)
+		line = infoParsed[n]
+		lineType = self.getLineType(line)
+
+		if lineType == self.lineTypes.END then i = i - 1
+		if lineType == self.lineTypes.FUNCTION then
+			fName = line[:line.indexOf(" ")]
+			line = fName + " = function(" + args[fName].join(", ") + ")"
+		end if
+
+		newInfoParsed.push(indent * i + line)
+		if contains([self.lineTypes.FUNCTION, self.lineTypes.IF, self.lineTypes.FOR], lineType) then i = i + 1
+	end for
+
+	return newInfoParsed
+end function
+
+ZeroDaySolver.parseInfo = function(info)
+	currentFunc = null
+	vars = {}
+	args = {}
+	varDefined = function(varStr)
+		if outer.vars[outer.currentFunc].indexOf(varStr) == null then outer.vars[outer.currentFunc].push(varStr)
+	end function
+	varUsed = function(varStr)
+		if outer.vars[outer.currentFunc].indexOf(varStr) == null then
+			if outer.args[outer.currentFunc].indexOf(varStr) == null then
+				outer.args[outer.currentFunc].push(varStr)
+			end if
+			outer.vars[outer.currentFunc].push(varStr)
+		end if
+	end function
+	funcDefined = function(funcStr)
+		outer.currentFunc = funcStr
+		outer.vars[outer.currentFunc] = []
+		outer.args[outer.currentFunc] = []
+	end function
+
+	infoParsed = info[0:]
+	n = 0
+	while n < infoParsed.len
+		nLine = infoParsed[n].trim()
+		if n != 0 and infoParsed[n-1] == infoParsed[n] and infoParsed[n] == "" then
+			infoParsed.remove(n)
+			continue
+		end if
+
+		if startsWith(nLine, "and ") then nLine = nLine["and ".len:]
+		if startsWith(nLine, "then ") then nLine = nLine["then ".len:]
+		
+		if startsWith(nLine, "The function ") then
+			functionName = nLine["The function ".len:"The function ".len-1+12]
+			funcDefined(functionName)
+
+			otherLines = nLine["The function func_".len-1+8:].split(", ")
+			infoParsed[n] = functionName + " = function()"
+			if startsWith(otherLines[0], "For each") or startsWith(otherLines[0], "If ") then
+				infoParsed = infoParsed[:n+1] + [otherLines.join(", ")] + infoParsed[n+1:]
+			else
+				infoParsed = infoParsed[:n+1] + otherLines + infoParsed[n+1:]
+			end if
+			
+			
+		else if startsWith(nLine, "If the value of ") then
+			lines = nLine.split(", ")
+			line = lines[0]
+			otherLines = lines[1:]
+			
+			infoParsed[n] = "if " + self.parseEquation(line["If the value of ".len-1+1:]) + " then"
+			infoParsed = infoParsed[:n+1] + otherLines + ["end if"] + infoParsed[n+1:]
+			
+		else if startsWith(nLine, "For each ") then
+			forVarName = nLine["For each ".len:]
+			forVarName = forVarName[:forVarName.indexOf(" ")]
+			forRange = nLine[nLine.indexOf(forVarName)+forVarName.len+1:]
+			forRange = forRange[:forRange.indexOf(", ")]
+			if startsWith(forRange, "from ") then forRange = forRange["from ".len:]
+			varDefined("i")
+			
+			otherLines = nLine.split(", ")[1:]
+			infoParsed[n] = "for " + forVarName + " in " + self.parseForRange(forRange)
+			infoParsed = infoParsed[:n+1] + otherLines + ["end for"] + infoParsed[n+1:]
+			
+		else if startsWith(nLine, "creates a list ") then
+			varName = nLine["creates a list ".len:]
+			varName = varName[:varName.indexOf(" ")]
+			varName = varName + ","
+			varName = varName[:varName.indexOf(",")]
+			varDefined(varName)
+
+			infoParsed[n] = varName + " = []"
+			
+			otherLines = nLine.split(", ")[1:]
+			if otherLines.len > 0 then
+				infoParsed = infoParsed[:n+1] + otherLines + infoParsed[n+1:]
+			end if
+			
+		else if startsWith(nLine, "assigns ") then
+			varName = nLine["assigns ".len:]
+			varName = varName[:varName.indexOf(" ")]
+			varDefined(varName)
+
+			listName = nLine[nLine.indexOf(" to the first element of ")+" to the first element of ".len:]
+			listName = listName[:listName.indexOf(" ")]
+			varUsed(listName)
+
+			infoParsed[n] = varName + " = " + listName + "[0]"
+			
+		else if startsWith(nLine, "calls the function ") then
+			functionName = nLine["calls the function ".len:]
+			functionName = functionName[:functionName.indexOf(" ")]
+
+			varName = nLine[nLine.indexOf(" with ")+" with ".len:]
+			varName = varName[:varName.indexOf(" ")]
+			varUsed(varName)
+
+			infoParsed[n] = varName + " = " + functionName + "(" + varName + ")"
+			
+		else if startsWith(nLine, "adds ") then
+			varName = nLine["adds ".len:]
+			varName = varName[:varName.indexOf(" ")]
+			varUsed(varName)
+
+			listName = nLine[nLine.indexOf(" to ")+" to ".len:]
+			varUsed(varName)
+
+			infoParsed[n] = listName + ".push(" + varName + ")"
+			
+		else if startsWith(nLine, "calculates ") then
+			varName = nLine["calculates ".len:]
+			varName = varName[:varName.indexOf(" ")]
+			varUsed(varName)
+
+			infoParsed[n] = varName + " = " + self.parseEquation(nLine["calculates ".len:], varName)
+			
+		else if startsWith(nLine, "updates ") then
+			varName = nLine["updates ".len:]
+			varName = varName[:varName.indexOf(" ")]
+			varUsed(varName)
+
+			eq = nLine[nLine.indexOf(" by ")+" by ".len:]
+			if startsWith(eq, "calculating ") then eq = eq["calculating ".len:]
+			infoParsed[n] = varName + " = " + self.parseEquation(eq, varName)
+		
+		else if startsWith(nLine, "Finally, it") then
+			infoParsed[n] = nLine["Finally, it".len:]
+			n = n - 1
+		
+		else if startsWith(nLine, "returns ") then
+			eq = nLine["returns ".len:]
+			infoParsed[n] = "return " + self.parseEquation(eq)
+			infoParsed = infoParsed[:n+1] + ["end function"] + infoParsed[n+1:]
+		else
+			infoParsed[n] = nLine
+		end if
+
+		n = n + 1
+	end while
+
+	infoParsed = self.fixIndentationAndAddArgs(infoParsed, args)
+	return infoParsed
+end function
+
+ZeroDaySolver.compare = function(program, infoParsed)
+	result = []
+
+	ni = 0
+	np = 0
+	while ni < infoParsed.len and np < program.len
+		if self.debug then print("prog("+(np+1)+"): [" + program[np] + "]")
+		if self.debug then print("info("+(ni+1)+"): [" + infoParsed[ni] + "]")
+
+		incorrect = program[np] != infoParsed[ni]
+		if incorrect and program.hasIndex(np) and infoParsed.hasIndex(ni+1) then
+			isMissing = true and self.wrongTokens(program[np], infoParsed[ni]) > 0.5
+
+			if self.getLineType(program[np]) == self.getLineType(infoParsed[ni]) then
+				for n in range(0, 2)
+					if not program.hasIndex(np+n) or not infoParsed.hasIndex(ni+n+1) then break
+					isMissing = isMissing and (
+						self.simularityTest(program[np+n], infoParsed[ni+n+1]) > self.simularityTest(program[np+n], infoParsed[ni+n]) or 
+						program[np+n] == infoParsed[ni+n+1])
+				end for
+			else
+				isMissing = true
+			end if
+
+			if isMissing then
+				if self.debug then print("missing: " + (np+1) + " = " + (ni+2))
+
+				result.push(np+1)
+				np = np - 1
+				incorrect = false
+			end if
+		end if
+
+		if incorrect then 
+			if self.debug then print("incorrect: " + (np+1))
+			result.push(np+1)
+		end if
+		if self.debug then print(".")
+
+		np = np + 1
+		ni = ni + 1
+	end while
+
+	return distinct(result)
+end function
+
+ZeroDaySolver.solve = function(scanResult)
+	scanResult = self.initialParse(scanResult)
+	info = scanResult.info
+	program = scanResult.program
+
+	infoParsed = self.parseInfo(info)
+	result = self.compare(program, infoParsed)
+
+	if self.debug then
+        printLines = function(lines)
+            for i in range(0, lines.len - 1)
+                print((i + 1) + ":" + lines[i])
+            end for
+        end function
+
+		print("...")
+		print("Info (correct code):")
+		printLines(infoParsed)
+		print("Program (incorrect code):")
+		printLines(program)
+		print("Expected result:")
+		print(result)
+		print("...")
+	end if
+
+	return [result, infoParsed]
+end function
+
+ZeroDaySolver.New = function()
+	result = new ZeroDaySolver
+	result.lineTypes = ZeroDaySolver.lineTypes
+	result.debug = false
+
+	return result
+end function

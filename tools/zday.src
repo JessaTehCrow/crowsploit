@@ -1,0 +1,1034 @@
+import_code("../kernel/toolkernel")
+import_code("../libs/0daysolver")
+import_code("../libs/metautils")
+import_code("../libs/partial_interpreter")
+
+
+// Data handler
+fetch_data = function(libname, version)
+    parse_fetched = function(data)
+        parts = data.split(";")
+        return {
+            "library":parts[0],
+            "version":parts[1],
+            "type":parts[2],
+            "user":parts[3],
+            "funcs":parts[4].split(",")
+        }
+    end function
+
+    kernel = _global.kernel
+    home = kernel.sessions[0]
+    zday_path = kernel.settings.zday.path
+    partial_file = zday_path + "/exdb/partial_data"
+    p = Path.New(partial_file)
+
+    if libname[-3:] == ".so" then libname = libname[:-3]
+    if version.is_match("^\d+\.\d\.\d$") then version = version.replace("\.","")
+
+    file = home.file.get_file(partial_file)
+    if is_error(file) then 
+        err = home.computer.touch(p.folder, p.name)
+        if is_error(err) then return err.stack("zday.fetch_data")
+        file = home.file.get_file(partial_file)
+    end if
+
+    if is_error(file) then return file.stack("zday.fetch_data")
+    content = file.get_content()
+    if is_error(content) then return error.stack("zday.stor_data")
+
+    find = regex_escape(libname+";"+version) 
+    results = content.matches("^"+find+".+$", "m").values
+    if len(results) == 0 then return null
+
+    return [
+        parse_fetched(results[0]),
+        parse_fetched(results[1])
+    ]
+end function
+
+store_data = function(lib, p_data)
+    kernel = _global.kernel
+    home = kernel.sessions[0]
+    zday_path = kernel.settings.zday.path
+    
+    partial_file_name = "partial_data"
+    partial_file_path = zday_path + "/exdb"
+    partial_file = partial_file_path + "/" + partial_file_name
+
+    partial_data = [p_data]
+    if p_data isa list then partial_data = p_data
+
+    libname = lib.lib_name()[:-3]
+    version = lib.version.replace("\.","")
+
+    file = home.file.get_file(partial_file)
+    if is_error(file) then 
+        err = home.computer.touch(partial_file_path, partial_file_name)
+        if is_error(err) then return err.stack("zday.store_data")
+        file = home.file.get_file(partial_file)
+    end if
+
+    if is_error(file) then return file.stack("zday.store_data")
+
+    temp_content = file.get_content()
+    if is_error(temp_content) then return error.stack("zday.stor_data")
+    old_content = temp_content.trim.split(char(10))
+
+    for x in partial_data
+        new_data = [
+            libname,
+            version,
+            x.type,
+            x.user,
+            x.funcs.join(","),
+        ].join(";")
+        if old_content.indexOf(new_data) != null then continue
+        old_content.push(new_data)
+    end for
+
+    err = file.set_content(old_content.join(char(10)))
+    if is_error(err) then return err.stack("zday.store_content")
+end function
+
+display_partial = function(p_data)
+    user_enum = {
+        "guest": "guest",
+        "normal_user": "user",
+        "root": "root",
+    }
+    tab_data= []
+    for x in p_data
+        user = user_enum[x.user]
+        tab_data.push([
+            obj_colors[x.type],
+            perm_colors[user],
+            "$T2;"+x.funcs.join("$T;, $T2;")
+        ])
+    end for
+
+    result = tabulate_data(tab_data, ["Partial", "User", "Functions"])
+    print(result.string)
+end function
+
+
+// Time/Date handling
+months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+days = [31,28,31,30,31,30,31,31,30,31,30,31]
+
+get_month = function(month, year)
+    return days[months.indexOf(month)] + (month == "Feb" and year%4==0)
+end function
+
+minutes_to_irl_seconds = function(mins)
+    return mins*(60/14)
+end function
+
+seconds_to_human_readable = function(secs)
+    days_until = floor(secs/3600/24)
+    hours_until = floor(secs/3600)%24
+    minutes_until = floor((secs/60))%60
+    seconds_until = floor(secs)%60
+
+    return {
+        "days":days_until,
+        "hours":hours_until,
+        "minutes":minutes_until,
+        "seconds":seconds_until
+    }
+end function
+
+get_next_0day_minutes = function(min, hour, day, month, year)
+    month_index = months.indexOf(month)+1
+    days_remaining = get_month(month) - day
+
+    if month_index%2 == 0 then 
+        days_remaining = days_remaining + get_month(months[month_index%len(months)])
+    end if
+
+    hours_remaining = 23-hour%24
+    minutes_remaining = 60-min
+    
+    hours_remaining =  hours_remaining + days_remaining*24
+    minutes_remaining = minutes_remaining + hours_remaining*60
+
+    return minutes_remaining
+end function
+
+parse_date = function(raw_date)
+    sep = raw_date.split("-")
+
+    time_string = sep[1].trim
+    date_string = sep[0].trim
+
+    hour = time_string.split(":")[0].to_int
+    min = time_string.split(":")[1].to_int
+
+    day = date_string.split("/")[0].to_int
+    month = date_string.split("/")[1]
+    year = date_string.split("/")[2].to_int
+    
+    return {
+        "day":day,
+        "month":month,
+        "year":year,
+        "hour":hour,
+        "min":min
+    }
+end function 
+
+calculate_0day = function(raw_date)
+    date = parse_date(raw_date)
+    minutes = get_next_0day_minutes(date.min, date.hour, date.day, date.month, date.year)
+    return seconds_to_human_readable(minutes_to_irl_seconds(minutes))
+end function
+
+remaining_0day = function(raw_date)
+    date = parse_date(raw_date)
+    month_index = months.indexOf(date.month) + 1
+    if month_index % 2 != 0 then return 0
+    if date.day >= 15 then return 0
+    
+    remaining_days = 14-date.day
+    remaining_hours = 24-date.hour + (remaining_days*24)
+    remaining_minutes = 60-date.min + (remaining_hours*60)
+
+    seconds = minutes_to_irl_seconds(remaining_minutes)
+    readable = seconds_to_human_readable(seconds)
+
+    return readable
+end function
+
+
+// Status handling
+
+check_login = function()
+    kernel = _global.kernel
+    status = get_status()
+
+    if kernel.zday == null then 
+        res = kernel.run_command("zday login", false)
+        if not res or kernel.zday == null then return false
+    end if
+    return true
+end function
+
+update_status = function(status)
+    kernel = _global.kernel
+    zday_path = kernel.settings.zday.path
+    home = kernel.sessions[0]
+    file = home.file.get_file(zday_path+"/status")
+
+    if is_error(file) then
+        create = home.computer.touch(zday_path, "status")
+        if is_error(create) then return create.stack("zday.update_status")
+        file = home.file.get_file(zday_path+"/status")
+        if is_error(file) then return file.stack("zday.update_status")
+    end if
+
+    content = [
+        status.month_id,
+        status.failed_attempts,
+        status.banned_unit,
+        status.locked_ip
+    ].join(char(10))
+
+    err = file.set_content(content)
+    if is_error(err) then return err.stack("zday.update_status")
+end function
+
+reset_status = function()
+    err = update_status({
+        "month_id":"month_id",
+        "failed_attempts":"failed_attempts",
+        "banned_unit":"banned_unit",
+        "locked_ip":"locked_ip"
+    })
+    if is_error(err) then return err.stack("zday.reset_status")
+end function
+
+get_status = function()
+    kernel = _global.kernel
+    zday_path = kernel.settings.zday.path
+    home = kernel.sessions[0]
+    file = home.file.get_file(zday_path+"/status")
+
+    if is_error(file) then
+        reset_status()
+        file = home.file.get_file(zday_path+"/status")
+        if is_error(file) then return file.stack("zday.get_status")
+    end if
+
+    content = file.get_content()
+    if is_error(content) then return content.stack("zday.get_status")
+    content = content.split(char(10))
+
+    return {
+        "month_id":to_int(content[0].trim),
+        "failed_attempts":to_int(content[1].trim),
+        "banned_unit":to_int(content[2].trim),
+        "locked_ip":content[3].trim
+    }
+end function
+
+reset_zday = function()
+    log("Resetting zday folder")
+    kernel = _global.kernel
+    zday_path = kernel.settings.zday.path
+    home = kernel.sessions[0]
+
+    reset = reset_status()
+    if is_error(reset) then return reset.stack("zday.reset_zday")
+    exdb = home.file.get_folder(zday_path+"/exdb")
+    if is_error(exdb) then return exdb.stack("zday.reset_zday")
+    del = exdb.delete()
+    if is_error(del) then return exdb.stack("zday.reset_zday")
+end function
+
+status_check = function()
+    kernel = _global.kernel
+    home = kernel.sessions[0]
+    zday_path = kernel.settings.zday.path
+    status = get_status()
+
+    if status.month_id == "month_id" then
+        exdb = home.file.get_folder(zday_path+"/exdb")
+        if is_error(exdb) then return
+        reset_zday()
+        return
+    end if
+
+    parsed_current = parse_date(current_date)
+    current_month = (months.indexOf(parsed_current.month)+1)%12
+    if current_month-(current_month%2) != status.month_id then
+        reset_zday()
+    end if
+end function
+
+
+// Lib handling
+get_libs = function(session, target_path, recursive=false)
+    meta = session.metax
+    target = session.file.get_path(target_path)
+
+    if is_error(target) then return target.stack("zday.get_libs")
+
+    libraries = []
+    if target.is_folder then
+        log("Target is folder")
+        log("Recursive: " + recursive)
+
+        for x in target.tree(recursive)
+            if not x.is_binary then continue
+            lib = meta.load(x.path)
+            if lib == null then continue
+            libraries.push([x.path, lib])
+        end for
+    else    
+        lib = meta.load(target.path)
+        if lib == null then return ParseError.New("zday.get_libs", "Target is not a library")
+        libraries = [[target.path, lib]]
+    end if
+
+    return libraries
+end function
+
+get_debug_libs = function(libs, local=true)
+    kernel = _global.kernel
+    status = get_status()
+    check_login()
+
+    if status.failed_attempts >= 3 then return KernelError.New("zday.get_debug_libs", "Max failed attempts reached. Unable to unit or payload until next cycle")
+
+    tab_data = []
+    unpatched = []
+    if local and kernel.session.user != "root" then
+        return OsError.New("zday.get_debug_libs", "Must be root to get debug libs locally")
+    end if
+
+    for x in libs
+        if x[1].is_patched then continue
+        unpatched.push(x)
+        tab_data.push([x[0], x[1].lib_name, x[1].version])
+    end for
+    result = tabulate_data(tab_data, ["Path", "Library", "Version"], kernel.color(["$T2;", "$P;", "$S;"]))
+
+    kernel.line("", result.length)
+    print(result.string)
+    print(" ")
+    print("$T2;"+len(unpatched) + " $error;unpatched")
+    kernel.line("", result.length)
+
+    debug_libs = []
+
+    for l in unpatched
+        dir = l[0]
+        lib = l[1]
+
+        debug = lib.debug_tools(kernel.zday.username, kernel.zday.password)
+        if debug isa string then
+            kernel.zday = null
+            log("Error: "+debug)
+            status.failed_attempts = status.failed_attempts + 1
+            update_status(status)
+            return Error.New("zday.patch", "Login credentials are invalid! (You have a max of 3 attempts)")
+        end if
+
+        debug_libs.push([dir, lib, debug])
+    end for
+    return debug_libs
+end function
+
+display_libs = function(libraries)
+    kernel = _global.kernel
+    tab_data = []
+    patched = 0
+    for x in libraries
+        x = x[1]
+        patched = patched + x.is_patched
+        tab_data.push([x.lib_name, x.version, kernel.color(["$error;False", "$S;True"])[x.is_patched], ["", "$T2;"+x.is_patched(true)][x.is_patched]])
+    end for
+
+    result = tabulate_data(tab_data, ["Name", "Version", "Patched", "Until"], kernel.color(["$P;", "$T2;", "$T;"]))
+    kernel.line("", result.length)
+    kernel.print(result.string)
+    print(" ")
+    kernel.print("$T2;"+ patched +" $S;patched  $T2;"+ (len(libraries)-patched) +" $error;unpatched  $T2;" + len(libraries) + " $P;total")
+    kernel.line("", result.length)
+end function
+
+solve_debug = function(lib, debug)
+    kernel = _global.kernel
+    home = kernel.sessions[0]
+    zday_path = kernel.settings.zday.path
+
+    solver = ZeroDaySolver.New()
+    scan_result = debug.scan()
+    solve_result = solver.solve(scan_result)
+
+    log("result len:"+len(solve_result))
+    patch = solve_result[1]
+    incorrect_lines = solve_result[0]
+
+    result = debug.unit_testing(incorrect_lines)
+    if result[:5] == "error" or result[:5] == "Test " then
+        status.banned_unit = true
+        update_status(status)
+        return Error.New("zday.unit", result)
+    end if
+
+    unit_data = parse_0day_unittest(lib, result)
+    r = store_data(lib, [unit_data[1], unit_data[2]])
+    if is_error(r) then return r.stack("zday.unit")
+    exlib = unit_data[0]
+
+    existing = ExploitLibrary.New(lib, lib.version)
+    existing.load(home.computer, zday_path+"/exdb")
+    existing.merge(exlib)
+    existing.save_exploits(home.computer, zday_path+"/exdb")
+
+    return unit_data
+end function
+
+do_payload = function(lib, target_wan)
+    kernel = _global.kernel
+    zday_path = kernel.settings.zday.path
+    status = get_status()
+
+    payload_data = fetch_data(lib.lib_name, lib.version)
+    if is_error(payload_data) then return payload_data.stack("zday.do_payload")
+    if payload_data == null then
+        if not confirmation_prompt("No payload data in database. Continue anyway?") then return
+    else
+        print(" ")
+        print("$P;Partial results:")
+        display_partial(payload_data)
+        print(" ")
+        if not confirmation_prompt("Continue with payload?") then return
+    end if
+
+    file_target = "/lib/" + lib.lib_name
+
+    print(" ")
+    debug_libs = get_debug_libs([[target_wan, lib]], false)
+    if is_error(debug_libs) then return debug_libs.stack("zday.do_payload")
+    if len(debug_libs) == 0 then return ExploitError.New("zday.do_payload", "Unable to retrieve debug lib")
+
+    status.locked_ip = target_wan
+    update_status(status)
+
+    debug = debug_libs[0][2]
+    exlib = ExploitLibrary.New(lib)
+    exlib.load(kernel.sessions[0].computer, zday_path+"/exdb")
+    exploits = exlib.exploits_with_version()
+    exploit = null
+
+    if len(exploits) == 0 then
+        result = solve_debug(lib, debug)
+        if is_error(result) then return result.stack("zday.do_payload")
+        exploit = result[0].exploits[0]
+        payload_data = [result[1], result[2]]
+        display_partial(payload_data)
+    else
+        exploit = exploits[0]
+    end if
+
+    result = debug.payload("0x"+exploit.address, file_target)
+    if result isa string then
+        return ExploitError.New("zday.do_payload", result)
+    end if
+
+    pcomputer = result[0]
+    pfile = result[1]
+    metalib = null
+    if len(result) > 2 then
+        metalib = result[2]
+    end if
+
+    // Pobject handling 
+    data = fetch_data(lib.lib_name, lib.version)
+
+    interpreter = PartialInterpreter.New(kernel, debug, exploit, pfile, payload_data[1].user, pcomputer, payload_data[0].user, target_wan, file_target, metalib)
+    return interpreter
+end function
+
+
+// Define new tool
+zday = Tool.New("zday", "1.0.0")
+
+zday.settings = Settings.init()
+zday.settings.set("zday", {
+    "path":"/etc/crow/zday",
+    "prompt":"<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$session $ip</voffset><pos=0></size>$pwd $T2;$suffix$input;"
+})
+zday.settings.set("color", {
+    "zday": "<#c5b>",
+    "zday_patched" : "<#0e8>",
+    "zday_unpatched" : "<#d46>",
+})
+zday.settings.set("input", {
+    "zday": "#"
+})
+
+
+zday.on_load = function(kernel)
+    _global.kernel = kernel
+
+    status_check()
+    if not kernel.hasIndex("zday") then kernel.zday = null
+end function
+
+
+// login
+login_args = [
+    Kwarg.New("username", "string").Alias("u").Info("Neurobox username"),
+    Kwarg.New("password", "string").Alias("p").Info("Neurobox password")
+]
+
+login_func = function(a)
+    if remaining_0day(current_date) == false then
+        return ParseError.New("zday.login", "There is no active zero day cycle")
+    end if
+    status_check()
+    status = get_status()
+    if status.failed_attempts >= 3 then return KernelError.New("zday.get_debug_libs", "Max failed attempts reached. Unable to unit or payload until next cycle")
+    
+    if a.username == null then
+        a.username = user_input(a.kernel.color("$P;Neurobox Username $T2;: $input;"))
+    end if
+    if a.password == null then
+        a.password = user_input(a.kernel.color("$P;Neurobox Password $T2;: $input;"))
+    end if
+
+    if a.username == "" and a.password == "" then return
+    print(" ")
+    p = confirmation_prompt("Is this correct?")
+    if not p then return
+
+    a.kernel.zday = {
+        "username": a.username.trim,
+        "password": a.password.trim,
+    }
+
+    parsed_date = parse_date(current_date)
+    month_id = months.indexOf(parsed_date.month)+1
+    status = get_status()
+
+
+    if status.month_id == "month_id" then
+        log("Updaing zday status")
+        status.month_id = (month_id%12) - (month_id%2)
+        status.failed_attempts = 0
+        status.banned_unit = false
+        status.locked_ip = false
+
+        update_status(status)
+    end if
+
+    print("$S;Login saved for this crowsploit instance")
+end function
+
+login_cmd = zday.command("login", login_args, @login_func)
+login_cmd.short_description = "Save neurobox creds to crowsploit instance"
+login_cmd.long_description = "$P;Usage:
+$P;zday $S;login
+$P;zday $S;login $string;-u Banana
+$P;zday $S;login $string;-u Banana -p Milkshake"
+
+
+//patch 
+patch_args = [
+    Arg.New("target", "string").Info("Library or Folder to patch"),
+    Kwarg.New("recursive", "bool").Alias("r").Default(0).Info("Find all libraries in folder (Only if target is a folder)")
+]
+
+patch_func = function(a)
+    if remaining_0day(current_date) == false then
+        return ParseError.New("zday.patch", "There is no active zero day cycle")
+    end if
+    status_check()
+    result = check_login()
+    if not result then return
+    ses = a.kernel.session
+
+    if ses.metax == null then return ObjectError.New("zday.patch", "metaxploit")
+    all_libraries = get_libs(a.kernel.session, a.target, a.recursive)
+
+    if is_error(all_libraries) then return all_libraries.stack("zday.patch")
+    log(len(all_libraries) + " libraries loaded")
+
+    debug_libs = get_debug_libs(all_libraries)
+    if is_error(debug_libs) then return debug_libs.stack("zday.unit")
+    solver = ZeroDaySolver.New()
+
+    c = confirmation_prompt("Attempt to patch libraries?")
+    if not c then return
+
+    for l in debug_libs
+        dir = l[0]
+        lib = l[1]
+        debug = l[2]
+
+        log("Starting scan")
+        scan_result = debug.scan()
+        log("Starting solve")
+        solve_result = solver.solve(scan_result)
+
+        patch = solve_result[1]
+        incorrect_lines = solve_result[0]
+
+        result = ses.computer.touch("/", "patch.src", patch.join(char(10)))
+        if is_error(result) then return result.stack("zday.patch")
+        file = ses.file.get_file("/patch.src")
+        if is_error(file) then return file.stack("zday.patch")
+
+        patch_result = debug.apply_patch(file.path)
+        if patch_result isa string and patch_result[:5] == "error" then
+            print("$error;Failed to patch $T2;" + dir + "$error; : " + patch_result[6:])
+        else
+            print("$S;Patched $T2;" + dir)
+        end if
+
+        file.delete()
+    end for
+end function
+
+patch_cmd = zday.command("patch", patch_args, @patch_func)
+patch_cmd.short_description = "Patch a library using your zero day credentials"
+patch_cmd.long_description  = "$P;Usage:
+$P;zday $string;patch /lib/libhttp.so
+$P;zday $string;patch /lib
+$P;zday $string;patch / $bool;-r"
+
+
+// info
+info_args = [
+    Arg.New("target|ip", "string").Info("Library or Folder or ip to show patch info for"),
+    Kwarg.New("recursive", "bool").Alias("r").Default(0).Info("Find all libraries in folder (Only if target is a folder)")
+]
+
+info_func = function(a)
+    if a.kernel.session.metax == null then return ObjectError.New("zday.info", "metaxploit")
+    ip = parse_ip(a["target|ip"])
+
+    // Local library
+    if is_error(ip) then
+        log("Domain not resolved")
+        libraries = get_libs(a.kernel.session, a["target|ip"], a.recursive)
+
+        if is_error(libraries) then return libraries.stack("zday.info")
+        log(len(libraries) + " libraries loaded")
+
+        display_libs(libraries)
+        return
+    end if
+
+    // External target
+    c = confirmation_prompt("This will leave logs on the target. Continue?")
+    if not c then return 0
+
+    if not a.kernel.active_session.computer.is_network_active then return OsError.New("zday.info", "No internet connection")
+    home = a.kernel.sessions[0]
+    zday_path = a.kernel.settings.zday.path
+    metax = a.kernel.session.metax
+
+    // get port info
+    local = is_lan_ip(ip)
+    router = null
+    if local then
+        if a.kernel.session != a.kernel.active_session then return KernelError.New("zday.info", "Session must be the active session for local ip scanning")
+        router = get_router
+        ports = get_router().device_ports(ip)
+        if not ports isa list then return Error.New("zday.info", "Unable to connect to ip " + ip)
+    else
+        router = get_router(ip)
+        if router == null then return Error.New("zday.info", "Unable to connect to ip " + ip)
+        ports = router.used_ports()
+        router_extra = {"port_number":0, "is_closed":false, "get_lan_ip":router.local_ip}
+        ports.insert(0, router_extra)
+    end if
+
+    // Fetch data
+    tab_data = []
+    for p in ports
+        if p.is_closed then continue
+        net_ses = metax.net_use(ip, p.port_number)
+        if net_ses == null then 
+            print("$T;Unable to get netsession for port " + p.port_number + ". Skipping")
+            continue
+        end if
+
+        lib = net_ses.dump_lib()
+        service = null
+        ver = null
+        if p.port_number == 0 then
+            service = "kernel_router"
+            ver = router.kernel_version
+        else
+            p_info = router.port_info(p).split(" ")
+            service = p_info[0]
+            ver = p_info[1]
+        end if
+
+        exlib = ExploitLibrary.New(lib)
+        r = exlib.load(home.computer, zday_path+"/exdb")
+        exploits = exlib.exploits_with_version()
+        in_db = exploits != []
+
+        tab_data.push([p.port_number, service, ver, p.get_lan_ip, a.kernel.color(["$error;False", "$S;True"])[lib.is_patched], ["False", "True"][in_db]])
+    end for
+
+    // Display data
+    tab_colors = a.kernel.color(["$P;", "$P;", "$T2;", "$S;", "$T;", "$T2;"])
+    tab_result = tabulate_data(tab_data, ["Port", "Service", "Version", "Lan", "Patched", "In Zday DB"], tab_colors)
+    a.kernel.line("Scan result", tab_result.length)
+
+    print("$P;Host $T;: $S;" + ip)
+    print(tab_result.string)
+
+    a.kernel.line("", tab_result.length)
+end function
+
+info_cmd = zday.command("info", info_args, @info_func)
+info_cmd.short_description = "Show zeroday info of a library"
+info_cmd.long_description  = "$P;Usage:
+$P;zday $S;info $string;/lib/libhttp.so
+$P;zday $S;info $string;/lib
+$P;zday $S;info $string;/ $bool;-r
+$P;zday $S;info $ip;13.12.5.123"
+
+
+// unittest
+unit_args = [
+    Arg.New("target", "string").Info("Library or Folder to unittest"),
+    Kwarg.New("recursive", "bool").Alias("r").Default(0).Info("Find all libraries in folder (Only if target is a folder)")
+]
+
+unit_func = function(a)
+    if remaining_0day(current_date) == false then
+        return ParseError.New("zday.patch", "There is no active zero day cycle")
+    end if
+    status_check()
+    result = check_login()
+    if not result then return
+
+    ses = a.kernel.session
+    home = a.kernel.sessions[0]
+    zday_path = a.kernel.settings.zday.path
+    status = get_status()
+    if status.banned_unit then return Error.New("zday.unit", "Unable to do unit checks for this zday cycle.")
+
+    if ses.metax == null then return ObjectError.New("zday.unit", "metaxploit")
+    all_libraries = get_libs(a.kernel.session, a.target, a.recursive)
+
+    if is_error(all_libraries) then return all_libraries.stack("zday.unit")
+    log(len(all_libraries) + " libraries loaded")
+
+    debug_libs = get_debug_libs(all_libraries)
+    if is_error(debug_libs) then return debug_libs.stack("zday.unit")
+    solver = ZeroDaySolver.New()
+    err = null
+    success = false
+
+    c = confirmation_prompt("Attempt to get zeroday vulnerabilites from libraries?")
+    if not c then return
+
+    for l in debug_libs
+        dir = l[0]
+        lib = l[1]
+        debug = l[2]
+
+        result = solve_debug(lib, debug)
+        if is_error(result) then 
+            err = result.stack("zday.unit")
+            break
+        end if
+        exlib = result[0]
+        existing = ExploitLibrary.New(lib, lib.version)
+        existing.load(home.computer. zday_path+"/exdb")
+
+        p = Path.New(dir)
+        if p.folder != "/lib" then
+            exlib.display(a.kernel)
+            print(" ")
+            display_partial([result[1], result[2]])
+            existing.save_exploits(home.computer, zday_path+"/exdb")
+            print("$T;Lib not in /lib, unable to enumerate type")
+            continue
+        end if
+
+        enum_result = enum_exploit(exlib.exploits[0], lib, ses.lan)
+        exlib.exploits[0].object = enum_result[0]
+        exlib.display(a.kernel)
+        print(" ")
+        display_partial([result[1], result[2]])
+
+        existing.merge(exlib)
+        existing.save_exploits(home.computer, zday_path+"/exdb")
+    end for
+
+    if success then
+        print(" ")
+        print("$S;Scanned exploits can be used against unpatched libraries")
+        print("$S;using the $T2;zday overflow$S; command")
+        print(" ")
+    end if
+
+    return err
+end function
+
+unit_cmd = zday.command("unit", unit_args, @unit_func)
+unit_cmd.short_description = "Find and save overflow values of vulnerable libraries"
+unit_cmd.long_description = "$P;Usage:
+$P;zday $S;unit $string;/lib/libhttp.so
+$P;zday $S;unit $string;/lib
+$P;zday $S;unit $string;/ $bool;-r
+
+$error;<i>Beware: These exploits are only temporary"
+
+// counter
+counter_func = function(a)
+    active = remaining_0day(current_date)
+    if active != 0 then
+        print("$error;0day ends in")
+        print("$zday;Days    $T;: $T2;"+ active.days)
+        print("$zday;Hours   $T;: $T2;"+ active.hours)
+        print("$zday;Minutes $T;: $T2;"+ active.minutes)
+        print("$zday;Seconds $T;: $T2;"+ active.seconds)
+        print("$T;<i><size=13px>(IRL times)")
+    else
+        u = calculate_0day(current_date)
+        print("$P;0day Countdown")
+        print("$S;Days    $T;: $T2;"+ u.days)
+        print("$S;Hours   $T;: $T2;"+ u.hours)
+        print("$S;Minutes $T;: $T2;"+ u.minutes)
+        print("$S;Seconds $T;: $T2;"+ u.seconds)
+        print("$T;<i><size=13px>(IRL times)")
+    end if
+end function
+
+counter_cmd = zday.command("counter", [], @counter_func)
+counter_cmd.short_description = "Show duration until next zeroday"
+counter_cmd.long_description = "$P;Zero days only happen on even months
+
+$P;For example:
+$T;<i>ID   Month
+$T;2    $S;Feb
+$T;4    $S;Apr
+$T;6    $S;Jun
+$T;8    $S;Aug
+$T;10   $S;Oct
+$T;12   $S;Dec
+
+$P;Zero days only last for the first $T2;14$P; days in the month.
+$P;So $S;Feb $T2;1-14$P;, $S;Apr $T2;1-14$P; etc."
+
+
+// overflow
+
+overflow_args = [
+    Arg.New("ip", "ip").Info("Target IP"),
+    Kwarg.New("port", "int").Alias("p").Info("")
+]
+
+overflow_func = function(a)
+    if remaining_0day(current_date) == false then
+        return ParseError.New("zday.overflow", "There is no active zero day cycle")
+    end if
+    ses = a.kernel.session
+
+    if ses != a.kernel.active_session then return ExploitError.New("zday.overflow", "To overflow you have to be on an active session")
+    if ses.metax == null then return ExploitError.New("zday.overflow", "Metaxploit is required for exploiting")
+
+    if a.port == null then
+        res = a.kernel.run_command("scan " + a.ip, false)
+        if not res then return
+        a.port = to_int(user_input(a.kernel.color("$T2;Port $T;: $P;")))
+        if a.port == "" then return
+        if not a.port isa number then
+            return ParseError.New("exploit.host", "Port must be a number")
+        end if
+    end if
+
+    netses = a.kernel.session.metax.net_use(a.ip, a.port)
+    if netses == null then return ExploitError.New("zday.overflow", "Failed to get netsession")
+    lib = netses.dump_lib()
+    zday_path = a.kernel.settings.zday.path
+    result = exploit_process(a.kernel, lib, a.ip, null, null, zday_path+"/exdb")
+
+    if is_error(result) then return result
+    if result == null or result == true then return
+    if result isa string then return Error.New("zday.overflow", result)
+
+    a.kernel.new_session(result[0])
+
+    a.kernel.run_command("session use " + result[0].id, false)
+
+    print("$P;New session created")
+    print("$S;"+ result[0].user +"$T;@$S;"+ result[0].comp_name)
+    print("$T;ID:$P;"+result[0].id)
+end function
+
+overflow_cmd = zday.command("overflow", overflow_args, @overflow_func)
+overflow_cmd.short_description = "Use zeroday exploit against a target"
+overflow_cmd.long_description = "$T2;Note: These exploits will only ever grant guest.
+$T2;Overflow exploits are seperate from the normal exploits, requiring you to get neurobox credentials,
+$T2;to then scan a un-patched library for temporary exploits
+
+$P;Usage:
+$P;zday $S;overflow $ip;14.2.12.5
+$P;zday $S;overflow $ip;14.2.12.5 $int;-p 22"
+
+
+// List
+list_args = [
+    Arg.New("library", "string").Info("Library to check for"),
+    Arg.New("version", "string").Info("What version to check for")
+]
+
+list_func = function(a)
+    if remaining_0day(current_date) == false then
+        return ParseError.New("zday.list", "There is no active zero day cycle")
+    end if
+    if not a.version.is_match("(^\d+\.\d\.\d$|^\d{3}\d*$)") then return ParseError.New("zday.list", "Invalid version format. Use 1.0.0, or 100")
+    lib_matches = []
+    for x in library_names
+        if x.is_match("^"+a.library) or x[3:].is_match("^"+a.library) then lib_matches.push(x)
+    end for
+    if len(lib_matches) != 1 then
+        return OsError.New("exploit.list", "Invalid library name, use any of: " + char(10) + "   " + library_names.join(char(10)+"   "))
+    end if
+
+    data = fetch_data(lib_matches[0], a.version)
+    if data == null then 
+        return OsError.New("zday.list", "Library not in database")
+    end if
+
+    zday_path = a.kernel.settings.zday.path
+
+    exlib = ExploitLibrary.New(lib_matches[0], a.version)
+    exlib.load(a.kernel.sessions[0].computer, zday_path+"/exdb")
+
+    exlib.display(a.kernel, true)
+    print(" ")
+    display_partial(data)
+end function
+
+list_cmd = zday.command("list", list_args, @list_func)
+list_cmd.short_description = "Show zero day info about scanned libraries"
+list_cmd.long_description = "$P;Usage:
+$P;zday $S;list $string;kernel_router 1.0.0"
+
+// payload
+
+payload_args = [
+    Arg.New("ip", "ip").Info("Target of the zeroday attack"),
+    Kwarg.New("port", "int").Alias("p").Info("Port to target")
+]
+
+payload_func = function(a)
+    if remaining_0day(current_date) == false then
+        return ParseError.New("zday.payload", "There is no active zero day cycle")
+    end if
+    if a.kernel.session.metax == null then return ObjectError.New("exploit.host", "metaxploit")
+    if a.kernel.session.computer == null then return ObjectError.New("exploit.host", "computer")
+    if not a.kernel.active_session.computer.is_network_active then return OsError.New("exploit.host", "No internet connection")
+    status = get_status()
+    zday_path = a.kernel.settings.zday.path
+    ses = a.kernel.session
+    target_wan = ses.wan
+    lan_target = is_lan_ip(a.ip)
+    if not lan_target then target_wan = a.ip
+    
+    // Check if IP is locked / target IP
+    if status.locked_ip == "0" then
+        continue_payload = confirmation_prompt([
+            "$error;WARNING:",
+            "$error;Running the payload will lock your credentials to this ip",
+            "$error;Meaning you cannot run this against any other target and are unable to do any further unit testing",
+            "$T2;Continue?"
+        ].join(char(10)))
+        if not continue_payload then return
+        print(" ")
+    else
+        locked_ip = status.locked_ip
+        if locked_ip != target_wan then
+            return ExploitError.New("zday.payload", "Credentials are locked to " + locked_ip)
+        end if
+    end if
+
+    // Get port for target
+    if a.port == null then
+        res = a.kernel.run_command("zday info "+a.ip, false)
+        if not res then return 0
+
+        a.port = to_int(user_input(a.kernel.color("$T2;Port $T;: $P;")))
+        if a.port == "" then return 0
+        if not a.port isa number then
+            return ParseError.New("exploit.host", "Port must be a number")
+        end if
+    end if
+
+    // Get net session and target metalib
+    net_ses = ses.metax.net_use(a.ip, a.port)
+    if net_ses == null then return ExploitError.New("exploit.host", "Failed to get netsession")
+
+    lib = net_ses.dump_lib()
+    if lib.is_patched then 
+        return ExploitError.New("zday.payload", "Target library is patched, unable to payload")
+    end if
+
+    // Get payload data
+    interpreter = do_payload(lib, target_wan)
+    if interpreter == null then return
+    if is_error(interpreter) then return interpreter.stack("zday.payload")
+
+    print(" ")
+    a.kernel.new_session(interpreter.session)
+    a.kernel.run_command("session use " + interpreter.session.id, false)
+end function
+
+payload_cmd = zday.command("payload", payload_args, @payload_func)
+
+// init
+zday.init()

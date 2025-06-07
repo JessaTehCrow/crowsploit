@@ -5,10 +5,16 @@ import_code("./typehandler")
 File = {}
 File.object = null
 File.type = "file"
+File.partial = false
+File.show_corrupt = false
+
+File.has = function(name)
+    return self.object.__isa.hasIndex(name)
+end function
 
 File.New = function(obj, root=null)
-    if typeof(obj) != "file" then return TypeError.New("File.New","file", typeof(obj))
-    file = new File
+    if not typeof(obj).is_match("file$") then return TypeError.New("File.New","file", typeof(obj))
+    file = new self
     file.object = obj
 
     file.root_path = root
@@ -23,55 +29,47 @@ File.New = function(obj, root=null)
     return file
 end function
 
-// @description a return value of 0 = FileOK
-// @description a return value of 1 = BrokenSymlink
-// @description a return value of 2 = FileDeleted
-// @returns {0|1|2}
-File.status = function()
-    if self.object == null then return 2
-    if self.object.owner == null then 
-        if self.object.is_symlink then return 1 else return 2
-    end if
-    return 0
-end function
-
 File.sanity_check = function()
     if self.status == 0 then return
     self.object = self.root_path
-    print("<#e88>File deleted or corrupted, resetting to /")
+    if self.show_corrupt then print("<#e88>File deleted or corrupted, resetting to /")
 end function
 
 File.path = function(original_path=false)
     self.sanity_check
+    if not self.has("path") then return PartialObjectError.New("file", "path")
     return self.object.path(original_path)
 end function
 
 File.copy = function(path, name)
     self.sanity_check
+    if not self.has("copy") then return PartialObjectError.New("file", "copy")
     err = expect_all([path, name], string)
     if err != null then return TypeError.New("File.copy","string", err)
     result = self.object.copy(path, name)
     if result isa string then return Error.New("File.copy",result)
 end function
 
-File.is_file = function()
-    self.sanity_check
-    obj = self.object
-    return not (obj.is_folder or obj.is_binary)
-end function
-
 File.is_folder = function()
     self.sanity_check
+    if not self.has("is_folder") then return PartialObjectError.New("file", "is_folder")
     return self.object.is_folder
+end function
+
+File.is_file = function()
+    self.sanity_check
+    return not (self.is_folder or self.is_binary)
 end function
 
 File.is_symlink = function()
     self.sanity_check
+    if not self.has("is_symlink") then return PartialObjectError.New("file", "is_symlink")
     return self.object.is_symlink
 end function
 
 File.is_binary = function()
     self.sanity_check
+    if not self.has("is_binary") then return PartialObjectError.New("file", "is_binary")
     return self.object.is_binary
 end function
 
@@ -86,11 +84,13 @@ end function
 
 File.permissions = function()
     self.sanity_check
+    if not self.has("permissions") then return PartialObjectError.New("file", "permissions")
     return self.object.permissions
 end function
 
 File.has_permission = function(perm)
     self.sanity_check
+    if not self.has("has_permission") then return PartialObjectError.New("file", "has_permission")
     if self.permissions == null then return true
     if not perm isa string then return TypeError.New("File.has_permission","string", typeof(perm))
     if not perm.is_match("^(?!.*(.).*\1)[rwx]{1,3}$") then return FormatError.New("File.has_permission","rwx", perm)
@@ -102,6 +102,7 @@ end function
 
 File.chmod = function(perms, recursive=false)
     self.sanity_check
+    if not self.has("chmod") then return PartialObjectError.New("file", "chmod")
     if not perms isa string then return TypeError.New("File.chmod","string", typeof(perms))
     binary = function(n)
     b = []
@@ -180,14 +181,16 @@ end function
 
 File.delete = function()
     self.sanity_check
+    if not self.has("delete") then return PartialObjectError.New("file", "delete")
     if self.path == "/" then return OsError.New("File.delete","Cannot delete root folder")
-    if not self.is_symlink and not self.parent.has_permission("w") then return PermissionError.New("File.delete","write")
+    if not self.partial and not self.is_symlink and not self.parent.has_permission("w") then return PermissionError.New("File.delete","write")
     err = self.object.delete
     if err != "" then return Error.New("File.delete", err)
 end function
 
 File.get_content = function()
     self.sanity_check
+    if not self.has("get_content") then return PartialObjectError.New("file", "get_content")
     if not self.is_file then return TypeError.New("File.get_content","file", self.file_type)
     if not self.has_permission("r") then return PermissionError.New("File.get_content","read")
 
@@ -196,6 +199,7 @@ end function
 
 File.get_folders = function()
     self.sanity_check
+    if not self.has("get_folders") then return PartialObjectError.New("file", "get_folders")
     if not self.is_folder then return TypeError.New("File.get_folders","folder", self.file_type)
 
     result = []
@@ -208,6 +212,7 @@ end function
 
 File.get_files = function()
     self.sanity_check
+    if not self.has("get_files") then return PartialObjectError.New("file", "get_files")
     if not self.is_folder then return TypeError.New("File.get_files","folder", self.file_type)
 
     result = []
@@ -220,6 +225,7 @@ end function
 
 File.group = function()
     self.sanity_check
+    if not self.has("group") then return PartialObjectError.New("file", "group")
     o = self.object.group
     if o == null then return "null"
     return self.object.group
@@ -227,17 +233,19 @@ end function
 
 File.move = function(path, name)
     self.sanity_check
+    if not self.has("move") then return PartialObjectError.New("file", "move")
     if not path isa string then return TypeError.New("File.move","string", typeof(path))
     if not name isa string then return TypeError.New("File.move","string", typeof(name))
 
     if self.path == "/" then return OsError.New("File.move","Cannot move root folder")
-    if not self.parent.has_permission("w") then return PermissionError.New("File.move","write")
+    if not self.partial and not self.parent.has_permission("w") then return PermissionError.New("File.move","write")
     result = self.object.move(path, name)
     if result isa string then return Error.New("File.move", result)
 end function
 
 File.name = function()
     self.sanity_check
+    if not self.has("name") then return PartialObjectError.New("file", "name")
     o = self.object.name
     if o == null then return "null"
     return self.object.name
@@ -245,13 +253,15 @@ end function
 
 File.owner = function()
     self.sanity_check
+    if not self.has("owner") then return PartialObjectError.New("file", "owner")
     o = self.object.owner
     if o == null then return "null"
-    return self.object.owner
+    return o
 end function
 
 File.parent = function()
     self.sanity_check
+    if not self.has("parent") then return PartialObjectError.New("file", "parent")
     parent = self.object.parent
     if parent == null then return self
 
@@ -260,15 +270,17 @@ end function
 
 File.rename = function(name)
     self.sanity_check
+    if not self.has("rename") then return PartialObjectError.New("file", "rename")
     if not name isa string then return TypeError.New("File.rename","string", typeof(name))
     if self.path == "/" then return OsError.New("File.rename","Cannot move root folder")
-    if not self.parent.has_permission("w") then return PermissionError.New("File.rename","write")
+    if not self.partial and not self.parent.has_permission("w") then return PermissionError.New("File.rename","write")
     result = self.object.rename(name)
     if result isa string and result != "" then return Error.New("File.rename",result)
 end function
 
 File.set_content = function(content)
     self.sanity_check
+    if not self.has("set_content") then return PartialObjectError.New("file", "set_content")
     if not self.parent.has_permission("w") then return PermissionError.New("File.set_content","write")
     result = self.object.set_content(content)
     if result isa string then return Error.New("File.set_content",result)
@@ -276,6 +288,7 @@ end function
 
 File.set_group = function(group, recursive=false)
     self.sanity_check
+    if not self.has("set_group") then return PartialObjectError.New("file", "set_group")
     if not self.has_permission("w") then return PermissionError.New("File.set_group","write")
     if not group then return OsError.New("File.set_group","Group cannot be empty")
     if group.len > 15 then return OsError.New("File.set_group","Group cannot exceed 15 characters")
@@ -287,6 +300,7 @@ end function
 
 File.set_owner = function(owner, recursive=false)
     self.sanity_check
+    if not self.has("set_owner") then return PartialObjectError.New("file", "set_owner")
     if not self.has_permission("w") then return PermissionError.New("File.set_owner","write")
     if not owner then return OsError.New("File.set_owner","Owner cannot be empty")
     if owner.len > 15 then return OsError.New("File.set_owner","Owner cannot exceed 15 characters")
@@ -298,11 +312,13 @@ end function
 
 File.size = function()
     self.sanity_check
+    if not self.has("size") then return PartialObjectError.New("file", "size")
     return self.object.size
 end function
 
 File.symlink = function(destination, name)
     self.sanity_check
+    if not self.has("symlink") then return PartialObjectError.New("file", "symlink")
     if len(name) > 128 then return OsError.New("File.symlink","Filename cannot be longer than 128 characters")
     //if not self.has_permission("w") then return PermissionError.New("File.symlink", "read")
     if not is_error(self.get_path(destination+"/"+name)) then return OsError.New("File.symlink", "Path already exists : " + destination+"/"+name)
@@ -315,20 +331,40 @@ File.symlink = function(destination, name)
     return res
 end function
 
+// @description a return value of 0 = FileOK
+// @description a return value of 1 = BrokenSymlink
+// @description a return value of 2 = FileDeleted
+// @returns {0|1|2}
+File.status = function()
+    if not self.has("owner") then return 0
+    if not self.has("is_symlink") then return 0
+    if self.object == null then return 2
+    if self.object.owner == null then 
+        if self.object.is_symlink then return 1 else return 2
+    end if
+    return 0
+end function
 
 
 Computer = {}
 Computer.object = null
 Computer.type = "computer"
+Computer.partial = false
 
 Computer.New = function(obj)
-    if typeof(obj) != "computer" then return TypeError.New("Computer.New","computer", typeof(obj))
+    if not typeof(obj).is_match("computer$") then return TypeError.New("Computer.New","computer", typeof(obj))
     comp = new Computer
     comp.object = obj
     return comp
 end function
 
+Computer.has = function(name)
+    result = self.object.__isa.hasIndex(name)
+    return self.object.__isa.hasIndex(name)
+end function
+
 Computer.File = function(path)
+    if not self.has("File") then return PartialObjectError.New("computer", "File")
     if not path isa string then return TypeError.New("Computer.file","string", typeof(path))
     file = self.object.File(path)
     if file == null then return OsError.New("Computer.file","Could not retrieve file from computer ("+path+")")
@@ -336,10 +372,12 @@ Computer.File = function(path)
 end function
 
 Computer.active_net_card = function()
+    if not self.has("active_net_card") then return PartialObjectError.New("computer", "active_net_card")
     return self.object.active_net_card
 end function
 
 Computer.change_password = function(user, password)
+    if not self.has("change_password") then return PartialObjectError.New("computer", "change_password")
     err = expect_all([user, password], string)
     if err != null then return TypeError.New("Computer.change_password","string", err)
     result = self.object.change_password(user, password)
@@ -347,12 +385,14 @@ Computer.change_password = function(user, password)
 end function
 
 Computer.close_program = function(pid)
+    if not self.has("close_program") then return PartialObjectError.New("computer", "close_program")
     if not pid isa number then return TypeError.New("Computer.close_program","number", typeof(pid))
     result = self.object.close_program(pid)
     if result isa string then return Error.New("Computer.close_program",result)
 end function
 
 Computer.connect_ethernet = function(netDevice, local, gateway)
+    if not self.has("connect_ethernet") then return PartialObjectError.New("computer", "connect_ethernet")
     err = expect_all([netDevice, local, gateway],string)
     if err != null then return TypeError.New("Computer.connect_ethernet","string", err)
     if not self.is_network_active then return OsError.New("Computer.connect_ethernet","No internet connection")
@@ -361,6 +401,7 @@ Computer.connect_ethernet = function(netDevice, local, gateway)
 end function
 
 Computer.connect_wifi = function(netDevice, bssid, essid, pass)
+    if not self.has("connect_wifi") then return PartialObjectError.New("computer", "connect_wifi")
     err = expect_all([netDevice, bssid, essid, pass], string)
     if err != null then return TypeError.New("connect_wifi","string", err)
     result = self.object.connect_wifi(netDevice, bssid, essid, pass)
@@ -368,6 +409,7 @@ Computer.connect_wifi = function(netDevice, bssid, essid, pass)
 end function
 
 Computer.create_folder = function(path, name)
+    if not self.has("create_folder") then return PartialObjectError.New("computer", "create_folder")
     if not path isa string then return TypeError.New("Computer.create_folder","string", typeof(path))
     if not name isa string then return TypeError.New("Computer.create_folder","string", typeof(name))
     result = self.object.create_folder(path, name)
@@ -375,6 +417,7 @@ Computer.create_folder = function(path, name)
 end function
 
 Computer.create_group = function(user, group)
+    if not self.has("create_group") then return PartialObjectError.New("computer", "create_group")
     if not user isa string then return TypeError.New("Computer.create_group","string", typeof(user))
     if not group isa string then return TypeError.New("Computer.create_group","string", typeof(group))
     if user == "" or group == "" then return OsError.New("Computer.create_group", "User and Group cannot be empty")
@@ -385,6 +428,7 @@ Computer.create_group = function(user, group)
 end function
 
 Computer.delete_group = function(user, group)
+    if not self.has("delete_group") then return PartialObjectError.New("computer", "delete_group")
     if not user isa string then return TypeError.New("Computer.delete_group","string", typeof(user))
     if not group isa string then return TypeError.New("Computer.delete_group","string", typeof(group))
     if user == "" or group == "" then return OsError.New("Computer.delete_group", "User and Group cannot be empty")
@@ -395,6 +439,7 @@ Computer.delete_group = function(user, group)
 end function
 
 Computer.create_user = function(name, pass)
+    if not self.has("create_user") then return PartialObjectError.New("computer", "create_user")
     if not name isa string then return TypeError.New("Computer.create_user","string", typeof(name))
     if not pass isa string then return TypeError.New("Computer.create_user","string", typeof(pass))
     if name == "" then return OsError.New("Computer.create_user", "Username cannot be empty")
@@ -406,6 +451,7 @@ Computer.create_user = function(name, pass)
 end function
 
 Computer.delete_user = function(user, remove_home=false)
+    if not self.has("delete_user") then return PartialObjectError.New("computer", "delete_user")
     if not user isa string then return TypeError.New("Computer.delete_user","string", typeof(user))
     if user == "" then return Error.New("Computer.delete_user", "Username cannot be empty")
     if not remove_home isa number then return TypeError.New("Computer.delete_user","number", typeof(remove_home))
@@ -417,14 +463,17 @@ Computer.delete_user = function(user, remove_home=false)
 end function
 
 Computer.get_name = function()
+    if not self.has("get_name") then return PartialObjectError.New("computer", "get_name")
     return self.object.get_name
 end function
 
 Computer.get_ports = function()
+    if not self.has("get_ports") then return PartialObjectError.New("computer", "get_ports")
     return self.object.get_ports
 end function
 
 Computer.groups = function(user)
+    if not self.has("groups") then return PartialObjectError.New("computer", "groups")
     if not user isa string then return TypeError.New("Computer.groups","string", typeof(user))
     if user == "" then return FormatError.New("Computer.groups", "Username", "Empty string")
     result = self.object.groups(user)
@@ -433,6 +482,7 @@ Computer.groups = function(user)
 end function
 
 Computer.is_network_active = function()
+    if not self.has("is_network_active") then return PartialObjectError.New("computer", "is_network_active")
     file = self.File("/")
     critfilepaths = ["/etc/xorg.conf","/lib/net.so","/lib/init.so","/sys/xorg.sys","/sys/config.sys","/sys/network.cfg","/boot/System.map","/boot/initrd.img","/boot/kernel.img"]
     for path in critfilepaths
@@ -442,26 +492,32 @@ Computer.is_network_active = function()
 end function
 
 Computer.local_ip = function()
+    if not self.has("local_ip") then return PartialObjectError.New("computer", "local_ip")
     return self.object.local_ip
 end function
 
 Computer.network_devices = function()
+    if not self.has("network_devices") then return PartialObjectError.New("computer", "network_devices")
     return self.object.network_devices
 end function
 
 Computer.network_gateway = function()
+    if not self.has("network_gateway") then return PartialObjectError.New("computer", "network_gateway")
     return self.object.network_gateway
 end function
 
 Computer.public_ip = function()
+    if not self.has("public_ip") then return PartialObjectError.New("computer", "public_ip")
     return self.object.public_ip
 end function
 
 Computer.show_procs = function()
+    if not self.has("show_procs") then return PartialObjectError.New("computer", "show_procs")
     return self.object.show_procs
 end function
 
 Computer.touch = function(path, file, content)
+    if not self.has("touch") then return PartialObjectError.New("computer", "touch")
     err = expect_all([path, file, content], string)
     if err != null then return TypeError.New("Computer.touch","string", typeof(err))
     if file == "" then return OsError.New("Computer.touch", "Filename cannot be empty")
@@ -476,6 +532,7 @@ Computer.touch = function(path, file, content)
 end function
 
 Computer.wifi_networks = function(interface)
+    if not self.has("wifi_networks") then return PartialObjectError.New("computer", "wifi_networks")
     if not interface isa string then return TypeError.New("Computer.wifi_networks", "string", typeof(interface))
     if self.object.active_net_card != "WIFI" then return OsError.New("computer.wifi_networks","Wifi card isnt enabled")
     return self.object.wifi_networks(interface)
@@ -491,13 +548,19 @@ Shell.object = null
 Shell.type = "shell"
 
 Shell.New = function(obj)
-    if ["shell", "ftpshell"].indexOf(typeof(obj)) == null then return Error.New("Shell.New","shell", typeof(obj))
+    if not typeof(obj).is_match("shell$") then return Error.New("Shell.New","shell", typeof(obj))
     shell = new Shell
     shell.object = obj
     return shell
 end function
 
+Shell.has = function(name)
+    result = self.object.__isa.hasIndex(name)
+    return self.object.__isa.hasIndex(name)
+end function
+
 Shell.host_computer = function()
+    if not self.has("host_computer") then return PartialObjectError.New("shell", "host_computer")
     comp = host_computer(self.object)
     if comp == null then return Error.New("Shell.host_computer","Could not retrieve computer from shell")
     return Computer.New(comp)
@@ -514,6 +577,7 @@ Shell.File = function(path)
 end function
 
 Shell.build = function(source, result, allowImport=false)
+    if not self.has("build") then return PartialObjectError.New("shell", "build")
     err = expect_all([source, result], string)
     if err != null then return TypeError.New("Shell.build","string", typeof(err))
     if not allowImport isa number then return TypeError.New("Shell.build","number", typeof(allowImport))
@@ -525,6 +589,7 @@ Shell.build = function(source, result, allowImport=false)
 end function
 
 Shell.launch = function(program, args)
+    if not self.has("launch") then return PartialObjectError.New("shell", "launch")
     err = expect_all([program], string)
     if err != null then return TypeError.New("Shell.launch","string", typeof(err))
     if typeof(args) != "null" and not args isa string then return TypeError.New("Shell.launch","string", typeof(args))
@@ -543,6 +608,7 @@ Shell.launch = function(program, args)
 end function
 
 Shell.scp = function(file, target, remote)
+    if not self.has("scp") then return PartialObjectError.New("shell", "scp")
     err = expect_all([file, target], string)
     if err != null then return TypeError.New("Shell.scp","string", typeof(err))
     if remote.type != "shell" then return TypeError.New("Shell.scp","shell", typeof(remote))
@@ -569,14 +635,15 @@ Shell.scp = function(file, target, remote)
 end function
 
 Shell.start_terminal = function()
+    if not self.has("start_terminal") then return PartialObjectError.New("shell", "start_terminal")
     start_terminal(self.object)
 end function
 
 Shell.ping = function(ip)
+    if not self.has("ping") then return PartialObjectError.New("shell", "ping")
     err = expect_all([ip], string)
     if err != null then return TypeError.New("Shell.ping", typeof(ip))
     result = ping(self.object, ip)
-    // result = self.object.ping(ip)
 
     if result isa string then return Error.New("Shell.ping", result)
 
@@ -584,6 +651,7 @@ Shell.ping = function(ip)
 end function
 
 Shell.connect_service = function(ip, port, user, password, service)
+    if not self.has("connect_service") then return PartialObjectError.New("shell", "connect_service")
     err = expect_all([ip, user, password, service], string)
     if err != null then return TypeError.New("Shell.connect_service", typeof(err))
     if not port isa number then return TypError.New("Shell.connect_service", typeof(port))

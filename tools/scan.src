@@ -5,7 +5,7 @@ import_code("../kernel/toolkernel")
 
 // Util funcs
 
-ask_exploit = function(exlib, title, ip)
+show_exploits = function(exlib, title, ip)
     exploits = exlib.exploits_with_version()
     tab_data = []
 
@@ -33,9 +33,11 @@ ask_exploit = function(exlib, title, ip)
     if is_error(res) then return res.stack("exploit.host")
 
     print("<size=30px>$P;"+title)
+    print("$T2;Version $T;: $S;" + exlib.raw_version)
     print(res.string)
 
     if len(exploits) == 0 then print("$error;No exploits found")
+    print(" ")
 end function
 
 
@@ -259,7 +261,7 @@ main_func = function(a)
         port[-1] = ["False", "True"][in_db]
 
         if a.list then
-            ask_exploit(exlib, lib, a.host)
+            show_exploits(exlib, lib, a.host)
         end if
     end for
 
@@ -267,7 +269,6 @@ main_func = function(a)
     tab_result = tabulate_data(ports, ["Port", "State", "Service", "Version", "Lan", "InDb"], tab_colors)
 
     // Display to screen
-
     if show_router_info then
         a.kernel.line("Router info", tab_result.length)
         a.kernel.print("$P;Kernel $T;: $S;" + router.kernel_version)

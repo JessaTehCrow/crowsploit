@@ -2,7 +2,7 @@ import_code("../kernel/toolkernel")
 import_code("../libs/sessionmanager")
 import_code("../libs/syntax_parser")
 
-mytool = Tool.New("system", "1.10.1")
+mytool = Tool.New("system", "1.10.2")
 
 mytool.short_description = "All default system commands"
 mytool.long_description = "All default system commands"
@@ -1882,7 +1882,7 @@ $P;ln $string;/home/jess/program /bin/program
 $P;ln $string;/home/jess /root/jess"
 
 
-// reformat
+// rf
 
 reformat_args = [
     Arg.New("seperator", "string").Info("Seperator to use to format output with"),
@@ -2150,11 +2150,13 @@ update_cmd.long_description  = "Check if there are available updates"
 concat_args = [
     RestArg.New().Info("Strings to join together"),
     Kwarg.New("delimiter", "string").Default("").Alias("d").Info("Character to join the strings together"),
-    Kwarg.New("inverted", "bool").Default(false).Alias("i").Info("Join them togehter in a reversed order")
+    Kwarg.New("inverted", "bool").Default(false).Alias("i").Info("Join them togehter in a reversed order"),
+    Kwarg.New("raw", "bool").Default(false).Alias("r").Info("Parse result with command rather than string parameter")
 ]
 
 concat_func = function(a)
     if a.inverted then a.rest.reverse
+    if a.raw then a.kernel.raw_piped = true
     print(a.rest.join(a.delimiter))
 end function
 

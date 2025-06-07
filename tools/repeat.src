@@ -73,14 +73,15 @@ count_args = [
     Arg.New("count", "int").Info("Amount of times to run command"),
     Arg.New("command", "string").Info("Command to run x times"),
     Kwarg.New("delay", "float").Alias("d").Default(1).Info("Delay between commands"),
-    Kwarg.New("ignore-error", "bool").Alias("e").Default(false).Info("Don't stop loop if there was an error")
+    Kwarg.New("ignore-error", "bool").Alias("e").Default(false).Info("Don't stop loop if there was an error"),
+    Kwarg.New("start-at", "int").Alias("s").Default(0).Info("What number to start counting from")
 ]
 
 count_func = function(a)
     if a.count <= 0 then return Error.New("Cannot run command 0 or negative times. Use `until forever` for a never ending loop")
     if a.delay != 0 and (a.delay < 0.01 or a.delay > 300) then return Error.New("until.count", "Delay cannot be less than 0.01 or more than 300")
-    for x in range(a.count-1)
-        a.kernel.env.INDEX = a.count-x
+    for x in range(a["start-at"], a["start-at"]+a.count-1)
+        a.kernel.env.INDEX = x
 
         result = a.kernel.run_command(a.command, false, false)
         if not result and not a["ignore-error"] then break

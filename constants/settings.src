@@ -50,9 +50,15 @@ color status_none   = <#669>
 color session       = <#669>
 color ip_prompt     = <#d44>
 
+// zero day colors
+color zday = <#c6b>
+color zday_patched = <#0e8>
+color zday_unpatched = <#e05>
+
 /////////////////
 // User prompt //
 input prompt = <voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$S;$type $status $session $ip</voffset><pos=0></size>$T;($pwd) $P;$usr$T;@$S;$comp $T2;$suffix$input;
+zday prompt = <voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$session $ip</voffset><pos=0></size>$pwd $T2;$suffix$input;
 
 ///////////////////
 // Input sufixes //
@@ -63,13 +69,14 @@ input prompt = <voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$S;$t
 input shell    = >
 input computer = :
 input file     = -
+input zday     = #
 
 //////////////
 // Database //
 
 database location = /etc/crow/exdb
 brute list_directory = /etc/crow/plist
-
+zday path = /etc/crow/zday
 
 ///////////////////////
 // Library directory //
