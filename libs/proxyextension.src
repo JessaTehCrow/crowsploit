@@ -593,7 +593,7 @@ Computer.get_user = function()
 
     if is_error(check) then return "unknown"
     owner = check.owner
-    check.move(selected.path + "/utest", "utest")
+    check.move(selected.path + "/cs_user_enum", "cs_user_enum")
     return check.owner
 end function
 
