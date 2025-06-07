@@ -1253,7 +1253,7 @@ ifconfig_func = function(a)
         else
             target = a.connect
             //if target.matches("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}").len == 0 then return FormatError.New("system.ifconfig","bssid","string")
-            nets = comp.wifi_networks
+            nets = comp.wifi_networks("wlan0")
             if is_error(nets) then return nets.stack("system.ifconfig")
             net = findNetFromEssid(nets,target)
             if is_error(net) then return net.stack("system.ifconfig")
@@ -1286,7 +1286,9 @@ end function
 ifconfig = mytool.standalone_command("ifconfig", ifconfig_args, @ifconfig_func)
 ifconfig.short_description = "Show network information"
 ifconfig.long_description = "$P;Usage:
-$S;ifconfig"
+$S;ifconfig
+$S;ifconfig $string;--connect MyWifiNetwork
+$S;ifconfig $string;--connect 192.168.0.1"
 
 
 
