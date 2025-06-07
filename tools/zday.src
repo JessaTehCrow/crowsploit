@@ -425,7 +425,8 @@ solve_debug = function(lib, debug)
     existing = ExploitLibrary.New(lib, lib.version)
     existing.load(home.computer, zday_path+"/exdb")
     existing.merge(exlib)
-    existing.save_exploits(home.computer, zday_path+"/exdb")
+    r = existing.save_exploits(home.computer, zday_path+"/exdb")
+    print(r)
 
     return unit_data
 end function
@@ -499,7 +500,7 @@ zday = Tool.New("zday", "1.0.0")
 zday.settings = Settings.init()
 zday.settings.set("zday", {
     "path":"/etc/crow/zday",
-    "prompt":">> "
+    "prompt":"<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$session $ip</voffset><pos=0></size>$pwd $T2;$suffix$input;"
 })
 zday.settings.set("color", {
     "zday": "<#c5b>",
@@ -789,6 +790,7 @@ unit_func = function(a)
         end if
         exlib = result[0]
         existing = ExploitLibrary.New(lib, lib.version)
+        existing.load(home.computer. zday_path+"/exdb")
 
         p = Path.New(dir)
         if p.folder != "/lib" then
