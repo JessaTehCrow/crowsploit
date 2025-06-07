@@ -499,7 +499,7 @@ zday = Tool.New("zday", "1.0.0")
 zday.settings = Settings.init()
 zday.settings.set("zday", {
     "path":"/etc/crow/zday",
-    "prompt":">> "
+    "prompt":"<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$session $ip</voffset><pos=0></size>$pwd $T2;$suffix$input;"
 })
 zday.settings.set("color", {
     "zday": "<#c5b>",
