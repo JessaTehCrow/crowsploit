@@ -1253,7 +1253,7 @@ ifconfig_func = function(a)
         else
             target = a.connect
             //if target.matches("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}").len == 0 then return FormatError.New("system.ifconfig","bssid","string")
-            nets = comp.wifi_networks
+            nets = comp.wifi_networks("wlan0")
             if is_error(nets) then return nets.stack("system.ifconfig")
             net = findNetFromEssid(nets,target)
             if is_error(net) then return net.stack("system.ifconfig")
@@ -1286,7 +1286,9 @@ end function
 ifconfig = mytool.standalone_command("ifconfig", ifconfig_args, @ifconfig_func)
 ifconfig.short_description = "Show network information"
 ifconfig.long_description = "$P;Usage:
-$S;ifconfig"
+$S;ifconfig
+$S;ifconfig $string;--connect MyWifiNetwork
+$S;ifconfig $string;--connect 192.168.0.1"
 
 
 
@@ -1456,7 +1458,10 @@ su_func = function(a)
         a.password = user_input(a.kernel.color("$T2;Password $T;: <size=0.1px>"))
     end if
     if a.user == "" or a.password == "" then
-       return IdiotError.New("system.su", "User and/or password cannot be empty").message.replace("<#0ff>","")
+        err = IdiotError.New("system.su", "User and/or password cannot be empty")
+        err.message = err.message.replace("<#0ff>","")
+        if rnd * 100 < 1 then err.message = rainbowify(unformat_string(err.message))
+        return err
     end if
     shell = get_shell(a.user, a.password)
     if shell == null then return OsError.New("system.su", "Failed to login as " + a.user)
