@@ -425,8 +425,7 @@ solve_debug = function(lib, debug)
     existing = ExploitLibrary.New(lib, lib.version)
     existing.load(home.computer, zday_path+"/exdb")
     existing.merge(exlib)
-    r = existing.save_exploits(home.computer, zday_path+"/exdb")
-    print(r)
+    existing.save_exploits(home.computer, zday_path+"/exdb")
 
     return unit_data
 end function
