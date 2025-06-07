@@ -1456,7 +1456,10 @@ su_func = function(a)
         a.password = user_input(a.kernel.color("$T2;Password $T;: <size=0.1px>"))
     end if
     if a.user == "" or a.password == "" then
-       return IdiotError.New("system.su", "User and/or password cannot be empty").message.replace("<#0ff>","")
+        err = IdiotError.New("system.su", "User and/or password cannot be empty")
+        err.message = err.message.replace("<#0ff>","")
+        if rnd * 100 < 1 then err.message = rainbowify(unformat_string(err.message))
+        return err
     end if
     shell = get_shell(a.user, a.password)
     if shell == null then return OsError.New("system.su", "Failed to login as " + a.user)

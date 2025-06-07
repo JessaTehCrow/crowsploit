@@ -675,6 +675,46 @@ random = function(min, max, float=false)
     return round(result)
 end function
 
+rainbowify = function(str)
+	if not str isa string then return null
+    hexColor = function(n, d = 0)
+        cs = "0123456789abcdef"
+        c = 1
+        x = (1 - abs((n / 60) % 2 - 1))
+        m = 0
+        l = [0, 0, 0]
+        if 0 <= n and n < 60 then
+            l = [c, x, 0]
+        else if 60 <= n and n < 120 then
+            l = [x, c, 0]
+        else if 120 <= n and n < 180 then
+            l = [0, c, x]
+        else if 180 <= n and n < 240 then
+            l = [0, x, c]
+        else if 240 <= n and n < 300 then
+            l = [x, 0, c]
+        else
+            l = [c, 0, x]
+        end if
+        r = (l[0] + m) * 255
+        g = (l[1] + m) * 255
+        b = (l[2] + m) * 255
+        hex = "#"
+        for i in [r, g, b]
+            fv = floor(i / 16)
+            sv = i % 16
+            hex = hex + cs[fv] + cs[sv]
+        end for
+        return hex
+    end function
+	out = ""
+	for i in str
+		out = out+"<"+hexColor(__i_idx*(360/len(str)))+">"+i+"</color>"
+	end for
+	return out
+end function
+
+
 Binary = {}
 Binary.New = function(bits=1)
     bin = new self
