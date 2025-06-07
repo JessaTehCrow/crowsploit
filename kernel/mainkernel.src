@@ -507,7 +507,7 @@ Kernel.get_prompt = function()
     type = "file"
     suffix = self.settings.input.file
     
-    if self.session.partial_interpreter != null then
+    if self.session.hasIndex("partial_interpreter") and self.session.partial_interpreter != null then
         type = "Partial"
         suffix = self.settings.input.zday
     else if self.session.shell != null then
@@ -537,7 +537,7 @@ Kernel.get_prompt = function()
     user = user.replace("^root$", self.settings.color.root + "root")
 
     raw_prompt = null
-    if self.session.partial_interpreter != null then
+    if self.session.hasIndex("partial_interpreter") and self.session.partial_interpreter != null then
         pi = self.session.partial_interpreter
         raw_prompt = self.settings.zday.prompt
         color = "$zday;"

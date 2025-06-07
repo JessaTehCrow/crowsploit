@@ -560,7 +560,7 @@ Shell.has = function(name)
 end function
 
 Shell.host_computer = function()
-    if not self.has("host_computer") then return PartialObjectError.New("shell", "host_computer")
+    // if not self.has("host_computer") then return PartialObjectError.New("shell", "host_computer")
     comp = host_computer(self.object)
     if comp == null then return Error.New("Shell.host_computer","Could not retrieve computer from shell")
     return Computer.New(comp)
@@ -577,7 +577,7 @@ Shell.File = function(path)
 end function
 
 Shell.build = function(source, result, allowImport=false)
-    if not self.has("build") then return PartialObjectError.New("shell", "build")
+    // if not self.has("build") then return PartialObjectError.New("shell", "build")
     err = expect_all([source, result], string)
     if err != null then return TypeError.New("Shell.build","string", typeof(err))
     if not allowImport isa number then return TypeError.New("Shell.build","number", typeof(allowImport))
@@ -589,7 +589,7 @@ Shell.build = function(source, result, allowImport=false)
 end function
 
 Shell.launch = function(program, args)
-    if not self.has("launch") then return PartialObjectError.New("shell", "launch")
+    // if not self.has("launch") then return PartialObjectError.New("shell", "launch")
     err = expect_all([program], string)
     if err != null then return TypeError.New("Shell.launch","string", typeof(err))
     if typeof(args) != "null" and not args isa string then return TypeError.New("Shell.launch","string", typeof(args))
@@ -608,7 +608,7 @@ Shell.launch = function(program, args)
 end function
 
 Shell.scp = function(file, target, remote)
-    if not self.has("scp") then return PartialObjectError.New("shell", "scp")
+    // if not self.has("scp") then return PartialObjectError.New("shell", "scp")
     err = expect_all([file, target], string)
     if err != null then return TypeError.New("Shell.scp","string", typeof(err))
     if remote.type != "shell" then return TypeError.New("Shell.scp","shell", typeof(remote))
@@ -635,12 +635,12 @@ Shell.scp = function(file, target, remote)
 end function
 
 Shell.start_terminal = function()
-    if not self.has("start_terminal") then return PartialObjectError.New("shell", "start_terminal")
+    // if not self.has("start_terminal") then return PartialObjectError.New("shell", "start_terminal")
     start_terminal(self.object)
 end function
 
 Shell.ping = function(ip)
-    if not self.has("ping") then return PartialObjectError.New("shell", "ping")
+    // if not self.has("ping") then return PartialObjectError.New("shell", "ping")
     err = expect_all([ip], string)
     if err != null then return TypeError.New("Shell.ping", typeof(ip))
     result = ping(self.object, ip)
@@ -651,7 +651,7 @@ Shell.ping = function(ip)
 end function
 
 Shell.connect_service = function(ip, port, user, password, service)
-    if not self.has("connect_service") then return PartialObjectError.New("shell", "connect_service")
+    // if not self.has("connect_service") then return PartialObjectError.New("shell", "connect_service")
     err = expect_all([ip, user, password, service], string)
     if err != null then return TypeError.New("Shell.connect_service", typeof(err))
     if not port isa number then return TypError.New("Shell.connect_service", typeof(port))

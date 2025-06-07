@@ -5,7 +5,7 @@ import_code("../constants/motd")
 
 if program_path == "/etc/crow/tools/crowsploit" then exit("<#f00>crowsploit detected running as a tool. Quitting loop")
 
-interface_version = "1.5.0"
+interface_version = "1.5.1"
 
 get_fact = function()
     fact = fun_facts[random(0,fun_facts.len-1)]
@@ -312,7 +312,7 @@ while kernel.keep_session
 
     if inp.trim == "" then continue
 
-    if kernel.session.partial_interpreter != null then
+    if kernel.session.hasIndex("partial_interpreter") and kernel.session.partial_interpreter != null then
         kernel.session.partial_interpreter.run_command(inp)
     else
         kernel.run_command(inp)

@@ -320,6 +320,12 @@ span {
 .black {
     background-color: black;
 }
+
+h5 {
+    font-size: small;
+    color:#31436b;
+    font-style: italic;
+}
 </style>
 
 <html>
@@ -334,6 +340,7 @@ span {
             <button id="install_btn" onclick="install()">Install</button>
             <button class="btn btn-primary" id="HackShopTools">Shop</button>
         </div>
+
         <div class="section" id="crowsploit">
             <h1>Crowsploit</h1>
             <p>Crowsploit is a modular tool dedicated to allowing the end-user to dictate how to use the tool. This is done through a modular settings file much alike the .bashrc you would see in linux. As well as giving the end-user kernel access using the command API. </p>
@@ -343,6 +350,32 @@ span {
             <h2>Changelogs</h2>
             <br>
             <br>
+            <details onclick="hideme(this)">
+                <summary><b>July 17 2004</b></summary>
+                <h3>Crowsploit Kernel</h3><br/>
+                <h5> (crowsploit)</h5>
+                <p>Added auto dns resolve for all IP arguments</p>
+                <p>Moved crowsploit banner to bottom of boot up</p>
+                <p>Fixed error when <span class="code">>></span> or <span class="code">></span> output to binary</p>
+                <h3>System</h3><br/>
+                <h5>(System module)</h5>
+                <p>Added sysmon natively</p>
+                <p>Fixed crash in iwlist</p>
+                <p>Fixed del-repo description</p>
+                <p>Fixed chown not checking permissions properly</p>
+                <p>Fixed su being silly when empty user/passwords are used</p>
+                <h3>Exploit</h3><br/>
+                <h5>(Exploit module)</h5>
+                <p>Added 0day module to exploit module</p>
+                <p>Added prompt to scan and retry if exploit found no exploits</p>
+                <p>Added super admin detection when exploit scanning</p>
+                <p>Added ability to filter password/firewall for exploit list</p>
+                <p>Moved all functionality of exploit find to exploit list</p>
+                <p>Fixed certain routers causing an exception</p>
+                <h3>Brute</h3><br/>
+                <h5>(Exploit module)</h5>
+                <p>Fixed brute hash not working with email hashes</p>
+            </details>
             <details onclick="hideme(this)">
                 <summary><b>April 10 2004 (Major update)</b></summary>
                 <h3>Major update</h3>
@@ -451,13 +484,18 @@ span {
             <button class="tryit" onclick="show_terminal()">Try it in the interactive demo!</button></br>
         </div>
         <div class="section hidden" id="install">
-            <h1>Install</h1>
-            <p>The installation of crowsploit is very simple.</p>
-            <p>To get crowsploit you have to click on the shop tab on top and download crowsploit.</p>
-            <p>Once crowsploit is installed, run it with the following command:<br><span class="code">crowsploit setup</span></p>
-            <p><b>Make sure you run it as root</b></p>
-            <p>Once crowsploit is setup correctly, you can buy <span class="code">system</span> and <span class="code">exploit</span> and put these files in <span class="code">/etc/crow/tools/</span></p>
-            <p>When you have moved the files to that directory, you can launch crowsploit again and you'll have a working crowsploit interface!</p>
+            <h1>Install</h1><br/>
+            <h3>Step 1</h3>
+            <p>Click on the shop tab, next to <span class="code">install</span> and download crowsploit, system and exploit.</p>
+            <h3>Step 2</h3>
+            <p>make sure you have a terminal open that's running as <span class="ip">Root</span>!</p>
+            <h3>Step 3</h3>
+            <p>Navigate the root terminal to where you installed crowsploit</p>
+            <p>Run the command <br><span class="code">crowsploit setup</span></p>
+            <h3>Step 4</h3>
+            <p>Move <span class="code">system</span> and <span class="code">exploit</span> to <span class="code">/etc/crow/tools</span></p>
+            <h3>Step 5</h3>
+            <p>In the root terminal, run the command <span class="code">crowsploit</span> to finish setup and enter crowsploit</p>
         </div>
     </div>
     <div id="footer">

@@ -715,12 +715,12 @@ info_func = function(a)
         exploits = exlib.exploits_with_version()
         in_db = exploits != []
 
-        tab_data.push([p.port_number, service, ver, p.get_lan_ip, a.kernel.color(["$error;False", "$S;True"])[lib.is_patched], ["False", "True"][in_db]])
+        tab_data.push([p.port_number, service, ver, p.get_lan_ip, a.kernel.color(["$zday_unpatched;False", "$zday_patched;True"])[lib.is_patched], lib.is_patched(true), ["False", "True"][in_db]])
     end for
 
     // Display data
-    tab_colors = a.kernel.color(["$P;", "$P;", "$T2;", "$S;", "$T;", "$T2;"])
-    tab_result = tabulate_data(tab_data, ["Port", "Service", "Version", "Lan", "Patched", "In Zday DB"], tab_colors)
+    tab_colors = a.kernel.color(["$P;", "$P;", "$T2;", "$S;", "$T;", "$T;", "$T2;"])
+    tab_result = tabulate_data(tab_data, ["Port", "Service", "Version", "Lan", "Patched", "Until", "In Zday DB"], tab_colors)
     a.kernel.line("Scan result", tab_result.length)
 
     print("$P;Host $T;: $S;" + ip)
