@@ -418,6 +418,54 @@ rainbowify = function(str)
 	return out
 end function
 
+_is_valid_ip = @is_valid_ip
+
+is_valid_ip = function(ip, allow_lan = true)
+	is_valid_format = function(address, exclude_lan = false)
+		if not address isa string then return false
+		if address.len < 4 or address.len > 16 then return false
+		sp = address.split("\.")
+		if sp.len != 4 then return false
+		lan = address[:7]
+		if exclude_lan == true and (lan.is_match("172.16") or lan.is_match("10.0") or lan == "192.168") then return false
+		for part in sp
+			int = part.val
+			if int == null or int <= 0 or int > 255 then return false
+		end for
+		return true
+	end function
+	if not is_valid_format(ip, not allow_lan) then return false
+
+	ipToInt = function(ip)
+		parts = ip.split("\.")
+		return parts[0].to_int * 256 ^ 3 + parts[1].to_int * 256 ^ 2 + parts[2].to_int * 256 + parts[3].to_int
+	end function
+
+	blacklisted_ranges = {
+	"0.0.0.0": "0.255.255.255",
+	"10.0.0.0": "10.255.255.255",
+	"100.64.0.0": "100.127.255.255",
+	"127.0.0.0": "127.255.255.255",
+	"169.254.0.0": "169.254.255.255",
+	"172.16.0.0": "172.31.255.255",
+	"192.0.0.0": "192.0.0.255",
+	"192.0.2.0": "192.0.2.255",
+	"192.88.99.0": "192.88.99.255",
+	"198.18.0.0": "198.19.255.255",
+	"198.51.100.0": "198.51.100.255",
+	"203.0.113.0": "203.0.113.255",
+	"224.0.0.0": "255.255.255.255",
+	}
+
+	ipNum = ipToInt(ip)
+	for startIP in blacklisted_ranges.indexes
+		endIP = blacklisted_ranges[startIP]
+		startNum = ipToInt(startIP)
+		endNum = ipToInt(endIP)
+		if ipNum >= startNum and ipNum <= endNum then return false
+	end for
+	return true
+end function
 
 Binary = {}
 Binary.New = function(bits=1)

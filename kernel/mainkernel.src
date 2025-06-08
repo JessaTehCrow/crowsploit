@@ -652,5 +652,9 @@ end function
 // Environment functions
 
 Kernel.env.RAND_IP = function()
-    return ""+random(1,255)+"."+random(0,255)+"."+random(0,255)+"."+random(0,255)
+    ip = random(1,224)+"."+random(0,255)+"."+random(0,255)+"."+random(0,255)
+    while not is_valid_ip(ip)
+        ip = random(1,224)+"."+random(0,255)+"."+random(0,255)+"."+random(0,255)
+    end while
+    return ip
 end function
