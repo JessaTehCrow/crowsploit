@@ -494,7 +494,7 @@ end function
 
 
 // Define new tool
-zday = Tool.New("zday", "1.0.0")
+zday = Tool.New("zday", "1.0.1")
 
 zday.settings = Settings.init()
 zday.settings.set("zday", {
@@ -785,7 +785,7 @@ unit_func = function(a)
         end if
         exlib = result[0]
         existing = ExploitLibrary.New(lib, lib.version)
-        existing.load(home.computer. zday_path+"/exdb")
+        existing.load(home.computer, zday_path+"/exdb")
 
         p = Path.New(dir)
         if p.folder != "/lib" then
@@ -802,7 +802,6 @@ unit_func = function(a)
         exlib.display(a.kernel)
         print(" ")
         display_partial([result[1], result[2]])
-
         existing.merge(exlib)
         existing.save_exploits(home.computer, zday_path+"/exdb")
     end for

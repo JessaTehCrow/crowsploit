@@ -108,7 +108,7 @@ end function
 
 PartialInterpreter.commands.create_user = function(pi, args)
     ses = pi.kernel.session
-    return ses.computer.create_user(args[1], args[2])
+    return ses.computer.create_user(args[0], args[1])
 end function
 
 
@@ -324,6 +324,7 @@ PartialInterpreter.run_command = function(cmd)
         required = required + (not x[-1])
     end for
 
+    print(args)
     if len(args) < required or len(args) > len(command_args) then 
         print(Error.New("PartialInterpereter.run_command", "Invalid argument count " + command).message)
         return
