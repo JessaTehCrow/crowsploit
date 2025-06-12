@@ -1,7 +1,7 @@
 import_code("../kernel/toolkernel")
 import_code("../libs/passlist")
 
-brute_tool = Tool.New("brute", "1.1.0")
+brute_tool = Tool.New("brute", "1.1.1")
 brute_tool.short_description = "Use a dictionary attack to crack passwords"
 brute_tool.long_description = "Use a dictionary attack to crack passwords"
 
@@ -304,7 +304,9 @@ $P;brute $S;reload"
 // Hash
 
 hash_args = [
-    Arg.New("hash", "string").Info("Hash to crack")
+    Arg.New("hash", "string").Info("Hash to crack"),
+    Kwarg.New("no-retry", "bool").Default(false).Alias("n").Info("Don't ask for retry when hash cannot be found in database"),
+    Kwarg.New("auto-retry","bool").Default(false).Alias("r").Info("Auto retry with normal hash cracking if it cannot be found in database")
 ]
 
 hash_func = function(a)
@@ -332,7 +334,15 @@ hash_func = function(a)
         result = a.kernel.password_list[hash]
     end if
 
-    if result == null then return Error.New("brute.hash", "Hash not found in the password dictionary")
+    if result == null and not a["no-retry"] then 
+        if a["auto-retry"] or confirmation_prompt("Password not found. Do you want to crack using the normal way?") then
+            a.kernel.run_command("crack hash '" + a.hash + "'")
+            return
+        end if
+    end if
+    if result == null then
+        return Error.New("brute.hash", "Hash not found in the password dictionary")
+    end if
     
     if user != null then
         print("$P;" + user + "$T; : $S;" + result)

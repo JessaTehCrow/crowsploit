@@ -1347,7 +1347,7 @@ ftp_args = [
     Arg.New("host", "ip").Info("Host to connect to"),
     Kwarg.New("username", "string").Alias("u").Info("User to login with"),
     Kwarg.New("password", "string").Alias("p").Info("Password to login with"),
-    Kwarg.New("port", "int").Default(21).Info("Port to connect to"),
+    Kwarg.New("port", "int").Alias("p").Default(21).Info("Port to connect to"),
     Kwarg.New("stay", "bool").Default(false).Alias("s").Info("Stay in current session")
 ]
 
