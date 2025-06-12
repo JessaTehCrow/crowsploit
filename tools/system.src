@@ -59,6 +59,10 @@ settings.set("update", {
     "check" : "true"
 })
 
+settings.set("interface", {
+    "streamer_mode" : "false"
+})
+
 mytool.settings = settings
 
 
@@ -2512,6 +2516,43 @@ sysmon_cmd = mytool.command("monitor", sysmon_args, @sysmon_func)
 sysmon_cmd.small_description = "Monitor system for changes and display to terminal"
 sysmon_cmd.long_description = "$P;Usage:
 $P;monitor"
+
+// cloak/streamer mode
+
+cloak_args = [
+    // Kwarg.New("on", "bool").Alias("e").Info("Enables streamer mode"),
+    // Kwarg.New("off", "bool").Alias("d").Info("Disables streamer mode"),
+    Kwarg.New("status","bool").Alias("s").Info("Shows the current status of streamer mode")
+]
+
+cloak_func = function(a)
+    //if a.on and a.off then return ParseError.New("system.cloak", "Cannot enable and disable streamer mode at the same time")
+
+    prev = a.kernel.settings.interface.streamer_mode
+    if prev == "true" then prev = 1 else prev = 0
+
+    if not a.status then
+        a.kernel.settings.interface.streamer_mode = ["true", "false"][prev]
+        if prev == 0 then
+            print("$S;Streamer mode enabled")
+        else
+            print("$S;Streamer mode disabled")
+        end if
+    end if
+
+    if a.status then
+        status = ["$error;Disabled", "$S;Enabled"][prev]
+        print("$T2;Streamer mode: $P;" + status)
+    end if
+
+end function
+
+cloak_cmd = mytool.standalone_command("cloak", cloak_args, @cloak_func)
+cloak_cmd.short_description = "Enable or disable streamer mode"
+cloak_cmd.long_description = "$P;Usage:
+$P;system cloak
+$P;system cloak $bool;--status
+"
 
 // init
 
