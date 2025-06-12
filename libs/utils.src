@@ -155,7 +155,7 @@ end function
 
 
 uncolor_string = function(text)
-    if not text isa string then return TypeError.New("unformat_string","string", typeof(text))
+    if not text isa string then return TypeError.New("uncolor_string","string", typeof(text))
     tags = [
         "align",
         "alpha",
@@ -190,9 +190,9 @@ uncolor_string = function(text)
         "voffset",
         "width",
         "link",
-        "#[0-9a-f]{3}",
-        "#[0-9a-f]{6}",
-        "#[0-9a-f]{8}",
+        "#[0-9a-fA-F]{3}",
+        "#[0-9a-fA-F]{6}",
+        "#[0-9a-fA-F]{8}",
     ]
 
     new_value = text
@@ -243,8 +243,8 @@ unformat_string = function(text)
         "voffset",
         "width",
         "link",
-        "#[0-9a-f]{3}",
-        "#[0-9a-f]{6}",
+        "#[0-9a-fA-F]{3}",
+        "#[0-9a-fA-F]{6}",
     ]
 
     new_value = text

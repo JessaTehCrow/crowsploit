@@ -100,7 +100,7 @@ wifi_func = function(a)
 
     // Start listen
     power = wifi[1][:-1].to_int
-    acks = round(300000 / power)
+    acks = round(300000 / (power+15))
     a.kernel.print("$T2;Listening for $P;" + acks + " $T2;Acks")
     error = crypto.aireplay(wifi[0], wifi[2], acks)
     if error isa string then
