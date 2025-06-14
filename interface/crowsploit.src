@@ -299,7 +299,12 @@ else
         kernel.print("$T;Unable to update metaxploit.so")
     end if
     
-    if params.indexOf("-sm") != null then kernel.settings.interface.streamer_mode = "true"
+    if params.indexOf("-sm") != null then 
+        if not kernel.settings.hasIndex("interface") then
+            kernel.settings.interface = {}
+        end if
+        kernel.settings.interface.streamer_mode = "true"
+    end if
 
     while kernel.keep_session
         custom_obj.kernel = kernel
