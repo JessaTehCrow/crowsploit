@@ -568,6 +568,11 @@ Kernel.get_prompt = function()
         end if
     end for
     
+    if self.sessions[0] == self.session then
+        if self.settings.hasIndex("interface") and self.settings.streamer_mode == "true" then
+            temp_env["WAN"] = "[CENSORED]"
+        end if
+    end if
 
     raw_prompt = self.settings.input.prompt
     if self.session.hasIndex("partial_interpreter") and self.session.partial_interpreter != null then
@@ -624,6 +629,7 @@ end function
 
 
 Kernel.print = function(msg, clear)
+    if hasIndex(self.settings, "interface") and hasIndex(self.settings.interface, "streamer_mode") and self.settings.interface.streamer_mode == "true" then msg = msg.replace(self.sessions[0].wan, "[CENSORED]")
     seperated = self.color(str(msg)).split(char(10))
     self.stdout = self.stdout + seperated
     if not self.piped and not self.silent then print(self.color(msg), clear)

@@ -298,6 +298,8 @@ else
         kernel.print("$error;WARNING:: You are not running as root. This could lead to crowsploit not working properly")
         kernel.print("$T;Unable to update metaxploit.so")
     end if
+    
+    if params.indexOf("-sm") != null then kernel.settings.interface.streamer_mode = "true"
 
     while kernel.keep_session
         custom_obj.kernel = kernel

@@ -102,6 +102,11 @@ library auto_install = true
 
 
 ////////////////////
+// Interface //
+
+interface streamer_mode = false
+
+////////////////////
 // Update checker //
 
 update check = true
