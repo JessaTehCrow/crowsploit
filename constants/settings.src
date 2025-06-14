@@ -104,6 +104,7 @@ library auto_install = true
 ////////////////////
 // Interface //
 interface streamer_mode = false
+interface temp_path = /etc/crow/tmp
 
 ////////////////////
 // Update checker //

@@ -1,0 +1,123 @@
+import_code("../kernel/toolkernel")
+import_code("../libs/tmp")
+
+get_running = function(kernel)
+    Temp.garbage_collect(kernel)
+    path = "/etc/crow/tmp"
+    if kernel.settings.hasIndex("interface") then
+        path = kernel.settings.interface.temp_path
+    end if
+
+    session = kernel.sessions[0]
+    folder = session.computer.File(path)
+    if is_error(folder) then return folder.stack("loops.get_running")
+    if not folder.is_folder then return KernelError.New("loops.get_running", "Temp path expected to be a folder, found "+folder.type+"instead")
+    
+    data = []
+    for file in folder.get_files
+        if not file.is_file then continue
+        data.push(file)
+    end for
+    return data
+end function
+
+loops = Tool.New("loops", "1.0.0")
+loops.short_description = "Module that shows active loops from another instance"
+loops.long_description  = "Shows loops, with it's TTL, info and the option to delete the loop(s)"
+
+
+// main
+loops_main = function(a)
+    running = get_running(a.kernel)
+    if is_error(running) then return running.stack("loops.main")
+
+    data = []
+    for file in running
+        tmp = Temp.check(a.kernel, file.name)
+        if tmp == false then continue
+        data.push([file.name, tmp])
+    end for
+
+    tab_data = []
+    for x in data
+        iden = x[0]
+        info = x[1]
+        tab_data.push([len(tab_data)+1, iden, ((info.ttl-get_epoch())/60)+"min", info.info])
+    end for
+
+    result = tabulate_data(tab_data, ["ID", "Identifier", "TTL", "Info"], a.kernel.color(["$T;", "$P;", "$T2;", "$string;"]))
+    if is_error(result) then return error.stack("loops.main")
+    print(result.string)
+end function
+
+loops_main_cmd = loops.main_command([], @loops_main)
+loops_main_cmd.short_description = "Show active loops with status and info"
+loops_main_cmd.long_description  = "$P;Usage:
+$P;loops"
+
+
+// content
+content_args = [
+    OptionalArg.New("loop", "string").Info("Loop to get content from")
+]
+
+content_func = function(a)
+    running = get_running(a.kernel)
+
+    itemname = a.loop
+    if a.loop == null then
+        a.kernel.run_command("loops main", false)
+        item = select_prompt("Select loop", running, true)
+        if item == null then return
+        itemname = item.name
+    end if
+    data = Temp.check(a.kernel, itemname)
+    if data == false then return Error.New("loops.content", "Target is not available " + a.loop)
+    
+    a.kernel.line("", 50)
+    print("$P;Name  $T;: $S;" + itemname)
+    print("$P;Info  $T;: $S;" + data.info)
+    print("$P;TTL   $T;: $S;" + (data.ttl - get_epoch)/60)
+    a.kernel.line("", 50)
+    print(data.content)
+end function
+
+content_cmd = loops.command("content", content_args, @content_func)
+content_cmd.short_description = "View the content of a temp file"
+content_cmd.long_description  = "$P;
+$P;loops $S;content $string;identifier
+$P;loops $S;content"
+
+
+// stop
+
+stop_args = [
+    OptionalArg.New("loop", "string").Info("Loop to stop")
+]
+
+stop_func = function(a)
+    running = get_running(a.kernel)
+
+    itemname = a.loop
+    file = null
+    if a.loop == null then
+        a.kernel.run_command("loops main", false)
+        file = select_prompt("Select loop", running, true)
+        if file == null then return
+        itemname = file.name
+    end if
+
+    data = Temp.load(a.kernel, itemname)
+    if data == false then return Error.New("loops.stop", "Target is not available " + a.loop)
+    err = data.file.delete()
+    if is_error(err) then return err.stack("loops.stop")
+end function
+
+stop_cmd = loops.command("stop", stop_args,  @stop_func)
+stop_cmd.short_description = "Stop a running loop"
+stop_cmd.long_description  = "$P;Usage:
+$P;loops $S;stop $string;identifier
+$P;loops $S;stop"
+
+// init
+loops.init()

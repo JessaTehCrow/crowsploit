@@ -580,7 +580,7 @@ $P;zday $S;login $string;-u Banana -p Milkshake"
 //patch 
 patch_args = [
     Arg.New("target", "string").Info("Library or Folder to patch"),
-    Kwarg.New("recursive", "bool").Alias("r").Default(0).Info("Find all libraries in folder (Only if target is a folder)")
+    Kwarg.New("recursive", "bool").Alias("r").Default(false).Info("Find all libraries in folder (Only if target is a folder)")
 ]
 
 patch_func = function(a)
@@ -645,7 +645,7 @@ $P;zday $string;patch / $bool;-r"
 // info
 info_args = [
     Arg.New("target|ip", "string").Info("Library or Folder or ip to show patch info for"),
-    Kwarg.New("recursive", "bool").Alias("r").Default(0).Info("Find all libraries in folder (Only if target is a folder)"),
+    Kwarg.New("recursive", "bool").Alias("r").Default(false).Info("Find all libraries in folder (Only if target is a folder)"),
     Kwarg.New("no-ask", "bool").Alias("n").Info("Don't ask if you want to scan anyway (Only if target is an IP)")
 ]
 
@@ -742,7 +742,7 @@ $P;zday $S;info $ip;13.12.5.123"
 // unittest
 unit_args = [
     Arg.New("target", "string").Info("Library or Folder to unittest"),
-    Kwarg.New("recursive", "bool").Alias("r").Default(0).Info("Find all libraries in folder (Only if target is a folder)")
+    Kwarg.New("recursive", "bool").Alias("r").Default(false).Info("Find all libraries in folder (Only if target is a folder)")
 ]
 
 unit_func = function(a)

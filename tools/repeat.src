@@ -14,7 +14,15 @@ success_args = [
 success_func = function(a)
     result = null
 
-    while (result != (not a.inverted))
+    unique = string_gen("repat", 5)
+    identifier = "until_success"+unique
+
+    last_date = get_epoch
+    delay_min = ceil(a.delay / (4/16)) + 2
+    tmp_file = Temp.New(a.kernel, identifier, delay_min + 2, "Monitoring " + wan + " at " + kernel.session.lan)
+    if is_error(tmp_file) then return tmp_file.stack("system.monitor")
+
+    while (result != (not a.inverted)) and tmp_file.is_alive
         if a.delay > 0 and result != null then
             err = a.kernel.run_command("system wait " + a.delay, false, true)
             if is_error(err) then return err.stack("until.success")

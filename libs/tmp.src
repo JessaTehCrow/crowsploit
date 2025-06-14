@@ -1,0 +1,164 @@
+import_code("./utils")
+import_code("./error")
+
+Temp = {}
+Temp.file = null
+Temp.last_alive = null
+Temp.last_time = null
+Temp.New = function(kernel, identifier, ttl_minutes, extra="")
+    self.garbage_collect(kernel)
+    if identifier == null then return ParseError.New("Temp.New", "Identifier cannot be empty")
+    if ttl_minutes == null then return ParseError.New("Temp.New", "ttl time cannot be empty")
+    if not ttl_minutes isa number then return TypeError.New("Temp.New", "int", typeof(ttl_minutes) + ":" + ttl_minutes)
+    path = "/etc/crow/tmp"
+    if kernel.settings.hasIndex("interface") then
+        path = kernel.settings.interface.temp_path
+    end if
+    if not ttl_minutes isa number then return TypeError.New("Temp.New", "int", typeof(ttl_minutes)+":"+ttl_minutes)
+
+    epoch = get_epoch() + (ttl_minutes*60)
+
+    session = kernel.sessions[0]
+    exists = session.computer.File(path+"/"+identifier)
+    if not is_error(exists) then return KernelError.New("Temp.New", "Unable to create temp file. File already exists " + path+"/"+identifier)
+
+    err = kernel.sessions[0].computer.touch(path, identifier)
+    if is_error(err) then return err.stack("Temp.New")
+
+    f = kernel.sessions[0].computer.File(path+"/"+identifier)
+    f.set_content([epoch, extra, ""].join(char(10)))
+
+    tmp = new self
+    tmp.remove("New")
+    tmp.remove("check")
+
+    tmp.file = f
+    tmp.last_alive = true
+    tmp.last_time = current_date
+
+    return tmp
+end function
+
+Temp.garbage_collect = function(kernel)
+    path = "/etc/crow/tmp"
+    if kernel.settings.hasIndex("interface") then
+        path = kernel.settings.interface.temp_path
+    end if
+
+    session = kernel.sessions[0]
+    file = session.computer.File(path)
+    if is_error(file) then return
+    if not file.is_folder then return KernelError.New("Temp.garbage_colelect", "Temp path expected to be a folder, found "+file.type+"instead")
+    
+    for f in file.get_files
+        if not f.is_file then continue
+        t = new self
+        t.file = f
+        t.is_alive
+    end for
+end function
+
+Temp._data = function()
+    if self.file == null then return
+    if self.file.status != 0 then return false
+    data = self.file.get_content()
+    if is_error(data) then return false
+
+    temp = data.split(char(10))
+    if not len(temp) > 1 then return false
+    ttl = temp[0]
+    info = temp[1]
+    content = temp[2:].join(char(10))
+
+    return {
+        "ttl":to_int(ttl),
+        "info":info,
+        "content":content
+    }
+end function
+
+Temp.load = function(kernel, identifier)
+    self.garbage_collect(kernel)
+    path = "/etc/crow/tmp"
+    if kernel.settings.hasIndex("interface") then
+        path = kernel.settings.interface.temp_path
+    end if
+    session = kernel.sessions[0]
+    file = session.computer.File(path+"/"+identifier)
+    if is_error(file) then return false
+    if not file.is_file then return false
+
+    t = new self
+    t.remove("New")
+    t.remove("check")
+
+    t.file = file
+    t.is_alive
+    return t
+end function
+
+Temp.check = function(kernel, identifier)
+    self.garbage_collect(kernel)
+    path = "/etc/crow/tmp"
+    if kernel.settings.hasIndex("interface") then
+        path = kernel.settings.interface.temp_path
+    end if
+
+    session = kernel.sessions[0]
+
+    file = session.computer.File(path+"/"+identifier)
+    if is_error(file) then return false
+    if not file.is_file then return false
+    t = new self
+    t.file = file
+
+    if not t.is_alive then return false
+    return t._data
+end function
+
+Temp.is_alive = function()
+    if self.file == null then return
+    if self.file.status != 0 then return false
+
+    // Wait 3 ingame minutes before doing garbage collection
+    // to minimize drive draining
+    outdated = false
+    if self.last_time != null and self.last_time <= (get_epoch()-120) then 
+        return self.last_alive
+    end if
+
+    data = self._data()
+    if data == false then return 0
+
+    outdated = data.ttl < get_epoch()
+    if outdated then self.file.delete()
+
+    self.last_alive = not outdated
+    self.last_time = get_epoch()
+    return not outdated
+end function
+
+Temp.update_ttl = function(ttl_minutes)
+    if not self.is_alive then return
+    if not ttl_minutes isa number then return TypeError.New("Temp.set_ttl", "int", typeof(ttl_minutes)+":"+ttl_minutes)
+    data = self._data
+    data.ttl = get_epoch() + (ttl_minutes*60)
+
+    self.file.set_content([data.ttl, data.info, data.content].join(char(10)))
+end function
+
+Temp.set_info = function(info)
+    if not self.is_alive then return
+    data = self._data
+    data.info = info.replace("\\n", char(10)).replace(char(10), " ")
+
+    self.file.set_content([data.ttl, data.info, data.content].join(char(10)))
+end function
+
+Temp.set_content = function(content)
+    if not self.is_alive then return
+    data = self._data
+    data.content = content
+
+    self.file.set_content([data.ttl, data.info, data.content].join(char(10)))
+end function

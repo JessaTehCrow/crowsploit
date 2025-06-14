@@ -6,7 +6,7 @@ sniff.long_description =  "Sniff for incoming and outgoing connections"
 
 
 sniff_args = [
-    Kwarg.New("save", "bool").Alias("s").Default(0).Info("Save sniffed connection encode.src"),
+    Kwarg.New("save", "bool").Default(false).Alias("s").Default(0).Info("Save sniffed connection encode.src"),
     Kwarg.New("from", "int").Alias("f").Info("What session to sniff from"),
 
 ]

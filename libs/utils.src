@@ -1,5 +1,13 @@
 import_code("../libs/proxyextension")
 
+string_gen = function(chars, length)
+    result = ""
+    for x in range(length)
+        result = result + chars[floor(rnd * len(chars))]
+    end for
+    return result
+end function
+
 isalnum = function(text)
     return text.is_match("^[A-Za-z0-9._-]+$")
 end function
@@ -536,6 +544,23 @@ Binary.read = function(sections)
     end for
 
     return result
+end function
+
+get_epoch = function()
+    _month = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    dt = current_date.split(" ")
+    dates = dt[0].split("/"); times = dt[2].split(":")
+    d = dates[0].to_int(); m = _month.indexOf(dates[1]) + 1; y = dates[2].to_int()
+    y = y - (m <= 2)
+    era = y; if y < 0 then era = y - 399; era = floor(era / 400)
+    yoe = floor(y - era * 400)
+    if m > 2 then t = m - 3 else t = m + 9
+    doy = floor((153 * t + 2) / 5 + d - 1)
+    doe = floor(yoe * 365 + yoe / 4 - yoe / 100 + doy)
+    epoch_days = era * 146097 + doe - 719468 + 1
+    
+    result = (epoch_days * 24 + times[0].to_int()) * 3600 + times[1].to_int() * 60
+    return result - 946684800
 end function
 
 

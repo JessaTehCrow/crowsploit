@@ -310,7 +310,7 @@ activate_func = function(a)
         a.kernel.env.STATUS = "Jumped"
         a.kernel.env.ACTIVE = a.kernel.active_session.id
         a.kernel.env.EFFECTIVE = "none"
-        current.effective = "none"
+        // current.effective = "none"
     end if
 
     if is_error(res) then return res.stack("session.activate")
@@ -329,6 +329,7 @@ $P;session activate $bool;"
 deactivate_args = []
 deactivate_func = function(a)
     kernel = a.kernel
+    current = kernel.session
     if kernel.active_session != kernel.session then
         return ParseError.New("session.deactivate", "Cannot deactivate non active session")
     end if
@@ -338,9 +339,9 @@ deactivate_func = function(a)
 
     kernel.active_sessions.pop()
     kernel.active_session = kernel.active_sessions[-1]
-    kernel.active_session.effective = "none"
+    current.effective = "none"
     kernel.env.STATUS = "Jumped"
-    kernel.env.EFFECTIVE = "None"
+    kernel.env.EFFECTIVE = "none"
     exit
 end function
 

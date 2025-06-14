@@ -9,6 +9,7 @@ end function
 
 _print = @print
 print = function(msg, clear)
+    msg = str(msg)
     temp = msg.replace("\\n", char(10))
     if _global.hasIndex("kernel") then 
         _global.kernel.print(temp, clear)

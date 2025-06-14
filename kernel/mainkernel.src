@@ -631,7 +631,7 @@ end function
 Kernel.print = function(msg, clear)
     raw_msg = msg
     if self.settings.hasIndex("interface") and self.settings.interface.streamer_mode == "true" then
-        msg = msg.replace(self.sessions[0].wan, "[CENSORED]")
+        msg = str(msg).replace(self.sessions[0].wan, "[CENSORED]")
     end if
     
     seperated = self.color(str(raw_msg)).split(char(10))
@@ -697,7 +697,7 @@ end function
 
 Kernel.env.RAND_IP = function()
     ip = random(1,224)+"."+random(0,255)+"."+random(0,255)+"."+random(0,255)
-    while not is_valid_ip(ip)
+    while not is_valid_ip_range(ip)
         ip = random(1,224)+"."+random(0,255)+"."+random(0,255)+"."+random(0,255)
     end while
     return ip

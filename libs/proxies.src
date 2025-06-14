@@ -166,7 +166,7 @@ File.chmod = function(perms, recursive=false)
     for q in queries
         err = self.object.chmod(q, recursive)
         if err == "permission denied" then return PermissionError.New("File.chmod","write or owner")
-        if err!="" then return Error.New("File.chmod",err)
+        if err != "" then return Error.New("File.chmod",err)
     end for
     //print("$T;Set new permissions to $P;" + target.permissions)
     return true
@@ -340,7 +340,7 @@ File.status = function()
     if not self.has("is_symlink") then return 0
     if self.object == null then return 2
     if self.object.owner == null then 
-        if self.object.is_symlink then return 1 else return 2
+        return 2 - self.object.is_symlink
     end if
     return 0
 end function

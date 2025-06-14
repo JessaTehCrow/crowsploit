@@ -240,7 +240,25 @@ monitor_main_func = function(a)
     old_files = get_files(comp.File("/"))
     old_processes = get_procs(comp)
 
-    while true
+    wan = a.kernel.session.wan
+    unique = string_gen("symon", 5)
+    identifier = "sysmon_"+wan+"_"+unique
+
+    last_date = get_epoch
+    delay_min = ceil(a.delay / (4/16)) + 2
+    tmp_file = Temp.New(a.kernel, identifier, delay_min + 2, "Monitoring " + wan + " at " + kernel.session.lan)
+    if is_error(tmp_file) then return tmp_file.stack("system.monitor")
+
+    print("$bad;Monitoring has started"+char(10), true)
+    print("<i>$S;<size=80%>(Monitor can be stopped using $T2;loops stop " + identifier + " $S;in another crowsploit instance)")
+
+    while tmp_file.is_alive
+        epoch = get_epoch
+        if (epoch - last_date)/60 >= delay_min then
+            tmp_file.update_ttl(delay_min+2)
+            last_date = epoch
+        end if
+        
         new_files = get_files(comp.File("/"))
         new_processes = get_procs(comp)
 

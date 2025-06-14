@@ -13,9 +13,10 @@ main_args = [
 ]
 
 main_func = function(a)
-    if not a.kernel.sessions[0].crypto then return ObjectError.New("crack.main", "crypto")
-    if not a.hash.is_match("(.+:)?[a-zaA-Z0-f]{32}") then return FormatError.New("crack.main", "[user:]md5_hash", uncolor_string(a.hash))
     crypto = a.kernel.sessions[0].crypto
+    if a["system-hardware"] then crypto = a.kernel.session.crypto
+    if crypto == null then return ObjectError.New("crack.main", "crypto")
+    if not a.hash.is_match("(.+:)?[a-zaA-Z0-f]{32}") then return FormatError.New("crack.main", "[user:]md5_hash", uncolor_string(a.hash))
 
     raw = a.hash.split(":")
     user = null

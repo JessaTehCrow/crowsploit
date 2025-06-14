@@ -141,6 +141,10 @@ kernel_setup = function()
     if is_error(e) then return e
     print("<#4fa>Created folder <#4af>/etc/crow/macros")
 
+    e = comp.create_folder("/etc/crow", "tmp")
+    if is_error(e) then return e
+    print("<#4fa>Created folder <#4af>/etc/crow/tmp")
+
     e = comp.touch(ses.homepath, ".crowrc", SETTINGS_DEFAULT)
     if is_error(e) then return e
     print("<#4fa>Created file <#4af>" + ses.homepath + "/.crowrc")

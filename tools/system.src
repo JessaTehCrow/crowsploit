@@ -1,8 +1,9 @@
 import_code("../kernel/toolkernel")
 import_code("../libs/sessionmanager")
 import_code("../libs/syntax_parser")
+import_code("../libs/tmp")
 
-mytool = Tool.New("system", "1.10.4")
+mytool = Tool.New("system", "1.10.5")
 
 mytool.short_description = "All default system commands"
 mytool.long_description = "All default system commands"
@@ -62,7 +63,8 @@ settings.set("update", {
 })
 
 settings.set("interface", {
-    "streamer_mode" : "false"
+    "streamer_mode" : "false",
+    "temp_path"     : "/etc/crow/tmp"
 })
 
 mytool.settings = settings
@@ -835,8 +837,7 @@ mv.short_description = "Move files / folders"
 mv.long_description = "$P;Usage:
 $S;mv $string;sources.txt /etc/apt/sources.txt
 $S;mv $string;sources.txt /etc/apt/
-$S;ls /
-"
+$S;mv $string; /lib /root/kernel_router.so -i $T;<< Moves kernel_router.so to /lib instead"
 
 
 
@@ -1081,7 +1082,7 @@ $S;chown $string;user file.txt"
 chmod_args = [
     Arg.New("option", "string").Info("New file info"),
     Arg.New("file", "string").Info("Target file"),
-    Kwarg.New("recursive", "bool").Alias("r").Info("Recursively set permission")
+    Kwarg.New("recursive", "bool").Default(false).Alias("r").Info("Recursively set permission")
 ]
 
 chmod_func = function(a)
@@ -1702,7 +1703,7 @@ $P;ping $string;www.mybank.org"
 
 build_args = [
     Arg.New("source", "string").Info("Source file to build"),
-    Kwarg.New("allow-import", "bool").Alias("a").Default(0).Info("Allow final binary to be imported")
+    Kwarg.New("allow-import", "bool").Alias("a").Default(false).Info("Allow final binary to be imported")
 ]
 
 build_func = function(a)
@@ -1780,7 +1781,7 @@ $P;system groupdel $string;jessa crows"
 
 userdel_args = [
     Arg.New("user", "string").Info("Which user to delete from existance"),
-    Kwarg.New("home", "bool").Alias("h").Info("Delete their home directory as well")
+    Kwarg.New("home", "bool").Default(false).Alias("h").Info("Delete their home directory as well")
 ]
 
 userdel_func = function(a)
@@ -2294,15 +2295,16 @@ $P;target: $string;/root/target"
 // monitor 
 // sysmon
 sysmon_args = [
-    Kwarg.New("delay", "float").Default(0.25).Info("How long between checks")
+    Kwarg.New("delay", "float").Default(0.25).Info("How long between checks"),
+    Kwarg.New("stop", "bool").Info("Stop monitors listening in other instances"),
 ]
 
 // Probably the ugliest command in cs, but we'll keep it ;3
 sysmon_func = function(a)
     if a.delay < 0.1 then return ParseError.New("system.monitor", "Delay can not be less than 0.1")
     if a.delay > 300 then return ParseError.New("system.monitor", "Delay can not be greater than 300")
-    c = confirmation_prompt("$error;WARNING; ONCE STARTED, YOU CAN NOT STOP THE SYSTEM MONITOR"+char(10)+"$P;Continue?")
-    if not c then return
+    // c = confirmation_prompt("$error;WARNING; ONCE STARTED, YOU CAN NOT STOP THE SYSTEM MONITOR"+char(10)+"$P;Continue?")
+    // if not c then return
 
     colors = {
         "file" : "<#aaa>",
@@ -2525,8 +2527,25 @@ sysmon_func = function(a)
     old_files = get_files(comp.File("/"))
     old_processes = get_procs(comp)
 
+    wan = a.kernel.session.wan
+    unique = string_gen("symon", 5)
+    identifier = "sysmon_"+wan+"_"+unique
+
+    last_date = get_epoch
+    delay_min = ceil(a.delay / (4/16)) + 2
+    tmp_file = Temp.New(a.kernel, identifier, delay_min + 2, "Monitoring " + wan + " at " + kernel.session.lan)
+    if is_error(tmp_file) then return tmp_file.stack("system.monitor")
+
     print("$P;Monitoring has started"+char(10), true)
-    while true
+    print("<i>$S;<size=80%>(Monitor can be stopped using $T2;loops stop " + identifier + " $S;in another crowsploit instance)")
+
+    while tmp_file.is_alive
+        epoch = get_epoch
+        if (epoch - last_date)/60 >= delay_min then
+            tmp_file.update_ttl(delay_min+2)
+            last_date = epoch
+        end if
+
         new_files = get_files(comp.File("/"))
         new_processes = get_procs(comp)
 
