@@ -2296,7 +2296,6 @@ $P;target: $string;/root/target"
 // sysmon
 sysmon_args = [
     Kwarg.New("delay", "float").Default(0.25).Info("How long between checks"),
-    Kwarg.New("stop", "bool").Info("Stop monitors listening in other instances"),
 ]
 
 // Probably the ugliest command in cs, but we'll keep it ;3

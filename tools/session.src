@@ -310,7 +310,7 @@ activate_func = function(a)
         a.kernel.env.STATUS = "Jumped"
         a.kernel.env.ACTIVE = a.kernel.active_session.id
         a.kernel.env.EFFECTIVE = "none"
-        // current.effective = "none"
+        current.effective = "none"
     end if
 
     if is_error(res) then return res.stack("session.activate")
