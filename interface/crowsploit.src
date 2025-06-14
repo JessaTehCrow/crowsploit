@@ -92,7 +92,7 @@ update_libs = function(kernel, session, path)
         if not session.apt then 
             kernel.print("$error;Aptclient not present in "+path+", unable to install libraries")
         else
-            for x in ["metaxploit.so", "crypto.so"] 
+            for x in ["metaxploit.so", "crypto.so", "librshell.so"] 
                 if loaded.indexOf(x) != null then continue
 
                 result = session.apt.install(x, path)

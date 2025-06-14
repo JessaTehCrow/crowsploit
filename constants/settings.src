@@ -103,7 +103,6 @@ library auto_install = true
 
 ////////////////////
 // Interface //
-
 interface streamer_mode = false
 
 ////////////////////
