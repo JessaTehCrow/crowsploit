@@ -2,7 +2,7 @@ import_code("../kernel/toolkernel")
 import_code("../libs/utils")
 import_code("../libs/sessionmanager")
 
-rshell = Tool.New("rshell", "1.0.9")
+rshell = Tool.New("rshell", "1.0.10")
 
 rshell.short_description = "Start rshell clients and servers"
 rshell.long_description =  "Start rshell clients and servers"
