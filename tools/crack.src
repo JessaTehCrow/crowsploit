@@ -1,6 +1,6 @@
 import_code("../kernel/toolkernel")
 
-cracktool = Tool.New("crack", "1.2.2")
+cracktool = Tool.New("crack", "1.2.3")
 
 cracktool.short_description = "Crack wifi or hashes"
 cracktool.long_description = "Crack wifi or hashes"
@@ -9,7 +9,7 @@ cracktool.long_description = "Crack wifi or hashes"
 // hash
 main_args = [
     Arg.New("hash", "string").Info("Hash to crack"),
-    Kwarg.New("system-hardware", "bool").Alias("s").Default(false).Info("Use crypto hardware of current session instead of home system")
+    Kwarg.New("system-hardware", "bool").Alias("s").Info("Use crypto hardware of current session instead of home system")
 ]
 
 main_func = function(a)
@@ -21,8 +21,8 @@ main_func = function(a)
     user = null
     hash = raw[0]
     if raw.len > 1 then
-        user = raw[0]
-        hash = raw[1]
+        user = raw[:-1].join(":")
+        hash = raw[-1]
     end if
 
     wait(0.1)

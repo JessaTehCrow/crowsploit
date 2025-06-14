@@ -6,9 +6,9 @@ until_tool.long_description = "repeat commands until certain outputs are receive
 
 success_args = [
     Arg.New("command", "string").Info("Command to repeat for success"),
-    Kwarg.New("inverted", "bool").Alias("i").Default(false).Alias("i").Info("Repeat until it fails instead"),
+    Kwarg.New("inverted", "bool").Alias("i").Alias("i").Info("Repeat until it fails instead"),
     Kwarg.New("delay", "float").Alias("d").Default(1.0).Info("How much time to wait between executions"),
-    // Kwarg.New("ignore-error", "bool").Default(false).Info("Ignore errors if you expect them")
+    // Kwarg.New("ignore-error", "bool").Info("Ignore errors if you expect them")
 ]
 
 success_func = function(a)
@@ -39,7 +39,7 @@ $P;until success $string;'scan \$RAND_IP'"
 output_args = [
     Arg.New("result", "string").Info("Regex of result you're looking for"),
     Arg.New("command", "string").Info("Command to repeat for output checking"),
-    Kwarg.New("inverted", "bool").Alias("i").Default(false).Alias("i").Info("Repeat until it doesn't detect it instead"),
+    Kwarg.New("inverted", "bool").Alias("i").Alias("i").Info("Repeat until it doesn't detect it instead"),
     Kwarg.New("delay", "float").Alias("d").Default(1.0).Info("How much time to wait between executions"),
 ]
 
@@ -73,7 +73,7 @@ count_args = [
     Arg.New("count", "int").Info("Amount of times to run command"),
     Arg.New("command", "string").Info("Command to run x times"),
     Kwarg.New("delay", "float").Alias("d").Default(1).Info("Delay between commands"),
-    Kwarg.New("ignore-error", "bool").Alias("e").Default(false).Info("Don't stop loop if there was an error"),
+    Kwarg.New("ignore-error", "bool").Alias("e").Info("Don't stop loop if there was an error"),
     Kwarg.New("start-at", "int").Alias("s").Default(0).Info("What number to start counting from")
 ]
 

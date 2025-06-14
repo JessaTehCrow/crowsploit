@@ -3,11 +3,12 @@ import_code("../libs/sessionmanager")
 import_code("../libs/proxyextension")
 import_code("../libs/argparse")
 import_code("../constants/settings")
+import_code("./overrides.src")
 
 Kernel = {}
 Kernel.DEBUG = false
 Kernel.nightly = false
-Kernel.version = "2.19.0"
+Kernel.version = "2.19.2"
 Kernel.keep_session = true
 
 Kernel.sessions = []
@@ -54,6 +55,36 @@ Kernel.use_session = function(session)
     if session.computer != null then
         self.env.WAN = function(); return session.computer.public_ip; end function
         self.env.LAN = function(); return session.computer.local_ip; end function
+    end if
+    
+    status = "Jumped"
+    if session == self.active_session then
+        status = "Active"
+    else if self.active_sessions.indexOf(session) != null then
+        status = "Parses"
+    end if
+    
+    self.env.STATUS = status
+
+    suffix = self.settings.input.file
+    ses_type = "File"
+    if session.hasIndex("partial_interpreter") and session.partial_interpreter != null then
+        suffix = self.settings.input.zday
+        ses_type = "Partial"
+    else if session.shell != null then
+        suffix = self.settings.input.shell
+        ses_type = "Shell"
+    else if session.computer != null then
+        suffix = self.settings.input.computer
+        ses_type = "Computer"
+    end if
+
+    self.env.SESTYPE = ses_type
+    self.env.SUFFIX  = suffix
+    self.env.EFFECTIVE = "Unknown"
+
+    if session.hasIndex("effective") then
+        self.env.EFFECTIVE = session.effective
     end if
 end function
 
@@ -372,10 +403,12 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
 end function
 
 
-Kernel.load_tools = function()
+Kernel.load_tools = function(full_reset=false)
     custom_obj = get_custom_object
-    self.tools = {}
-    self.commands = {}
+    if full_reset then
+        self.tools = {}
+        self.commands = {}
+    end if
 
     shell = self.sessions[0].shell
     comp = shell.host_computer
@@ -490,6 +523,9 @@ Kernel.load_settings = function(path="/etc/crow/data/settings.txt")
 
     self.raw_settings = raw_settings
     self.settings = out
+
+    // Check if old propmt exists, if so, overwrite it
+    __override_prompts(self)
 end function
 
 
@@ -504,59 +540,57 @@ end function
 
 
 Kernel.get_prompt = function()
-    type = "file"
-    suffix = self.settings.input.file
+    temp_env = {}
+    for x in self.env
+        key = x.key
+        val = x.value
+
+        if key == "USER" then
+            temp_env[key] = val
+            if val == "root" then  temp_env[key] = "$root;root"
+
+        else if key == "STATUS" then
+            temp_env[key] = "$status_" + lower(val) +";" + val
+            
+        else if key == "EFFECTIVE" then
+            temp_env[key] = "$none;None"
+            if val == "guest" then
+                temp_env[key] = "$guest;Guest"
+            else if val == "root" then
+                temp_env[key] = "$root;Root"
+            else if val == "none" then
+                temp_env[key] = "$none;None"
+            else
+                temp_env[key] = "$user;User"
+            end if
+        else
+            temp_env[key] = val
+        end if
+    end for
     
-    if self.session.hasIndex("partial_interpreter") and self.session.partial_interpreter != null then
-        type = "Partial"
-        suffix = self.settings.input.zday
-    else if self.session.shell != null then
-        type = "shell"
-        suffix = self.settings.input.shell
-    else if self.session.computer != null then
-        type = "comp"
-        suffix = self.settings.input.computer
-    end if
 
-    status = self.settings.color.status_none + "None"
-    
-    if self.session == self.active_session then
-        status = self.settings.color.status_active + "Active"
-    else if self.active_sessions.indexOf(self.session) != null then
-        status = self.settings.color.status_parses + "Parses"
-    else if self.session != self.active_session then
-        status = self.settings.color.status_jumped + "Jumped"
-    end if
-
-    ip = "Unknown"
-    if self.session.wan != null then
-        ip = self.session.wan
-    end if
-
-    user = self.session.user
-    user = user.replace("^root$", self.settings.color.root + "root")
-
-    raw_prompt = null
+    raw_prompt = self.settings.input.prompt
     if self.session.hasIndex("partial_interpreter") and self.session.partial_interpreter != null then
         pi = self.session.partial_interpreter
         raw_prompt = self.settings.zday.prompt
         color = "$zday;"
         if pi.metalib != null then
-            color = ["$zday_unpatched;","$zday_patched;"][pi.metalib.is_patched]
+            color = ["$bad;","$good;"][pi.metalib.is_patched]
         end if
-        raw_prompt = raw_prompt.replace("\$pwd", color + self.session.file.path)
-    else
-        raw_prompt = self.settings.input.prompt
+        raw_prompt = raw_prompt.replace("\$PWD", color + self.session.file.path)
     end if
 
-    raw_prompt = raw_prompt.replace("\$usr", user)
-    raw_prompt = raw_prompt.replace("\$comp", self.session.comp_name)
-    raw_prompt = raw_prompt.replace("\$pwd", self.session.file.path)
-    raw_prompt = raw_prompt.replace("\$type", type)
-    raw_prompt = raw_prompt.replace("\$status", status)
-    raw_prompt = raw_prompt.replace("\$suffix", suffix)
-    raw_prompt = raw_prompt.replace("\$session", self.settings.color.session + self.session.id)
-    raw_prompt = raw_prompt.replace("\$ip", self.settings.color.ip_prompt + ip)
+    for x in temp_env
+        raw_prompt = raw_prompt.replace("\$"+x.key, ""+x.value)
+    end for
+    // raw_prompt = raw_prompt.replace("\$usr", user)
+    // raw_prompt = raw_prompt.replace("\$comp", self.session.comp_name)
+    // raw_prompt = raw_prompt.replace("\$pwd", self.session.file.path)
+    // raw_prompt = raw_prompt.replace("\$type", type)
+    // raw_prompt = raw_prompt.replace("\$status", status)
+    // raw_prompt = raw_prompt.replace("\$suffix", suffix)
+    // raw_prompt = raw_prompt.replace("\$session", self.settings.color.session + self.session.id)
+    // raw_prompt = raw_prompt.replace("\$ip", self.settings.color.ip_prompt + ip)
     // raw_prompt.replace("\$pwd", self.active_session.file.path)
     return self.color(raw_prompt)
 end function

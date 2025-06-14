@@ -101,8 +101,8 @@ display_partial = function(p_data)
     for x in p_data
         user = user_enum[x.user]
         tab_data.push([
-            obj_colors[x.type],
-            perm_colors[user],
+            "$obj_" + x.type.lower()+";" + x.type,
+            "$"+user+";"+user,
             "$T2;"+x.funcs.join("$T;, $T2;")
         ])
     end for
@@ -406,10 +406,11 @@ solve_debug = function(lib, debug)
     scan_result = debug.scan()
     solve_result = solver.solve(scan_result)
 
-    log("result len:"+len(solve_result))
+    log("result len : "+len(solve_result))
     patch = solve_result[1]
     incorrect_lines = solve_result[0]
 
+    log("Wrong lines: $T2;" + incorrect_lines)
     result = debug.unit_testing(incorrect_lines)
     if result[:5] == "error" or result[:5] == "Test " then
         status.banned_unit = true
@@ -494,7 +495,9 @@ end function
 
 
 // Define new tool
-zday = Tool.New("zday", "1.0.1")
+zday = Tool.New("zday", "1.0.3")
+zday.short_description = "Module that has all zeroday commands required"
+zday.long_description = "Module that has all zeroday commands required"
 
 zday.settings = Settings.init()
 zday.settings.set("zday", {
@@ -503,8 +506,6 @@ zday.settings.set("zday", {
 })
 zday.settings.set("color", {
     "zday": "<#c5b>",
-    "zday_patched" : "<#0e8>",
-    "zday_unpatched" : "<#d46>",
 })
 zday.settings.set("input", {
     "zday": "#"
@@ -644,7 +645,8 @@ $P;zday $string;patch / $bool;-r"
 // info
 info_args = [
     Arg.New("target|ip", "string").Info("Library or Folder or ip to show patch info for"),
-    Kwarg.New("recursive", "bool").Alias("r").Default(0).Info("Find all libraries in folder (Only if target is a folder)")
+    Kwarg.New("recursive", "bool").Alias("r").Default(0).Info("Find all libraries in folder (Only if target is a folder)"),
+    Kwarg.New("no-ask", "bool").Alias("n").Info("Don't ask if you want to scan anyway (Only if target is an IP)")
 ]
 
 info_func = function(a)
@@ -664,8 +666,7 @@ info_func = function(a)
     end if
 
     // External target
-    c = confirmation_prompt("This will leave logs on the target. Continue?")
-    if not c then return 0
+    if not a["no-ask"] and not confirmation_prompt("This will leave logs on the target. Continue?") then return 0
 
     if not a.kernel.active_session.computer.is_network_active then return OsError.New("zday.info", "No internet connection")
     home = a.kernel.sessions[0]
@@ -715,7 +716,7 @@ info_func = function(a)
         exploits = exlib.exploits_with_version()
         in_db = exploits != []
 
-        tab_data.push([p.port_number, service, ver, p.get_lan_ip, a.kernel.color(["$zday_unpatched;False", "$zday_patched;True"])[lib.is_patched], lib.is_patched(true), ["False", "True"][in_db]])
+        tab_data.push([p.port_number, service, ver, p.get_lan_ip, a.kernel.color(["$bad;False", "$good;True"])[lib.is_patched], lib.is_patched(true), ["False", "True"][in_db]])
     end for
 
     // Display data
@@ -871,16 +872,13 @@ overflow_args = [
 ]
 
 overflow_func = function(a)
-    if remaining_0day(current_date) == false then
-        return ParseError.New("zday.overflow", "There is no active zero day cycle")
-    end if
     ses = a.kernel.session
 
     if ses != a.kernel.active_session then return ExploitError.New("zday.overflow", "To overflow you have to be on an active session")
     if ses.metax == null then return ExploitError.New("zday.overflow", "Metaxploit is required for exploiting")
 
     if a.port == null then
-        res = a.kernel.run_command("scan " + a.ip, false)
+        res = a.kernel.run_command("zday info " + a.ip, false)
         if not res then return
         a.port = to_int(user_input(a.kernel.color("$T2;Port $T;: $P;")))
         if a.port == "" then return

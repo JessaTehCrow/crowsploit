@@ -1,0 +1,37 @@
+__override_prompts = function(kernel)
+    main_prompt = md5("<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$S;$type $status $session $ip</voffset><pos=0></size>$T;($pwd) $P;$usr$T;@$S;$comp $T2;$suffix$input;")
+    zday_prompt = md5("<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$session $ip</voffset><pos=0></size>$pwd $T2;$suffix$input;")
+    override_prompts = {
+        main_prompt : "<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$STATUS $S;$SESTYPE $EFFECTIVE $T2;$CURRENT $ip;$WAN</voffset><pos=0></size>$T;($PWD) $P;$USER$T;@$S;$COMP $T2;$SUFFIX$input;",
+        zday_prompt : "<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$CURRENT $WAN</voffset><pos=0></size>$PWD $T2;$SUFFIX$input;",
+    }
+    do_renew = false
+
+    for x in kernel.settings.input
+        if not override_prompts.hasIndex(md5(x.value)) then continue
+        do_renew = true
+    end for
+    if not do_renew then return
+
+    new_settings = []
+    for x in kernel.raw_settings.split(char(10))
+        s = x.split(" ")
+        if s[1:2] == ["prompt"] then
+            cat = s[0]
+            val = s[2:].join(" ")
+            if cat == "input" then
+                new_settings.push("input prompt = " + override_prompts[main_prompt])
+            else if cat == "zday" then
+                new_settings.push("zday prompt = " + override_prompts[zday_prompt])
+            end if
+        else
+            new_settings.push(x)
+        end if
+    end for
+
+    kernel.print("$P;Replaced prompts to fit new architecture")
+    kernel.settings.input.prompt = override_prompts[main_prompt]
+    kernel.settings.zday.prompt = override_prompts[zday_prompt]
+    kernel.raw_settings = new_settings.join(char(10))
+    kernel.save_settings()
+end function

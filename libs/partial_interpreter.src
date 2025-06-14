@@ -199,7 +199,7 @@ PartialInterpreter.commands.help = function(pi, args)
         data.push(kernel.color([
             color+name,
             cmd_args.join("$T;, $S;"),
-            perm_colors[user_enum[perm]],
+            "$"+user_enum[perm]+";"+user_enum[perm],
             desc
         ]))
     end for

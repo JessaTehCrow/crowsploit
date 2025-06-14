@@ -5,7 +5,7 @@ import_code("../constants/motd")
 
 if program_path == "/etc/crow/tools/crowsploit" then exit("<#f00>crowsploit detected running as a tool. Quitting loop")
 
-interface_version = "1.5.1"
+interface_version = "1.6.0"
 
 get_fact = function()
     fact = fun_facts[random(0,fun_facts.len-1)]
@@ -162,10 +162,11 @@ kernel_setup = function()
 
     kernel = new Kernel
     kernel.new_session(ses)
+    kernel.load_settings(ses.homepath + "/.crowrc")
+
     kernel.use_session(ses)
     kernel.active_session = ses
 
-    kernel.load_settings(ses.homepath + "/.crowrc")
 
     update_libs(kernel, ses, "/etc/crow/libs")
 end function
@@ -215,8 +216,11 @@ else if hasIndex(custom_obj, "kernel") then
     end if
 
     kernel.active_session = session
+    kernel.env.EFFECTIVE = active_user
     kernel.active_sessions.push(session)
+    session.effective = active_user
     kernel.env.ACTIVE = session.id
+    kernel.env.STATUS = "Active"
 
 else if params == ["setup"] then
     e = kernel_setup()
@@ -234,14 +238,16 @@ else
 
     session.path = program_path
     session.file = session.file.get_folder(current_path)
-
     kernel.new_session(session)
+    
+    session.effective = active_user
     kernel.active_session = session
     kernel.active_sessions.push(session)
 
+    error = kernel.load_settings(session.homepath + "/.crowrc")
+
     kernel.use_session(session)
 
-    error = kernel.load_settings(session.homepath + "/.crowrc")
     if is_error(error) then
         print("<#e05>Missing settings")
         print("<#e05>Creating settings in : " + session.homepath + "/.crowrc")

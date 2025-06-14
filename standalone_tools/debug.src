@@ -332,4 +332,19 @@ end function
 
 debug_tool.command("dumpcob", [], @dump_cob)
 
+
+cause_crash = function(a)
+    a.this_is_intended_i_swear()
+end function
+
+debug_tool.command("crash", [], @cause_crash)
+
+see_globals = function(a)
+    for x in globals.indexes
+        print("$P;" + x + "$T; : $T2;" + typeof(@globals[x]))
+    end for
+end function
+debug_tool.command("globals", [], @see_globals)
+
+
 debug_tool.init()

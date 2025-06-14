@@ -1,6 +1,6 @@
 import_code("../kernel/toolkernel")
 
-alias_tool = Tool.New("alias", "1.0.1")
+alias_tool = Tool.New("alias", "1.0.2")
 alias_tool.short_description = "add / change / remove aliases"
 alias_tool.long_description = "add / change / remove aliases"
 
@@ -55,7 +55,19 @@ add_func = function(a)
     print("$S;Added alias")
     if a.temporary then return
 
-    a.kernel.raw_settings = a.kernel.raw_settings + char(10) + "alias " + a.name + " = " + a.value
+    new_settings = []
+    replaced = false
+
+    for x in a.kernel.raw_settings.split(char(10))
+        if not replaced and x.split(" ")[:2] == ["alias", a.name] then 
+            new_settings.push([alias, a.name, "=", a.value].join(" "))
+            replaced = true
+        else if not replaced then
+            new_settings.push(x)
+        end if
+    end for
+
+    a.kernel.raw_settings = new_settings.join(char(10))
     res = a.kernel.save_settings()
 
     if is_error(res) then return res.stack("alias.add")

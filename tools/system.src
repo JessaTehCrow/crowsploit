@@ -2,26 +2,26 @@ import_code("../kernel/toolkernel")
 import_code("../libs/sessionmanager")
 import_code("../libs/syntax_parser")
 
-mytool = Tool.New("system", "1.10.2")
+mytool = Tool.New("system", "1.10.4")
 
 mytool.short_description = "All default system commands"
 mytool.long_description = "All default system commands"
 
 settings = Settings.init()
 settings.set("color", {
-    "P" : "<#08f>",
-    "S" : "<#0cc>",
-    "T" : "<#669>",
-    "T2" : "<#99c>",
+    "P"     : "<#08f>",
+    "S"     : "<#0cc>",
+    "T"     : "<#669>",
+    "T2"    : "<#99c>",
     "input" : "<#bcf>",
-    "root" : "<#f60>",
+    "root"  : "<#f60>",
     "error" : "<#e05>",
-    "lsfolder" : "<#08f>",
-    "lsbinary" : "<#0e8>",
-    "lsfile"   : "<#aad>",
-    "lsdata"   : "<#99c>",
-    "lsuser"   : "<#99c>",
-    "lscode"   : "<#fc1>",
+    "lsfolder"  : "<#08f>",
+    "lsbinary"  : "<#0e8>",
+    "lsfile"    : "<#aad>",
+    "lsdata"    : "<#99c>",
+    "lsuser"    : "<#99c>",
+    "lscode"    : "<#fc1>",
     "lssymlink" : "<#c158d6>",
     "string" : "<#d63>",
     "int"    : "<#39d>",
@@ -35,6 +35,8 @@ settings.set("color", {
     "status_none"   : "<#669>",
     "session"       : "<#669>",
     "ip_prompt"     : "<#d44>",
+    "good"  : "<#4c4>",
+    "bad"   : "<#c44>",
 })
 
 settings.set("input", {
@@ -58,6 +60,7 @@ settings.set("library", {
 settings.set("update", {
     "check" : "true"
 })
+
 
 mytool.settings = settings
 
@@ -109,7 +112,11 @@ help_func = function(a)
                 temp = "$" + kwarg.type +";-"+kwarg.alias
             end if
             if kwarg.default != null then
-                temp = temp + "$T;:$T2;" + kwarg.default
+                if kwarg.type == "bool" then
+                    temp = temp + "$T;:$T2;" + ["false","true"][kwarg.default]
+                else
+                    temp = temp + "$T;:$T2;" + kwarg.default
+                end if
             end if
             result.push(temp)
         end for
@@ -196,6 +203,7 @@ help_func = function(a)
 
                 a.kernel.line("", result.length)
                 print("$P;<size=30px>" + main.name)
+                print("$S;Version $T;: $int;" + main.version)
                 print(main.long_description)
                 a.kernel.line("Commands", result.length)
                 print(result.string)
@@ -264,8 +272,8 @@ $S;echo $string;How ""are you doing"" today?"
 
 cat_args = [
     Arg.New("file", "string").Info("File to print contents for"),
-    Kwarg.New("force", "bool").Default(false).Alias("f").Info("Use a game exploit to cat files you don't have access to"),
-    Kwarg.New("format", "bool").Default(false).Alias("m").Info("Format the output like it's greyscript")
+    Kwarg.New("force", "bool").Alias("f").Info("Use a game exploit to cat files you don't have access to"),
+    Kwarg.New("format", "bool").Alias("m").Info("Format the output like it's greyscript")
 ]
 
 cat_function = function(a)
@@ -416,7 +424,7 @@ ls_func = function(a)
 
         filesize = round(to_int(x.size)/1048576, 2)
         
-        items.push([col+x.name, x.permissions, x.path, x.owner.replace("root", "$root;root"), x.group.replace("root", "$root;root"), extra, filesize])
+        items.push([col+x.name, x.permissions, x.path, x.owner.replace("root", "$root;root"), "$T;"+x.group.replace("root", "$root;root"), extra, filesize])
     end for
 
     if a.long then
@@ -570,7 +578,7 @@ tree_func = function(a)
 
             filesize = round(to_int(file.size)/1048576, 2)
 
-            print("$T;  |" *depth + pointer + "$lsdata;" + file.permissions + " $T;" + filesize + "MB " + user + " " + group + " " + file_color + file.name + extra)
+            print("$T;  |" *depth + pointer + "$lsdata;" + file.permissions + " $T;" + filesize + "MB $T;" + user + " $T;" + group + " " + file_color + file.name + extra)
 
             last_depth = depth
         end if
@@ -671,7 +679,7 @@ find_args = [
     Kwarg.New("user",  "string").Alias("o").Info("Match user with item"),
     Kwarg.New("group", "string").Alias("g").Info("Match group with item"),
     Kwarg.New("type",  "string").Alias("t").Info("Match file type"),
-    Kwarg.New("local", "bool").Default(false).Alias("l").Info("Only find in current folder")
+    Kwarg.New("local", "bool").Alias("l").Info("Only find in current folder")
 ]
 
 find_func = function(a)
@@ -721,7 +729,8 @@ $S;find $string;/bin"
 
 reload_args = [
     Kwarg.New("commands", "bool").Alias("c").Info("Reloads the commands"),
-    Kwarg.New("settings", "bool").Alias("s").Info("Reloads the user settings")
+    Kwarg.New("settings", "bool").Alias("s").Info("Reloads the user settings"),
+    Kwarg.New("full-reload", "bool").Default(true).Alias("f").Info("Completely unloads all tools and reloads them (Otherwise only overwrite)")
 ]
 
 reload_func = function(a)
@@ -736,7 +745,7 @@ reload_func = function(a)
     end if
 
     if a.commands then
-        a.kernel.load_tools()
+        a.kernel.load_tools(a["full-reload"])
     end if
     if a.settings then
         err = a.kernel.load_settings(user_settings + "/.crowrc")
@@ -929,7 +938,8 @@ $S;rm $string;/etc/passwd"
 // touch //
 
 touch_args = [
-    Arg.New("name", "string").Info("File to create")
+    Arg.New("name", "string").Info("File to create"),
+    Kwarg.New("text", "string").Alias("t").Info("Text to set in the created file")
 ]
 
 touch_func = function(a)
@@ -943,7 +953,7 @@ touch_func = function(a)
     p = Path.New(ses_file.path)
     p.change(a.name)
 
-    err = ses_comp.touch(p.folder, p.name)
+    err = ses_comp.touch(p.folder, p.name, a.text)
     if is_error(err) then return err.stack("system.touch")
 
     print("$T;Created file $lsfile;" + a.name)
@@ -953,7 +963,8 @@ touch = mytool.standalone_command("touch", touch_args, @touch_func)
 touch.short_description = "Create new file"
 touch.long_description = "$P;Usage:
 $S;touch $string;file.txt
-$S;touch $string;/home/guest/Desktop/hello.txt"
+$S;touch $string;/home/guest/Desktop/hello.txt
+$S;touch $string;message.txt --text 'Hello there!'"
 
 
 
@@ -1041,8 +1052,10 @@ chown_func = function(a)
     group = ""
     if raw.len == 2 then group = raw[1]
 
-    err = target.set_owner(user, a.recursive)
-    if is_error(err) then return err.stack("system.chown")
+    if user then
+        err = target.set_owner(user, a.recursive)
+        if is_error(err) then return err.stack("system.chown")
+    end if
     if group then
         err = target.set_group(group, a.recursive)
         if is_error(err) then return err.stack("system.chown")
@@ -1065,7 +1078,7 @@ $S;chown $string;user file.txt"
 chmod_args = [
     Arg.New("option", "string").Info("New file info"),
     Arg.New("file", "string").Info("Target file"),
-    Kwarg.New("recursive", "bool").Default(false).Alias("r").Info("Recursively set permission")
+    Kwarg.New("recursive", "bool").Alias("r").Info("Recursively set permission")
 ]
 
 chmod_func = function(a)
@@ -1348,7 +1361,7 @@ ftp_args = [
     Kwarg.New("username", "string").Alias("u").Info("User to login with"),
     Kwarg.New("password", "string").Alias("p").Info("Password to login with"),
     Kwarg.New("port", "int").Alias("p").Default(21).Info("Port to connect to"),
-    Kwarg.New("stay", "bool").Default(false).Alias("s").Info("Stay in current session")
+    Kwarg.New("stay", "bool").Alias("s").Info("Stay in current session")
 ]
 
 ftp_func = function(a)
@@ -1395,7 +1408,7 @@ ssh_args = [
     Kwarg.New("username", "string").Alias("u").Info("User to login with"),
     Kwarg.New("password", "string").Alias("p").Info("Password to login with"),
     Kwarg.New("port", "int").Default(22).Info("Port to connect to"),
-    Kwarg.New("stay", "bool").Default(false).Alias("s").Info("Stay in current session")
+    Kwarg.New("stay", "bool").Alias("s").Info("Stay in current session")
 ]
 
 ssh_func = function(a)
@@ -1494,42 +1507,90 @@ $P;su $string;some_user"
 
 download_args = [
     Arg.New("file", "string").Info("File to download from session"),
-    Kwarg.New("from", "int").Alias("f").Info("Session to download from (Defaults to active session)")
+    OptionalArg.New("folder", "string").Info("Folder to download to (Full path)"),
+    Kwarg.New("from", "int").Alias("f").Info("Session to download from (Defaults to active session)"),
+    Kwarg.New("name", "string").Alias("n").Info("New name of file after download")
 ]
 
 download_func = function(a)
     if a.kernel.session.shell == null then return ObjectError.New("system.download", "shell")
+    if a.name != null and not isalnum(a.name) then return FormatError.New("system.download", "numbers , letters , -_.", a.name)
 
-    session = a.kernel.active_session
+    active_session = a.kernel.active_session
+    current = a.kernel.session
+
     if a["from"] != null then
-        session = null
+        active_session = null
         for x in a.kernel.sessions
             if x.id == a["from"] then
-                session = x
+                active_session = x
             end if
         end for
     end if
+
+    target = current.file.path
+    if a.folder != null then target = a.folder
+    target_file = current.computer.File(target)
+    if is_error(target_file) then return target_file.stack("system.download")
+    if not target_file.is_folder then return OsError.New("system.download", "Download path is not a folder $T;" + target)
     
-    if session == a.kernel.session then return OsError.New("system.download", "Cannot download from same session")
-    if session == null then return OsError.New("system.download", "Session with id '"+a["from"]+"' not found")
-    if session.shell == null then return OsError.New("system.download", "Target session needs shell access")
-    if not a.kernel.session.file.has_permission("w") then OsError.New("system.download", "Current session path needs write access")
-    file = session.file.get_path(a.file)
+    if active_session == a.kernel.session then return OsError.New("system.download", "Cannot download from same session")
+    if active_session == null then return OsError.New("system.download", "Session with id '"+a["from"]+"' not found")
+    if not target_file.has_permission("w") then OsError.New("system.download", "Download folder needs write access $T;" + target)
+
+    file = active_session.file.get_path(a.file)
     if is_error(file) then return file.stack("system.download")
     if not file.has_permission("r") then return OsError.New("system.download", "File needs read access")
+
+    file_overwrite = false
+    if file.has_permission("r") and file.is_file then file_overwrite = true
+
+    if current.shell == null and not file_overwrite then return OsError.New("system.download", "Current session needs shell access")
+    if not file.has_permission("r") and not file_overwrite then return OsError.New("system.download", "Download file needs read access")
 
     log(file.path)
     log(a.kernel.session.file.path)
 
-    res = session.shell.scp(file.path, a.kernel.session.file.path, a.kernel.session.shell)
-    if is_error(res) then return res.stack("system.download")
+    if a.name != null and a.name != file.name and not file_overwrite then
+        // Create temp dir
+        err = current.computer.create_folder(target_file.path, "CS_TMP")
+        if is_error(err) then return err.stack("system.download")
+
+        tmp_folder = current.computer.File(target_file.path+"/CS_TMP")
+        if is_error(tmp_folder) then return tmp_folder.stack("system.download")
+
+        // Upload file
+        res = active_session.shell.scp(file.path, target_file.path + "/CS_TMP", a.kernel.session.shell)
+        if is_error(res) then 
+            tmp_folder.move(tmp_folder.path, tmp_folder.name)
+            return res.stack("system.download")
+        end if
+        tmp_file = current.computer.File(tmp_folder.path + "/" + file.name)
+        
+        // Rename & move to target folder and delete temp folder
+        err = tmp_file.move(target_file.path, a.name)
+        err2 = tmp_folder.move(tmp_folder.path, tmp_folder.name)
+        if is_error(err) then return err.stack("system.download")
+        if is_error(err2) then return err2.stack("system.download")
+
+    else if file_overwrite then
+        new_name = file.name
+        if a.name != null and a.name != file.name then new_name = a.name
+        session.computer.touch(target_file.path, new_name)
+        f = session.file.get_file(target_file.path + "/" + new_name)
+        if is_error(f) then return f.stack("system.upload")
+        f.set_content(file.get_content)
+
+    else
+        res = active_session.shell.scp(file.path, target_file.path, a.kernel.session.shell)
+    end if
 end function
 
 download = mytool.standalone_command("download", download_args, @download_func)
-download.short_description = "Download from the active session to the current (or another) session"
+download.short_description = "Download from the active (or another) session to the current session"
 download.long_description = "$P;Usage:
-$P;download $string;/etc/passwd
-$P;download $string;/user/Jessa/traffic_network"
+$P;download $string;/root/safelib/init.so $int;-f 1 $T;<< Download from session 1 to current session
+$P;download $string;/scripts/virus $int;-f 1 $string;/bin $T;<< Download from session 1, and upload to /bin in current session"
 
 
 
@@ -1537,13 +1598,16 @@ $P;download $string;/user/Jessa/traffic_network"
 
 upload_args = [
     Arg.New("file", "string").Info("File to upload to session"),
-    Kwarg.New("to", "int").Alias("t").Info("Session to upload to (Defaults to active session)")
+    OptionalArg.New("folder", "string").Info("Folder to upload to (Full path)"),
+    Kwarg.New("to", "int").Alias("t").Info("Session to upload to (Defaults to active session)"),
+    Kwarg.New("name", "string").Alias("n").Info("New name of file after download")
 ]
 
 upload_func = function(a)
     // if a.kernel.session.shell == null then return ObjectError.New("system.upload", "shell")
 
     session = a.kernel.active_session
+    target = session.file.path
     if a.to != null then
         session = null
         for x in a.kernel.sessions
@@ -1552,6 +1616,8 @@ upload_func = function(a)
             end if
         end for
     end if
+
+    if a.folder != null then target = a.folder
     
     if session == a.kernel.session then return OsError.New("system.upload", "Cannot upload to same session")
     if session == null then return OsError.New("system.upload", "Session with id '"+a.to+"' not found")
@@ -1580,7 +1646,9 @@ upload = mytool.standalone_command("upload", upload_args, @upload_func)
 upload.short_description = "Upload a file from the current session to the active (or another) session"
 upload.long_description = "$P;Usage:
 $P;upload $string;/var/virus $int;--to 2
-$P;upload $string;/user/Jessa/traffic_network "
+$P;upload $string;/user/Jessa/traffic_network
+$P;upload $string;/user/Jessa/traffic_network /root/network_log $int;--to 1
+$P;upload $string;/root/test $int;--to 2 $string;--name new_test $T;<< Upload from current session, to session 2, and rename file to new_test"
 
 
 
@@ -1709,7 +1777,7 @@ $P;system groupdel $string;jessa crows"
 
 userdel_args = [
     Arg.New("user", "string").Info("Which user to delete from existance"),
-    Kwarg.New("home", "bool").Default(false).Alias("h").Info("Delete their home directory as well")
+    Kwarg.New("home", "bool").Alias("h").Info("Delete their home directory as well")
 ]
 
 userdel_func = function(a)
@@ -1756,7 +1824,6 @@ $P;system useradd $string;jess crowpassword"
 
 
 // whois
-
 
 whois_args = [
     Arg.New("host", "ip")
@@ -1889,8 +1956,8 @@ $P;ln $string;/home/jess /root/jess"
 reformat_args = [
     Arg.New("seperator", "string").Info("Seperator to use to format output with"),
     Arg.New("format", "string").Info("Format to use for data"),
-    Kwarg.New("trim", "bool").Alias("t").Default(false).Info("Trim leading/trailing whitespaces"),
-    Kwarg.New("raw", "bool").Alias("r").Default(false).Info("Parse result with command rather than string parameter"),
+    Kwarg.New("trim", "bool").Alias("t").Info("Trim leading/trailing whitespaces"),
+    Kwarg.New("raw", "bool").Alias("r").Info("Parse result with command rather than string parameter"),
     RestArg.New()//.Info("Data (Will be joined with a singular space)")
 ]
 
@@ -2152,8 +2219,8 @@ update_cmd.long_description  = "Check if there are available updates"
 concat_args = [
     RestArg.New().Info("Strings to join together"),
     Kwarg.New("delimiter", "string").Default("").Alias("d").Info("Character to join the strings together"),
-    Kwarg.New("inverted", "bool").Default(false).Alias("i").Info("Join them togehter in a reversed order"),
-    Kwarg.New("raw", "bool").Default(false).Alias("r").Info("Parse result with command rather than string parameter")
+    Kwarg.New("inverted", "bool").Alias("i").Info("Join them togehter in a reversed order"),
+    Kwarg.New("raw", "bool").Alias("r").Info("Parse result with command rather than string parameter")
 ]
 
 concat_func = function(a)

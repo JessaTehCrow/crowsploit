@@ -128,24 +128,6 @@ library_names = [
     "librshell.so",
 ]
 
-obj_colors = {
-    "Unknown" : "<#444>Unknown",
-    "File" : "<#68f>File",
-    "Computer" : "<#b72>Computer",
-    "Shell" : "<#b22>Shell",
-    "Firewall": "<#94f>Firewall",
-    "Password" : "<#888>Password",
-    "Bounce": "<#4cc>Bounce"
-}
-
-perm_colors = {
-    "unknown":"<#444>Unknown",
-    "None": "<#444>None",
-    "guest":"<#46b>Guest",
-    "user":"<#b72>User",
-    "root":"<#b22>Root",
-}
-
 active_enum = [
     "",
     "Guest",
@@ -287,8 +269,8 @@ Exploit.data = function(ip)
     end if
 
     h = function(a)
-        if a > 0 then return "<#4af>"+a
-        return "<#444>"+a
+        if a > 0 then return "$int;"+a
+        return "$unknown;"+a
     end function
 
     obj = self.object
@@ -300,16 +282,16 @@ Exploit.data = function(ip)
         self.version,
         self.address,
         self.unsec,
-        obj_colors[obj],
-        perm_colors[self.objperms],
+        "$obj_"+obj.lower+";"+to_title(obj),
+        "$"+self.objperms.lower+";"+to_title(self.objperms),
         self.active,
         h(self.registered),
         h(self.ports),
-        ["<#4c4>False", "<#c44>True"][self.local],
+        ["$good;False", "$bad;True"][self.local],
         h(self.subcomputers),
         h(self.group_count),
         self.exists,
-        ["<#444>None",self.dependency][self.dependency != ""],
+        ["$none;None",self.dependency][self.dependency != ""],
         h(self.depversion),
     ]
 end function
@@ -538,7 +520,7 @@ ExploitLibrary.display = function(kernel, relevant=false, short=false, ip=null)
     tab_data = []
     for exploit in self.exploits
         if exploit.version != self.raw_version and relevant then continue
-        data = exploit.data(ip)
+        data = kernel.color(exploit.data(ip))
 
         if short then 
             data = data[:1] + data[3:]
@@ -557,7 +539,7 @@ ExploitLibrary.display = function(kernel, relevant=false, short=false, ip=null)
     kernel.print("<size=30px>$P;" + self.name)
     kernel.print("$T2;Version $T;: $S;" + self.raw_version)
     if self.library != null then
-        patched = kernel.color(["$zday_unpatched;False","$zday_patched;True"][self.library.is_patched])
+        patched = kernel.color(["$zday_unpatched;False","$good;True"][self.library.is_patched])
         kernel.print("$T2;Patched $T;: "+patched)
     end if
     lines = tabulate_data(tab_data, tab_titles, colors, ["<i><u>"+kernel.color("$T2;")]).string.split(char(10))
@@ -719,7 +701,9 @@ full_scan = function(metax, library, router, silent=false, existing=null, skip_e
             end if
 
             if exploit.object != "Unknown" then
-                print(obj_colors[exploit.object] + "<#666> : " + perm_colors[exploit.objperms])
+                obcol = "$obj_" + exploit.object.lower()+";"
+                permcol = "$"+exploit.objperms+";"
+                print(obcol + exploit.object + "<#666> : " + permcol + exploit.objperms)
             end if
 
             exploits.register_exploit(exploit)
@@ -745,7 +729,7 @@ get_exploit = function(exlib, title, ip)
     tab_data = []
 
     for exploit in exploits
-        data = exploit.data(ip)
+        data = _global.kernel.color(exploit.data(ip))
         tab_data.push([_global.kernel.color("$S;"+(len(tab_data)+1))] + data[3:])
     end for
 
@@ -912,7 +896,7 @@ exploit_process = function(kernel, lib, ip, index=null, extra=null, db_path=null
         exlib.save_exploits(kernel.sessions[0].computer, db_path)
     end if
     if result[0] == null or result[0] == 0 then
-        return Error.New("<#e88>Failed to exploit")
+        return Error.New("exploit.process", "Failed to exploit")
     end if
     if result[0] == true then
         //return "<#8e8>Successfully exploited"

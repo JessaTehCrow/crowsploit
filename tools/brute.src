@@ -305,8 +305,8 @@ $P;brute $S;reload"
 
 hash_args = [
     Arg.New("hash", "string").Info("Hash to crack"),
-    Kwarg.New("no-retry", "bool").Default(false).Alias("n").Info("Don't ask for retry when hash cannot be found in database"),
-    Kwarg.New("auto-retry","bool").Default(false).Alias("r").Info("Auto retry with normal hash cracking if it cannot be found in database")
+    Kwarg.New("no-retry", "bool").Alias("n").Info("Don't ask for retry when hash cannot be found in database"),
+    Kwarg.New("auto-retry","bool").Alias("r").Info("Auto retry with normal hash cracking if it cannot be found in database")
 ]
 
 hash_func = function(a)
@@ -336,7 +336,7 @@ hash_func = function(a)
 
     if result == null and not a["no-retry"] then 
         if a["auto-retry"] or confirmation_prompt("Password not found. Do you want to crack using the normal way?") then
-            a.kernel.run_command("crack hash '" + a.hash + "'")
+            a.kernel.run_command("crack '" + a.hash + "'", false)
             return
         end if
     end if
@@ -402,7 +402,7 @@ $P;brute $S;run $string;'ssh root@192.168.0.1 -p $PWD$'"
 su_args = [
     OptionalArg.New("user", "string").Default("root").Info("User to bruteforce"),
     Kwarg.New("create-session","bool").Default(true).Alias("s").Info("Create session after crack"),
-    Kwarg.New("overwrite-session", "bool").Default(false).Alias("o").Info("Overwrite on success (only if --session is used)"),
+    Kwarg.New("overwrite-session", "bool").Alias("o").Info("Overwrite on success (only if --session is used)"),
 ]
 
 su_func = function(a)

@@ -1,4 +1,8 @@
-import_code("./proxies")
+import_code("../libs/proxyextension")
+
+isalnum = function(text)
+    return text.is_match("^[A-Za-z0-9._-]+$")
+end function
 
 regex_escape = function(text)
     result = text
@@ -139,6 +143,15 @@ max = function(a,b)
     return biggest
 end function
 
+
+to_title = function(text)
+    t = text.split(" ")
+    for x in t
+        if x == "" then continue
+        t[__x_idx] = x[0].upper() + x[1:]
+    end for
+    return t.join(" ")
+end function
 
 
 simple_hash = function(text)
@@ -523,6 +536,19 @@ Binary.read = function(sections)
     end for
 
     return result
+end function
+
+
+is_version_greater = function(v1, v2)
+    v2_split = v2.split("\.")
+
+    for x in v1.split("\.")
+        if to_int(x) > to_int(v2_split[__x_idx]) then
+            return true
+        else if to_int(x) < to_int(v2_split[__x_idx]) then
+            return false
+        end if
+    end for
 end function
 
 

@@ -147,8 +147,13 @@ rshell_server_func = function(a)
 end function
 
 rshell_server_cmd = rshell.command("server", rshell_server_args, @rshell_server_func)
-rshell_server_cmd.short_description = ""
-rshell_server_cmd.long_description = ""
+rshell_server_cmd.short_description = "Start an rshell server on current session"
+rshell_server_cmd.long_description = "<b>$S;Requires root and librshell.so in $T2;/etc/crow/libs</b>
+
+$T;! Recommended to run on an edge router, otherwise you'll have to get an active terminal and portforward manually !
+
+$P;Usage:
+$P;rshell $S;server"
 
 // Initialize command
 rshell.init()

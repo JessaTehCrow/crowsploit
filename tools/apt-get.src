@@ -11,7 +11,7 @@ apt_tool.long_description = "All apt client handling"
 add_repo_args = [
     Arg.New("host", "ip").Info("Repository address to add"),
     OptionalArg.New("port", "int").Default(1542).Info("Port of the repository"),
-    Kwarg.New("update", "bool").Default(false).Alias("u").Info("Automatically update repo after adding")
+    Kwarg.New("update", "bool").Alias("u").Info("Automatically update repo after adding")
 ]
 
 add_repo_func = function(a)
@@ -43,7 +43,7 @@ $P;apt-get $S;addrepo $ip;138.32.12.3 $int;--port 1547 $bool;-u"
 
 del_repo_args = [
     Arg.New("host", "ip").Info("Repository address to remove"),
-    Kwarg.New("update", "bool").Default(false).Alias("u").Info("Automatically update repo after removing")
+    Kwarg.New("update", "bool").Alias("u").Info("Automatically update repo after removing")
 ]
 
 del_repo_func = function(a)
@@ -185,7 +185,7 @@ $P;apt-get $S;search $string;http"
 // upgrade
 
 upgrade_args = [
-    Kwarg.New("full", "bool").Default(false).Alias("f").Info("Search entire system for libraries")
+    Kwarg.New("full", "bool").Alias("f").Info("Search entire system for libraries")
 ]
 
 upgrade_func = function(a)

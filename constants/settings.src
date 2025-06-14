@@ -19,8 +19,12 @@ color T2 = <#99c>
 // Input color
 color input = <#bcf>
 
-// Root color
-color root = <#f60>
+// Permission colors
+color unknown = <#444>
+color none = <#444>
+color guest = <#56e>
+color user = <#e84>
+color root = <#e43>
 
 // Error color
 color error = <#e05>
@@ -50,10 +54,21 @@ color status_none   = <#669>
 color session       = <#669>
 color ip_prompt     = <#d44>
 
+// Object colors
+color obj_unknown   = <#444>
+color obj_file      = <#56e>
+color obj_computer  = <#e84>
+color obj_shell     = <#e43>
+color obj_firewall  = <#94f>
+color obj_password   = <#888>
+color obj_bounce    = <#4cc>
+
+// Other colors
+color good = <#4c4>
+color bad  = <#c44>
+
 // zero day colors
 color zday = <#c6b>
-color zday_patched = <#0e8>
-color zday_unpatched = <#e05>
 
 /////////////////
 // User prompt //
@@ -95,4 +110,7 @@ update check = true
 // Aliases //
 alias c = clear
 alias la = ls -la
-alias sessions = session list"
+alias sessions = session list
+alias home = session use 1
+alias active = session use $ACTIVE
+alias whoami = echo $USER"

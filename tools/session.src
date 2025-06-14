@@ -1,14 +1,32 @@
 import_code("../kernel/toolkernel")
 
 
+ip_color = function(ip)
+    net_cols = [
+        "<#d33>",
+        "<#3d3>",
+        "<#3dc>",
+        "<#9ea>",
+        "<#93c>",
+        "<#34f>",
+        "<#ddd>",
+        "<#c63>",
+        "<#67e>",
+        "<#ef7>",
+        "<#bbb>",
+        "<#fd3>",
+        "<#f8f>",
+        "<#f77>",
+        "<#f92>",
+    ]
 
+    subnet = ip.split("\.")[:-1].join(".")
+    subnet_id = floor(rnd(sum(map_list(subnet, [@code])))*net_cols.len)
+    color = net_cols[subnet_id]
+    return color
+end function
 
-// IMPORTED INTO SYSTEM //
-
-
-
-
-ses_tool = Tool.New("session", "1.5.2")
+ses_tool = Tool.New("session", "1.6.0")
 
 ses_tool.short_description = "Session manager"
 ses_tool.long_description = "Manage your sessions and swap between them"
@@ -31,19 +49,38 @@ ses_data = function(session, active, current, active_sessions)
         status = _global.kernel.color("$status_parses;Parent")
     end if
 
-    return [
+    object = "File"
+    if session.shell != null then
+        object = "Shell"
+    else if session.computer != null then
+        object = "Computer"
+    end if
+
+    user_color = "$unknown;"
+    if session.user == "root" then
+        user_color = "$root;"
+    else if session.user != "guest" then
+        user_color = "$user;"
+    else
+        user_color = "$guest;"
+    end if
+
+    return _global.kernel.color([
         "<#4af>"+session.id,
         status,
-        session.user,
-        session.comp_name,
-        ["<#4fa>Yes", "<#fa4>No"][session.shell == null],
-        ["<#4fa>Yes", "<#fa4>No"][session.computer == null],
-        ["<#4fa>Yes", "<#fa4>No"][session.file == null],
-        ["<#4fa>Yes", "<#fa4>No"][session.router == null],
-        ["<#4fa>Yes", "<#fa4>No"][session.metax == null],
-        ["<#4fa>Yes", "<#fa4>No"][session.crypto == null],
-        ["<#4fa>Yes", "<#fa4>No"][session.apt == null],
-    ]
+        user_color + session.user,
+        "$obj_"+object.lower+";"+object,
+        ip_color(session.wan)+session.wan,
+        "$S;"+session.lan,
+        // session.comp_name,
+        // ["<#4fa>Yes", "<#fa4>No"][session.shell == null],
+        // ["<#4fa>Yes", "<#fa4>No"][session.computer == null],
+        // ["<#4fa>Yes", "<#fa4>No"][session.file == null],
+        // ["<#4fa>Yes", "<#fa4>No"][session.router == null],
+        // ["<#4fa>Yes", "<#fa4>No"][session.metax == null],
+        // ["<#4fa>Yes", "<#fa4>No"][session.crypto == null],
+        // ["<#4fa>Yes", "<#fa4>No"][session.apt == null],
+    ])
 end function
 
 sesinfo = function(sessions, active, current, active_sessions)
@@ -54,7 +91,6 @@ sesinfo = function(sessions, active, current, active_sessions)
     end if
 
     for s in sessions
-        log(s.id)
         tab_data.push(ses_data(s, active, current, active_sessions))
     end for
 
@@ -62,14 +98,9 @@ sesinfo = function(sessions, active, current, active_sessions)
         "ID",
         "Status",
         "User",
-        "Computer",
-        "Shell",
-        "Comp",
-        "File",
-        "Router",
-        "Metax",
-        "Crypto",
-        "Apt"
+        "Type",
+        "Public",
+        "Local",
     ]
 
     result = tabulate_data(tab_data, titles)
@@ -105,8 +136,10 @@ info_func = function(a)
 end function
 
 info = ses_tool.main_command([], @info_func)
-info.short_description = "Info"
-info.long_description = "Info"
+info.short_description = "Get information about the current session"
+info.long_description = "$P;Usage:
+$P;session main
+$P;session"
 
 // reload session info
 reset_func = function(a)
@@ -185,8 +218,6 @@ use_func = function(a)
         end if
     end if
 
-    tab_data = []
-
     if a.session_id == null then
         list_sessions(a)
         ses = ask_session(a.kernel.sessions)
@@ -205,16 +236,17 @@ $P;session use $int;session_id"
 
 
 // activate
-
 activate_args = [
-    Kwarg.New("crypto", "bool").Default(false).Alias("c").Info("Also jump with crypto"),
-    Kwarg.New("nolibs", "bool").Default(false).Alias("n").Info("Only jump with interface")
+    Kwarg.New("crypto", "bool").Alias("c").Info("Also jump with crypto"),
+    Kwarg.New("nolibs", "bool").Alias("n").Info("Only jump with interface"),
+    Kwarg.New("interface", "string").Alias("i").Info("Start on an existing crowsploit binary <i><size=75%>$bad;(Not recommended unless you know what you're doing)")
 ]
 
 activate_func = function(a)
     if a.kernel.session.shell == null then return ObjectError.New("session.activate", "shell")
     active = a.kernel.sessions[0]
     crowsploit = active.path
+    csname = crowsploit.split("/")[-1]
 
     current = a.kernel.session
 
@@ -236,8 +268,18 @@ activate_func = function(a)
         return OsError.New("session.activate", "No writable folders found")
     end if
 
-    res = active.shell.scp(crowsploit, destination, current.shell)
-    if is_error(res) then return res.stack("session.activate")
+    if a.interface != null then
+        p = Path.New(current.file.path)
+        p.change(a.interface)
+        f = current.computer.File(p.path)
+        if is_error(f) then return f
+        if not f.is_binary then return KernelError.New("session.activate", "Target interface is not a binary")
+        destination = p.folder
+        csname = p.name
+    else 
+        res = active.shell.scp(crowsploit, destination, current.shell)
+        if is_error(res) then return res.stack("session.activate")
+    end if
 
     get_custom_object.kernel = function(hash)
         if hash != simple_hash(current_date) then
@@ -250,26 +292,40 @@ activate_func = function(a)
     if a.crypto then args.push("crypto")
     if a.nolibs then args.push("nolibs")
 
+    res = null
     if args == [] then
-        current.shell.launch(destination + "/crowsploit")
+        res = current.shell.launch(destination + "/" + csname)
     else
-        current.shell.launch(destination + "/crowsploit", args.join(" "))
+        res = current.shell.launch(destination + "/" + csname, args.join(" "))
+    end if
+
+    if hasIndex(get_custom_object, "kernel") then
+        remove(get_custom_object, "kernel")
     end if
 
     if a.kernel.active_session == current and a.kernel.keep_session != false then
         print("$error;Session crashed. Resetting to previous active session")
         a.kernel.active_sessions.pop()
         a.kernel.active_session = a.kernel.active_sessions[-1]
+        a.kernel.env.STATUS = "Jumped"
+        a.kernel.env.ACTIVE = a.kernel.active_session.id
+        a.kernel.env.EFFECTIVE = "none"
+        current.effective = "none"
     end if
 
-    a.kernel.env.ACTIVE = a.kernel.active_session.id
+    if is_error(res) then return res.stack("session.activate")
 end function
 
 activate = ses_tool.command("activate", activate_args, @activate_func)
 activate.short_description = "Activate current session"
+activate.long_description = "$P;Usage:
+$P;session activate $T;<< Uploads crowsploit and apt/metaxploit
+$P;session activate $bool;-c $T;<< Same as above, but also uploads crypto
+$P;session activate $bool;--nolibs $T;<< Uploads crowsploit and no libs
+$P;session activate $bool;"
+
 
 // deactivate
-
 deactivate_args = []
 deactivate_func = function(a)
     kernel = a.kernel
@@ -282,6 +338,9 @@ deactivate_func = function(a)
 
     kernel.active_sessions.pop()
     kernel.active_session = kernel.active_sessions[-1]
+    kernel.active_session.effective = "none"
+    kernel.env.STATUS = "Jumped"
+    kernel.env.EFFECTIVE = "None"
     exit
 end function
 

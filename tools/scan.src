@@ -10,7 +10,7 @@ show_exploits = function(exlib, title, ip)
     tab_data = []
 
     for exploit in exploits
-        data = exploit.data(ip)
+        data = _global.kernel.color(exploit.data(ip))
         tab_data.push([_global.kernel.color("$S;"+(len(tab_data)+1))] + data[3:])
     end for
 
@@ -115,15 +115,16 @@ scantool = Tool.New("scan", "1.5.1")
 scantool.short_description = "Scan ports and libraries for versions & exploits"
 scantool.long_description = "Scan ports and libraries for versions & exploits"
 
+// main
 // host
 
 main_args = [
     Arg.New("host", "ip").Info("Host to scan"),
     Kwarg.New("exploits", "bool").Alias("e").Info("Scan and try exploits (Will leave logs)"),
     Kwarg.New("ports", "string").Alias("p").Info("Which ports to scan"),
-    Kwarg.New("subcomputers", "bool").Default(false).Alias("s").Info("Show subcomputers"),
-    Kwarg.New("no-ask", "bool").Alias("n").Default(false).Info("Don't ask for password elevation (Only works if --exploits is used)"),
-    Kwarg.New("local-hardware", "bool").Alias("h").Default(false).Info("Use local session hardware for scanning (Only works if --exploits is used)"),
+    Kwarg.New("subcomputers", "bool").Alias("s").Info("Show subcomputers"),
+    Kwarg.New("no-ask", "bool").Alias("n").Info("Don't ask for password elevation (Only works if --exploits is used)"),
+    Kwarg.New("local-hardware", "bool").Alias("h").Info("Use local session hardware for scanning (Only works if --exploits is used)"),
     Kwarg.New("skip-existing", "bool").Alias("k").Default(true).Info("Only scan exploits that aren't already known (Only works if --exploits is used)"),
     Kwarg.New("list","bool").Alias("l").Info("Show exploits without enumerating (Ignored if --exploits is used)"),
 ]
@@ -258,10 +259,10 @@ main_func = function(a)
         
         exploits = exlib.exploits_with_version(version)
         in_db = exploits != []
-        port[-1] = ["False", "True"][in_db]
+        port[-1] = a.kernel.color(["$bad;False", "$good;True"][in_db])
 
         if a.list then
-            show_exploits(exlib, lib, a.host)
+            show_exploits(exlib, lib, port[-2])
         end if
     end for
 
@@ -323,7 +324,7 @@ $S;scan $string;112.2.54.12 -p 80,21"
 
 lan_args = [
     Kwarg.New("no-ports", "bool").Alias("n").Info("Don't scan ports"),
-    Kwarg.New("refresh", "bool").Default(false).Alias("r").Info("Refresh network cache")
+    Kwarg.New("refresh", "bool").Alias("r").Info("Refresh network cache")
 ]
 
 lan_func = function(a)
@@ -332,17 +333,20 @@ lan_func = function(a)
 
     net_cols = [
         "<#d33>",
-        "<#d73>",
-        "<#dc3>",
         "<#3d3>",
         "<#3dc>",
         "<#9ea>",
         "<#93c>",
-        "<#36d>",
+        "<#34f>",
         "<#ddd>",
-        "<#4b3>",
+        "<#c63>",
+        "<#67e>",
         "<#ef7>",
         "<#bbb>",
+        "<#fd3>",
+        "<#f8f>",
+        "<#f77>",
+        "<#f92>",
     ]
     
     type_cols = {}
@@ -365,10 +369,9 @@ lan_func = function(a)
     for x in ips
         ip = x.key
         type = x.value
-
         subnet = ip.split("\.")[:-1].join(".")
-        subnet_id = sum(map_list(subnet, [@code]))
-        color = net_cols[subnet_id % net_cols.len]
+        subnet_id = floor(rnd(sum(map_list(subnet, [@code])))*net_cols.len)
+        color = net_cols[subnet_id]
         ports = []
         if not a["no-ports"] then
             ports = local_ports(get_router, ip)
@@ -428,10 +431,10 @@ $S;scan lan"
 libs_args = [
     Kwarg.New("library", "string").Alias("l").Info("Library to scan"),
     Kwarg.New("exploits", "bool").Alias("e").Info("Scan and try libraries for exploits (Will leave logs)"),
-    Kwarg.New("short", "bool").Alias("s").Default(false).Info("Show a shortened version of the result"),
-    Kwarg.New("full", "bool").Alias("f").Default(false).Info("Show all exploits for a library"),
-    Kwarg.New("no-ask", "bool").Alias("n").Default(false).Info("Don't ask for password elevation (Only works if --exploits is used)"),
-    Kwarg.New("local-hardware", "bool").Alias("h").Default(false).Info("Use local session hardware for scanning (Only works if --exploits is used)"),
+    Kwarg.New("short", "bool").Alias("s").Info("Show a shortened version of the result"),
+    Kwarg.New("full", "bool").Alias("f").Info("Show all exploits for a library"),
+    Kwarg.New("no-ask", "bool").Alias("n").Info("Don't ask for password elevation (Only works if --exploits is used)"),
+    Kwarg.New("local-hardware", "bool").Alias("h").Info("Use local session hardware for scanning (Only works if --exploits is used)"),
     Kwarg.New("skip-existing", "bool").Alias("k").Default(true).Info("Only scan exploits that aren't already known (Only works if --exploits is used)")
 ]
 

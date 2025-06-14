@@ -10,6 +10,7 @@ Session.shell = null
 Session.computer = null
 Session.file = null
 Session.root_file = null
+Session.effective = null
 Session.history = []
 Session.path = null
 
@@ -62,6 +63,7 @@ Session.New = function(obj=null, username=null)
     end if
 
     session.file.show_corrupt = true
+    session.effective = "none"
     return session
 end function
 
