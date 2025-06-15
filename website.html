@@ -3,329 +3,329 @@
 <title>Crowsploit is a modular tool dedicated to allowing the end-user to dictate how to use the tool. This is done through a modular settings file much alike the .bashrc you would see in linux. As well as giving the end-user kernel access using the command API</title>
 <style>
 
-body {
-    margin:0;
-    background-color:#0e1320;
-    width:100%;
-}
+    body {
+        margin:0;
+        background-color:#0e1320;
+        width:100%;
+    }
 
-.superroot {
-  text-shadow: 0px 0px 30px #880000;
-  color:red;
-}
+    .superroot {
+    text-shadow: 0px 0px 30px #880000;
+    color:red;
+    }
 
-#banner {
-    background-color:#182035;
-    width:100%;
-    margin:0;
-    height:50px;
-    text-align: center;
-    vertical-align: center;
-    color:#8ae09f;
-    font-weight: bold;
-    font-size: 35px;
-    border-bottom:2px solid #0e1320;
-}
+    #banner {
+        background-color:#182035;
+        width:100%;
+        margin:0;
+        height:50px;
+        text-align: center;
+        vertical-align: center;
+        color:#8ae09f;
+        font-weight: bold;
+        font-size: 35px;
+        border-bottom:2px solid #0e1320;
+    }
 
-#content {
-    width:100%;
-    /* background-color:red; */
-    height:calc(100vh - 100px);
-    margin:0;
-    overflow-y:scroll;
-}
+    #content {
+        width:100%;
+        /* background-color:red; */
+        height:calc(100vh - 100px);
+        margin:0;
+        overflow-y:scroll;
+    }
 
-#footer {
-    text-align: center;
-    /* padding-top: 15px; */
-    width:100%;
-    background-color:#182035;
-    height:50px;
-}
+    #footer {
+        text-align: center;
+        /* padding-top: 15px; */
+        width:100%;
+        background-color:#182035;
+        height:50px;
+    }
 
-.tryit {
-    padding:10px;
-    width:200px;
-    font-size: 20px;
-    color:#b2d6ff;
-    background-color:#182035;
-    border:2px solid #232c44;
-    border-radius: 5px;
-}
+    .tryit {
+        padding:10px;
+        width:200px;
+        font-size: 20px;
+        color:#b2d6ff;
+        background-color:#182035;
+        border:2px solid #232c44;
+        border-radius: 5px;
+    }
 
-.tryit:hover {
-    background-color: #334063;
-}
+    .tryit:hover {
+        background-color: #334063;
+    }
 
-.section {
-    margin-right: auto;
-    margin-left: auto;
-    width:90vw;
-    background-color: #070c1a;
-    height: auto;
-    overflow-wrap:normal;
-    border-bottom-left-radius: 20px;
-    border-bottom-right-radius: 20px;
-    margin-bottom:50px;
-    text-align: center;
-    padding-top:15px;
-    padding-bottom: 15px;
-}
+    .section {
+        margin-right: auto;
+        margin-left: auto;
+        width:90vw;
+        background-color: #070c1a;
+        height: auto;
+        overflow-wrap:normal;
+        border-bottom-left-radius: 20px;
+        border-bottom-right-radius: 20px;
+        margin-bottom:50px;
+        text-align: center;
+        padding-top:15px;
+        padding-bottom: 15px;
+    }
 
-.section p {
-    text-align: left;
-    width:700px;
-    margin-right: auto;
-    margin-left: auto;
-}
+    .section p {
+        text-align: left;
+        width:700px;
+        margin-right: auto;
+        margin-left: auto;
+    }
 
-#menu .active {
-    background-color: #232c44 ;
-}
+    #menu .active {
+        background-color: #232c44 ;
+    }
 
-p {
-    font-size: large;
-    color:rgb(196, 210, 212);
-    font-weight:normal;
-    margin-left: 50px;
-    margin-right: 50px;
-}
+    p {
+        font-size: large;
+        color:rgb(196, 210, 212);
+        font-weight:normal;
+        margin-left: 50px;
+        margin-right: 50px;
+    }
 
-h3,
-h1 {
-    color:#b2d6ff;
-}
+    h3,
+    h1 {
+        color:#b2d6ff;
+    }
 
-h2 {
-    color:#8ae09f;
-}
+    h2 {
+        color:#8ae09f;
+    }
 
-#menu {
-    border-top-left-radius: 15px;
-    border-top-right-radius: 15px;
-    margin-top: 50px;
-    height:50px;
-    margin-left: auto;
-    margin-right: auto;
-    background-color:#182035;
-    width:90vw;
-    text-align:center;
-}
+    #menu {
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+        margin-top: 50px;
+        height:50px;
+        margin-left: auto;
+        margin-right: auto;
+        background-color:#182035;
+        width:90vw;
+        text-align:center;
+    }
 
-#menu button {
-    border:none;
-    background-color:rgba(0,0,0,0);
-    height:50px;
-    font-size: 30px;
-    padding-right: 20px;
-    padding-left: 20px;
-    color:#b2d6ff;
-}
+    #menu button {
+        border:none;
+        background-color:rgba(0,0,0,0);
+        height:50px;
+        font-size: 30px;
+        padding-right: 20px;
+        padding-left: 20px;
+        color:#b2d6ff;
+    }
 
-#menu button:hover {
-    background-color:#31436b;
-}
+    #menu button:hover {
+        background-color:#31436b;
+    }
 
-#menu button:active {
-    transform: none !important;
-}
+    #menu button:active {
+        transform: none !important;
+    }
 
-.hidden {
-    display: none;
-}
+    .hidden {
+        display: none;
+    }
 
-#discordinput {
-    background-color:rgba(0,0,0,0);
-    border:none;
-    color:#b2d6ff;
-    width:auto;
-    font-size: large;
-    text-align: center;
-    margin-top: -10px;
-    font-weight: bold;
-}
+    #discordinput {
+        background-color:rgba(0,0,0,0);
+        border:none;
+        color:#b2d6ff;
+        width:auto;
+        font-size: large;
+        text-align: center;
+        margin-top: -10px;
+        font-weight: bold;
+    }
 
-.p {
-    color:#08f;
-}
+    .p {
+        color:#08f;
+    }
 
-.s {
-    color : #0cc
-}
+    .s {
+        color : #0cc
+    }
 
-.t {
-    color : #669
-}
+    .t {
+        color : #669
+    }
 
-.t2 {
-    color : #99c
-}
+    .t2 {
+        color : #99c
+    }
 
-.string {
-    color : #d63
-}
+    .string {
+        color : #d63
+    }
 
-.int {
-    color : #39d
-}
+    .int {
+        color : #39d
+    }
 
-.bool {
-    color : #35f
-}
+    .bool {
+        color : #35f
+    }
 
-.ip {
-    color : #d44
-}
+    .ip {
+        color : #d44
+    }
 
-.code {
-    background-color:black;
-    color:rgb(207, 207, 207);
-    padding-left: 10px;
-    padding-right: 10px;
-    padding-top:5px;
-    padding-bottom:5px;
-    font-size: medium;
-    font-weight: bold;
-}
+    .code {
+        background-color:black;
+        color:rgb(207, 207, 207);
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-top:5px;
+        padding-bottom:5px;
+        font-size: medium;
+        font-weight: bold;
+    }
 
-details {
-    width:70%;
-    margin-top:0px;
-    margin-right: auto;
-    margin-left: auto;
-    background-color: #0e1320;
-    border-radius: 0px 0px 5px 5px;
-    padding: 10px;
-    overflow-wrap:break-word;
-}
+    details {
+        width:70%;
+        margin-top:0px;
+        margin-right: auto;
+        margin-left: auto;
+        background-color: #0e1320;
+        border-radius: 0px 0px 5px 5px;
+        padding: 10px;
+        overflow-wrap:break-word;
+    }
 
-summary {
-    background-color: #182035;
-    color:#b2d6ff;
-    padding:10px;
-    border-radius: 5px 5px 0px 0px;
-    width:70%;
-    margin-left: auto;
-    margin-right: auto;
-    font-size: 17px;
-}
+    summary {
+        background-color: #182035;
+        color:#b2d6ff;
+        padding:10px;
+        border-radius: 5px 5px 0px 0px;
+        width:70%;
+        margin-left: auto;
+        margin-right: auto;
+        font-size: 17px;
+    }
 
-summary:hover {
-    background-color: #1d263d;
-}
+    summary:hover {
+        background-color: #1d263d;
+    }
 
 
-/* * {
-    box-sizing: border-box;
-    padding: 0;
-    margin: 0;
-} */
+    /* * {
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+    } */
 
-/* body {
-    overflow-y: scroll;
-    background-color: black;
-} */
+    /* body {
+        overflow-y: scroll;
+        background-color: black;
+    } */
 
-#terminal {
-    background-color: black;
-    line-height: 25px;
-    width: 100%;
-    height:auto;
-    color:#888;
-    padding-left:10px;
-    padding-top:10px;
-    font-size: 20px;
-    letter-spacing: .1em;
-    white-space: pre;
-    word-wrap: break-word;
-}
+    #terminal {
+        background-color: black;
+        line-height: 25px;
+        width: 100%;
+        height:auto;
+        color:#888;
+        padding-left:10px;
+        padding-top:10px;
+        font-size: 20px;
+        letter-spacing: .1em;
+        white-space: pre;
+        word-wrap: break-word;
+    }
 
-#input-box {
-    line-height: 25px;
-    width:100%;
-    margin-top:0;
-    height: 50px;
-    background-color: black;
-    border: none;
-    font-size: 20px;
-    color:white;
-    letter-spacing: .1em;
-    vertical-align: middle;
-    padding-left: 10px;
-}    
+    #input-box {
+        line-height: 25px;
+        width:100%;
+        margin-top:0;
+        height: 50px;
+        background-color: black;
+        border: none;
+        font-size: 20px;
+        color:white;
+        letter-spacing: .1em;
+        vertical-align: middle;
+        padding-left: 10px;
+    }    
 
-#input-box input {
-    max-width: 100%;
-    line-height: 25px;
-    height: 25px;
-    border: none;
-    font-size: 20px;
-    color:#bcf;
-    display: inline-block;
-    letter-spacing: .1em;
-    background-color:rgba(50,50,50,0);
-    padding: 0;
-    margin: 0;
-    caret-color: red;
-    text-align: left;
-    font-weight: normal;
-}
+    #input-box input {
+        max-width: 100%;
+        line-height: 25px;
+        height: 25px;
+        border: none;
+        font-size: 20px;
+        color:#bcf;
+        display: inline-block;
+        letter-spacing: .1em;
+        background-color:rgba(50,50,50,0);
+        padding: 0;
+        margin: 0;
+        caret-color: red;
+        text-align: left;
+        font-weight: normal;
+    }
 
-#prefix {
-    height:50px;
-    /* line-height: 0px; */
-    font-size: 20px;
-    margin-top: 0px;
-    display: inline;
-}
+    #prefix {
+        height:50px;
+        /* line-height: 0px; */
+        font-size: 20px;
+        margin-top: 0px;
+        display: inline;
+    }
 
-/* Colors for printing */
-span {
-    white-space: pre;
-    letter-spacing: .1em;
-    margin:0;
-}
+    /* Colors for printing */
+    span {
+        white-space: pre;
+        letter-spacing: .1em;
+        margin:0;
+    }
 
-.P {color:#08f}
-.S {color:#0cc}
-.T {color:#669}
-.T2 {color:#99c}
-.input {color:#bcf}
-.root {color:#f60}
-.error {color:#e05}
-.lsfolder { color:#08f}
-.lsbinary { color:#0e8}
-.lsfile { color:#aad}
-.string { color:#d63}
-.int { color:#39d}
-.float { color:#b5e}
-.bool { color:#35f}
-.ip { color:#d44}
-.rest { color:#557}
-.big {font-size: 50px; line-height: 50px;}
+    .P {color:#08f}
+    .S {color:#0cc}
+    .T {color:#669}
+    .T2 {color:#99c}
+    .input {color:#bcf}
+    .root {color:#f60}
+    .error {color:#e05}
+    .lsfolder { color:#08f}
+    .lsbinary { color:#0e8}
+    .lsfile { color:#aad}
+    .string { color:#d63}
+    .int { color:#39d}
+    .float { color:#b5e}
+    .bool { color:#35f}
+    .ip { color:#d44}
+    .rest { color:#557}
+    .big {font-size: 50px; line-height: 50px;}
 
-#wowzers {
-    /* position: absolute; */
-    left:0;
-    top:0;
-    overflow-y: scroll;
-    height: 100vh;
-    width: 100vw;
-    display: none;
-    background-color: black;
-    margin: 0px;
-    padding:0px;
-}
+    #wowzers {
+        /* position: absolute; */
+        left:0;
+        top:0;
+        overflow-y: scroll;
+        height: 100vh;
+        width: 100vw;
+        display: none;
+        background-color: black;
+        margin: 0px;
+        padding:0px;
+    }
 
-.black {
-    background-color: black;
-}
+    .black {
+        background-color: black;
+    }
 
-h5 {
-    font-size: small;
-    color:#31436b;
-    font-style: italic;
-}
+    h5 {
+        font-size: small;
+        color:#31436b;
+        font-style: italic;
+    }
 </style>
 
 <html>
@@ -351,9 +351,49 @@ h5 {
             <br>
             <br>
             <details onclick="hideme(this)">
+                <summary><b>November 1 2004</b></summary>
+                <h3>Crowsploit Kernel</h3>
+                <h5>(crowsploit)</h5>
+                <p>Added optional streamermode</p>
+                <p>Prompt replaced to use environment variables</p>
+                <p>fixed custom hex colors with captitals not working properly</p>
+                <p>Added useful aliases to default settings</p>
+                <p>Fixed librshell not installing on boot</p>
+                <h3>System</h3>
+                <h5>(System module)</h5>
+                <p>Added ability to rename during upload/download</p>
+                <p>Added ability to stop system monitor</p>
+                <p>Fixed --port not having an alias for ftp</p>
+                <p>Fixed ifconfnig --connect not working properly</p>
+                <p>Fixed Chown having a required user argument</p>
+                <p>Upload/Download can now have a target folder</p>
+                <p>Touch now allows to set a message</p>
+                <h3>Session</h3>
+                <h5>(System module)</h5>
+                <p>Session lists will now show public/local ips</p>
+                <p>Session list wan ip's will be colored differently</p>
+                <p>Session activate will run properly if crowsploit is renamed</p>
+                <p>Allow session to activate with a preexisting crowsploit</p>
+                <h3>Exploit</h3>
+                <h5>(Exploit module)</h5>
+                <p>Added all colors from the exploit list to .crowrc</p>
+                <p>Fixed crash in explit list</p>
+                <p>Fixed local firewall exploit causing session crash</p>
+                <p>Fixed exploit rescan not targetting the right IP</p>
+                <h3>Brute</h3>
+                <h5>(Exploit module)</h5>
+                <p>Failed brute hash requests for normal crack</p>
+                <h3>Rshell</h3>
+                <h5>(Exploit module)</h5>
+                <p>Fixed rshell server description not existing</p>
+                <h3>zday</h3>
+                <h5>(Exploit module)</h5>
+                <p>Fixed zday module not having a description</p>
+            </details>
+            <details onclick="hideme(this)">
                 <summary><b>July 17 2004</b></summary>
                 <h3>Crowsploit Kernel</h3><br/>
-                <h5> (crowsploit)</h5>
+                <h5>(crowsploit)</h5>
                 <p>Added auto dns resolve for all IP arguments</p>
                 <p>Moved crowsploit banner to bottom of boot up</p>
                 <p>Fixed error when <span class="code">>></span> or <span class="code">></span> output to binary</p>
