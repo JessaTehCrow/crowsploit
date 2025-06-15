@@ -3,7 +3,7 @@ import_code("../libs/sessionmanager")
 import_code("../libs/proxyextension")
 import_code("../libs/argparse")
 import_code("../constants/settings")
-import_code("./overrides.src")
+import_code("./overrides")
 
 Kernel = {}
 Kernel.DEBUG = false

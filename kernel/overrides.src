@@ -5,7 +5,7 @@ __override_prompts = function(kernel)
     override_prompts = {
         main_prompt : "<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$STATUS $S;$SESTYPE $EFFECTIVE $T2;$CURRENT $ip;$WAN</voffset><pos=0></size>$T;($PWD) $P;$USER$T;@$S;$COMP $T2;$SUFFIX$input;",
         zday_prompt : "<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$CURRENT $WAN</voffset><pos=0></size>$PWD $T2;$SUFFIX$input;",
-        old_main : override_prompts.main_prompt
+        old_main : "<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$STATUS $S;$SESTYPE $EFFECTIVE $T2;$CURRENT $ip;$WAN</voffset><pos=0></size>$T;($PWD) $P;$USER$T;@$S;$COMP $T2;$SUFFIX$input;",
     }
     do_renew = false
 
