@@ -2635,8 +2635,71 @@ cloak_cmd = mytool.standalone_command("cloak", cloak_args, @cloak_func)
 cloak_cmd.short_description = "Enable or disable streamer mode"
 cloak_cmd.long_description = "$P;Usage:
 $P;system cloak
-$P;system cloak $bool;--status
-"
+$P;system cloak $bool;--status"
+
+
+// neofetch
+
+neofetch_args = []
+neofetch_func = function(a)
+    temp_motd = motd.trim().split(char(10))
+    longest = 0
+    for x in temp_motd
+        tmp = a.kernel.color(rtrim(x))
+        temp_motd[__x_idx] = tmp
+        length = len(unformat_string(tmp))
+        longest = [longest, length][length>longest]
+    end for
+    
+    longest = longest + 4
+    colors = a.kernel.color(["$P;", "$S;", "$T;", "$T2;", "$input;", "$root;",
+              "$obj_shell;", "$obj_computer;", "$obj_file;",
+              "$lsfolder;", "$lsbinary;", "$lsfile;", "$lscode;",
+              "$string;", "$int;", "$float;", "$ip;", "$bool;"])
+    
+    new_colors = []
+    for x in colors
+        color = x[2:].split("=")[-1][:-1]
+        if not color.is_match("^[a-fA-F0-9]+$") then continue
+        if len(color) == 3 then color = color[0] + color[0] + color[1] + color[1] + color[2] + color[2]
+        new_colors.push("<mark=#" + color + ">--")
+    end for
+    middle = ceil(len(colors)/2)
+    template_colors = ["<size=130%>"+new_colors[:middle].join(""), "<size=130%>"+new_colors[middle:].join("")]
+
+    kernel_version = a.kernel.version
+    template = [
+        "$P;$USER$T2;@$S;$COMP",
+        "$T2;------------------",
+        "$P;Kernel    $T2;: $S;" + kernel_version,
+        "$P;Interface $T2;: $S;" + interface_version,
+        "$P;WAN       $T2;: $S;$WAN",
+        "$P;LAN       $T2;: $S;$LAN",
+        "$P;Tools     $T2;: $S;" + len(a.kernel.tools),
+        " "
+    ] + template_colors
+
+    result = []
+    count = max(len(temp_motd), len(template))
+    motd_offset = ceil((len(template) - len(temp_motd)) / 2)
+    // print([count, len(template), len(temp_motd)].join(" | "))
+    for x in range(0, count)
+        tmp = ""
+        if x >= motd_offset and len(temp_motd) > x-motd_offset then tmp = temp_motd[x-motd_offset]
+        if len(template) > x then tmp = tmp + " "*(longest-len(unformat_string(tmp))) + template[x]
+        result.push(tmp)
+    end for
+    new_motd = result.join(char(10))
+
+    for x in a.kernel.env
+        new_motd = new_motd.replace("\$"+x.key, str(x.value).trim)
+    end for
+    new_motd = new_motd.replace("root", "$root;root")
+    
+    print(new_motd)
+end function
+
+neofetch_cmd = mytool.command("neofetch", neofetch_args, @neofetch_func)
 
 // init
 

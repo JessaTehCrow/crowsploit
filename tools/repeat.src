@@ -4,6 +4,7 @@ until_tool = Tool.New("until", "1.0.4")
 until_tool.short_description = "repeat commands"
 until_tool.long_description = "repeat commands until certain outputs are received, for x amount of times, or other reasons"
 
+// success
 success_args = [
     Arg.New("command", "string").Info("Command to repeat for success"),
     Kwarg.New("inverted", "bool").Alias("i").Alias("i").Info("Repeat until it fails instead"),
@@ -19,7 +20,7 @@ success_func = function(a)
 
     last_date = get_epoch
     delay_min = ceil(a.delay / (4/16)) + 2
-    tmp_file = Temp.New(a.kernel, identifier, delay_min + 2, "Monitoring " + wan + " at " + kernel.session.lan)
+    tmp_file = Temp.New(a.kernel, identifier, delay_min + 2, "Running command " +  a.command[:10])
     if is_error(tmp_file) then return tmp_file.stack("system.monitor")
 
     while (result != (not a.inverted)) and tmp_file.is_alive
