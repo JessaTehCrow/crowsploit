@@ -44,7 +44,7 @@ update_libs = function(kernel, session, path)
     if is_error(session.file.get_folder(path)) then
         p = Path.New(path)
         res = session.computer.create_folder(p.folder, p.name)
-        if is_error(res) then kernel.print("$error;No permission to create folder: /etc/crow/libs")
+        if is_error(res) then kernel.print(res.message)
     end if
 
     loaded = session.load_libs(path)
@@ -171,7 +171,6 @@ kernel_setup = function()
     kernel.use_session(ses)
     kernel.active_session = ses
 
-
     update_libs(kernel, ses, "/etc/crow/libs")
 end function
 
@@ -250,8 +249,6 @@ else
 
     error = kernel.load_settings(session.homepath + "/.crowrc")
 
-    kernel.use_session(session)
-
     if is_error(error) then
         print("<#e05>Missing settings")
         print("<#e05>Creating settings in : " + session.homepath + "/.crowrc")
@@ -260,6 +257,8 @@ else
         error = kernel.load_settings(session.homepath + "/.crowrc")
     end if
     if is_error(error) then exit(error.message)
+
+    kernel.use_session(session)
 
     // Backwards compatability with loading library stuff
     if not kernel.settings.hasIndex("library") then
