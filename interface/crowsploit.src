@@ -5,7 +5,7 @@ import_code("../constants/motd")
 
 if program_path == "/etc/crow/tools/crowsploit" then exit("<#f00>crowsploit detected running as a tool. Quitting loop")
 
-interface_version = "1.6.0"
+interface_version = "1.6.1"
 
 get_fact = function()
     fact = fun_facts[random(0,fun_facts.len-1)]

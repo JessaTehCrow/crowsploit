@@ -1,9 +1,11 @@
 __override_prompts = function(kernel)
     main_prompt = md5("<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$S;$type $status $session $ip</voffset><pos=0></size>$T;($pwd) $P;$usr$T;@$S;$comp $T2;$suffix$input;")
     zday_prompt = md5("<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$session $ip</voffset><pos=0></size>$pwd $T2;$suffix$input;")
+    old_main    = md5("<voffset=2em> </voffset><pos=0><size=85%><voffset=1.4em>$S;$type $status $session $ip</voffset><pos=0></size>$T;($pwd) $P;$usr$T;@$S;$comp $T2;$suffix$input;")
     override_prompts = {
         main_prompt : "<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$STATUS $S;$SESTYPE $EFFECTIVE $T2;$CURRENT $ip;$WAN</voffset><pos=0></size>$T;($PWD) $P;$USER$T;@$S;$COMP $T2;$SUFFIX$input;",
         zday_prompt : "<voffset=2em> </voffset><pos=0><size=12.75px><voffset=1.4em>$CURRENT $WAN</voffset><pos=0></size>$PWD $T2;$SUFFIX$input;",
+        old_main : override_prompts.main_prompt
     }
     do_renew = false
 
