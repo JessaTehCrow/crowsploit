@@ -65,7 +65,7 @@ Kernel.use_session = function(session)
     end if
     
     self.env.STATUS = status
-
+    
     suffix = self.settings.input.file
     ses_type = "File"
     if session.hasIndex("partial_interpreter") and session.partial_interpreter != null then

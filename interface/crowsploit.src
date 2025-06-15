@@ -250,8 +250,6 @@ else
 
     error = kernel.load_settings(session.homepath + "/.crowrc")
 
-    kernel.use_session(session)
-
     if is_error(error) then
         print("<#e05>Missing settings")
         print("<#e05>Creating settings in : " + session.homepath + "/.crowrc")
@@ -260,6 +258,8 @@ else
         error = kernel.load_settings(session.homepath + "/.crowrc")
     end if
     if is_error(error) then exit(error.message)
+
+    kernel.use_session(session)
 
     // Backwards compatability with loading library stuff
     if not kernel.settings.hasIndex("library") then
