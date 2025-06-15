@@ -8,7 +8,7 @@ import_code("./overrides.src")
 Kernel = {}
 Kernel.DEBUG = false
 Kernel.nightly = false
-Kernel.version = "2.19.2"
+Kernel.version = "2.19.3"
 Kernel.keep_session = true
 
 Kernel.sessions = []
