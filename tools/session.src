@@ -27,7 +27,7 @@ ip_color = function(ip)
     return color
 end function
 
-ses_tool = Tool.New("session", "1.6.0")
+ses_tool = Tool.New("session", "1.6.1")
 
 ses_tool.short_description = "Session manager"
 ses_tool.long_description = "Manage your sessions and swap between them"

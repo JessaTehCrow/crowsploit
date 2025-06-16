@@ -3,7 +3,7 @@ import_code("../libs/sessionmanager")
 import_code("../libs/syntax_parser")
 import_code("../libs/tmp")
 
-mytool = Tool.New("system", "1.10.5")
+mytool = Tool.New("system", "1.10.6")
 
 mytool.short_description = "All default system commands"
 mytool.long_description = "All default system commands"
@@ -66,7 +66,7 @@ settings.set("interface", {
     "streamer_mode" : "false",
     "temp_path"     : "/etc/crow/tmp"
 })
-
+1`r4c
 mytool.settings = settings
 
 
@@ -1581,8 +1581,8 @@ download_func = function(a)
     else if file_overwrite then
         new_name = file.name
         if a.name != null and a.name != file.name then new_name = a.name
-        session.computer.touch(target_file.path, new_name)
-        f = session.file.get_file(target_file.path + "/" + new_name)
+        current.computer.touch(target_file.path, new_name)
+        f = current.file.get_file(target_file.path + "/" + new_name)
         if is_error(f) then return f.stack("system.upload")
         f.set_content(file.get_content)
 
