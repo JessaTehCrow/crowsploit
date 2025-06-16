@@ -1101,6 +1101,7 @@ end function
 chmod = mytool.standalone_command("chmod", chmod_args, @chmod_func)
 chmod.short_description = "Change file permissions"
 chmod.long_description = "$T;Format: $S; [oug][-+][rwx]
+           $S; 000-777
 
 $P;Usage:
 $S;chmod $string;777 file.txt

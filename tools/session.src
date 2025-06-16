@@ -20,6 +20,7 @@ ip_color = function(ip)
         "<#f92>",
     ]
 
+    if not is_valid_ip(ip) then return "$unknown;"
     subnet = ip.split("\.")[:-1].join(".")
     subnet_id = floor(rnd(sum(map_list(subnet, [@code])))*net_cols.len)
     color = net_cols[subnet_id]
@@ -65,22 +66,15 @@ ses_data = function(session, active, current, active_sessions)
         user_color = "$guest;"
     end if
 
-    return _global.kernel.color([
+    data = [
         "<#4af>"+session.id,
         status,
         user_color + session.user,
         "$obj_"+object.lower+";"+object,
         ip_color(session.wan)+session.wan,
         "$S;"+session.lan,
-        // session.comp_name,
-        // ["<#4fa>Yes", "<#fa4>No"][session.shell == null],
-        // ["<#4fa>Yes", "<#fa4>No"][session.computer == null],
-        // ["<#4fa>Yes", "<#fa4>No"][session.file == null],
-        // ["<#4fa>Yes", "<#fa4>No"][session.router == null],
-        // ["<#4fa>Yes", "<#fa4>No"][session.metax == null],
-        // ["<#4fa>Yes", "<#fa4>No"][session.crypto == null],
-        // ["<#4fa>Yes", "<#fa4>No"][session.apt == null],
-    ])
+    ]
+    return _global.kernel.color(data)
 end function
 
 sesinfo = function(sessions, active, current, active_sessions)
@@ -90,6 +84,7 @@ sesinfo = function(sessions, active, current, active_sessions)
         sessions = [sessions]
     end if
 
+    log("getting sesinfo tab data")
     for s in sessions
         tab_data.push(ses_data(s, active, current, active_sessions))
     end for
@@ -101,8 +96,9 @@ sesinfo = function(sessions, active, current, active_sessions)
         "Type",
         "Public",
         "Local",
-    ]
+    ]   
 
+    log("parsing tabdata")
     result = tabulate_data(tab_data, titles)
     if is_error(result) then return result.stack("session.sesinfo")
     print(result.string)
@@ -206,6 +202,7 @@ use_args = [
 use_func = function(a)
     ses = null
     if a.session_id != null then
+        log("Locating session")
         found = false
         for x in a.kernel.sessions
             if x.id == a.session_id then 
@@ -218,14 +215,19 @@ use_func = function(a)
         end if
     end if
 
+
     if a.session_id == null then
+        log("Printing sessions")
         list_sessions(a)
+        log("Asking session")
         ses = ask_session(a.kernel.sessions)
         if ses == null then return
     else
+        log("Showing session info")
         sesinfo(ses, a.kernel.active_session, ses, a.kernel.active_sessions)
     end if
 
+    log("Using session")
     a.kernel.use_session(ses)
 end function
 
@@ -243,6 +245,7 @@ activate_args = [
 ]
 
 activate_func = function(a)
+    log("Activating session")
     if a.kernel.session.shell == null then return ObjectError.New("session.activate", "shell")
     active = a.kernel.sessions[0]
     crowsploit = active.path
@@ -328,6 +331,7 @@ $P;session activate $bool;"
 // deactivate
 deactivate_args = []
 deactivate_func = function(a)
+    log("Deactivating session")
     kernel = a.kernel
     current = kernel.session
     if kernel.active_session != kernel.session then
