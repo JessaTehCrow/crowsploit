@@ -33,6 +33,9 @@ __override_prompts = function(kernel)
 
     kernel.print("$P;Replaced prompts to fit new architecture")
     kernel.settings.input.prompt = override_prompts[main_prompt]
+    if not kernel.settings.hasIndex("zday") then
+        kernel.settings.zday = {}
+    end if
     kernel.settings.zday.prompt = override_prompts[zday_prompt]
     kernel.raw_settings = new_settings.join(char(10))
     kernel.save_settings()
