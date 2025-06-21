@@ -50,6 +50,7 @@ settings.set("input", {
 settings.set("alias", {
     "c":"clear",
     "la":"ls -la",
+    "man":"help"
 })
 
 settings.set("library", {
@@ -66,7 +67,6 @@ settings.set("interface", {
     "streamer_mode" : "false",
     "temp_path"     : "/etc/crow/tmp"
 })
-1`r4c
 mytool.settings = settings
 
 
