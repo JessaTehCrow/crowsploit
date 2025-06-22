@@ -355,6 +355,8 @@ lan_func = function(a)
     type_cols.switch = "$S;"
     type_cols.camera = "$status_active;"
     type_cols.unknown = "$T;"
+    type_cols.appliance = "$status_jumped;"
+    type_cols.smartphone = "$status_parses;"
 
     ips = null
     if not a.kernel.session.hasIndex("scanlan") or a.refresh then
@@ -379,6 +381,14 @@ lan_func = function(a)
 
         camera = 0
         for port in ports
+            if port[0] == 5555 then
+                type = "smartphone"
+                break
+            end if
+            if port[0] == 1883 then
+                type = "appliance"
+                break
+            end if
             add = false
             if port[0] == 80 then
                 add = true
@@ -406,14 +416,24 @@ lan_func = function(a)
                 port_data = ["Filtered"]
             end if
         end for
-
+        firewall_status = ""
+        if type == "router" or type == "switch" then
+            rules = get_router(ip).firewall_rules
+            firewall_status = "$bad;No"
+            for rule in rules
+                if rule.is_match("DENY") then
+                    firewall_status = "$good;Yes"
+                    break
+                end if
+            end for
+        end if
         port_data = port_data.join(", ")
         if port_data == "Filtered" then port_data = a.kernel.color("$T;Filtered")
 
-        tab_data.push([color + ip, type_col + type, port_data])
+        tab_data.push([color + ip, type_col + type, port_data, firewall_status])
     end for
 
-    result = tabulate_data(tab_data, ["IP", "Type", "Ports"], a.kernel.color(["$T;", "$T2;", "$P;"]))
+    result = tabulate_data(tab_data, ["IP", "Type", "Ports", "Firewall"], a.kernel.color(["$T;", "$T2;", "$P;", "$S;"]))
     a.kernel.line("Local network", result.length)
     print(result.string)
     a.kernel.line("", result.length)
