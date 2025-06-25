@@ -668,7 +668,9 @@ info_func = function(a)
     // External target
     if not a["no-ask"] and not confirmation_prompt("This will leave logs on the target. Continue?") then return 0
 
-    if not a.kernel.active_session.computer.is_network_active then return OsError.New("zday.info", "No internet connection")
+    if not a.kernel.sessions[0].computer.is_network_active then return OsError.New("zday.info", "No internet connection")
+
+    if not a.kernel.active_session.computer.is_network_active then return OsError.New("zday.info", "No internet connection on active session")
     home = a.kernel.sessions[0]
     zday_path = a.kernel.settings.zday.path
     metax = a.kernel.session.metax
@@ -969,7 +971,10 @@ payload_func = function(a)
     end if
     if a.kernel.session.metax == null then return ObjectError.New("exploit.host", "metaxploit")
     if a.kernel.session.computer == null then return ObjectError.New("exploit.host", "computer")
-    if not a.kernel.active_session.computer.is_network_active then return OsError.New("exploit.host", "No internet connection")
+
+    if not a.kernel.sessions[0].computer.is_network_active then return OsError.New("exploit.host", "No internet connection")
+
+    if not a.kernel.active_session.computer.is_network_active then return OsError.New("exploit.host", "No internet connection on active session")
     status = get_status()
     zday_path = a.kernel.settings.zday.path
     ses = a.kernel.session

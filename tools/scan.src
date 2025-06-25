@@ -131,7 +131,8 @@ main_args = [
 
 main_func = function(a)
     // Get data
-    if not a.kernel.active_session.computer.is_network_active then return OsError.New("scan.main","No internet connection")
+    if not a.kernel.sessions[0].computer.is_network_active then return OsError.New("scan.main","No internet connection")
+    if not a.kernel.active_session.computer.is_network_active then return OsError.New("scan.main","No internet connection on active session")
     
     local = is_lan_ip(a.host)
     router = get_router(a.host)
@@ -576,8 +577,8 @@ for_func = function(a)
 
     if a.count == 0 then a.count = 999999999
     if a["max-iterations"] == 0 then a["max-iterations"] = 99999
-
-    if not a.kernel.active_session.computer.is_network_active then return OsError.New("scan.for","No internet connection")
+    if not a.kernel.sessions[0].computer.is_network_active then return OsError.New("scan.for","No internet connection")
+    if not a.kernel.active_session.computer.is_network_active then return OsError.New("scan.for","No internet connection on active session")
 
     libraries = []
     if a.library != null then
