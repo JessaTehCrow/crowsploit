@@ -526,7 +526,7 @@ Computer.touch = function(path, file, content)
     /////backwords compatibility/////
 
     result = self.object.touch(path, file)
-    if result.indexOf("does not exist") != null then 
+    if result isa string and result.indexOf("does not exist") != null then 
         if path[-1] == "/" then path = path[:-1]
         new_path = path.split("/")[1:]
         for p in range(0, new_path.len - 1)
