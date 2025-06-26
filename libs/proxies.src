@@ -539,7 +539,7 @@ Computer.touch = function(path, file, content)
     end if
 
 
-    result = self.object.touch(path, file)
+    if result != 1 then result = self.object.touch(path, file)
     if result isa string then return Error.New("Computer.touch",result)
     if content == null then return
     wait(0.02)
