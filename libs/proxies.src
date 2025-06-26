@@ -522,6 +522,23 @@ Computer.touch = function(path, file, content)
     if err != null then return TypeError.New("Computer.touch","string", typeof(err))
     if file == "" then return OsError.New("Computer.touch", "Filename cannot be empty")
 
+    /////////////////////////////////
+    /////backwords compatibility/////
+
+    result = self.object.touch(path, file)
+    if result.indexOf("doesnt not exist") != null then 
+        if path[-1] == "/" then path = path[:-1]
+        new_path = path.split("/")[1:]
+        for p in range(0, new_path.len - 1)
+            target = "/" + new_path[:p + 1].join("/")
+            if not self.object.File(target) then 
+                error = self.object.create_folder(parent_path(target), target.split("/")[-1])
+                if error isa string then return Error.New("Computer.touch", error)
+            end if
+        end for
+    end if
+
+
     result = self.object.touch(path, file)
     if result isa string then return Error.New("Computer.touch",result)
     if content == null then return

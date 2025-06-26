@@ -145,6 +145,10 @@ kernel_setup = function()
     if is_error(e) then return e
     print("<#4fa>Created folder <#4af>/etc/crow/tmp")
 
+    e = comp.create_folder("/etc/crow", "zday")
+    if is_error(e) then return e
+    print("<#4fa>Created folder <#4af>/etc/crow/zday")
+
     e = comp.touch(ses.homepath, ".crowrc", SETTINGS_DEFAULT)
     if is_error(e) then return e
     print("<#4fa>Created file <#4af>" + ses.homepath + "/.crowrc")

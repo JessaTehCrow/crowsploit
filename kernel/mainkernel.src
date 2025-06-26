@@ -268,6 +268,8 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 break
             end if
             
+            /////////// START MAIN REDIRECTION LOGIC ///////////
+
             if parts.len > 2 and (parts[-2].value == ">>" or parts[-2].value == ">") then
                 path = parts[-1].eval_value
                 if path != "" then 
@@ -287,40 +289,38 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
 
                     if comp and is_error(temp) then 
                         temp = comp.touch(parent_path(path),path.split("/")[-1])
-                        temp = session_file.get_file(path)
+                        redirectFile = session_file.get_file(path)
                     end if
-                    if is_error(temp) then
+                    if is_error(temp) or is_error(redirectFile) then
                         had_success = false
-                        self.last_error = temp
+                        if is_error(temp) then self.last_error = temp else self.last_error = redirectFile
                         break
                     end if
-                    redirectFile = temp
+
                     if not fullRedirect then
                         if not redirectFile.has_permission("r") or not redirectFile.parent.has_permission("w") then
                             redirected = false
-                            self.last_error = PermissionError.New("Kernel.run_command","read & write")
+                            self.last_error = PermissionError.New("stdout.redirect","read & write")
                             continue
                         end if
                     else 
                         if not redirectFile.parent.has_permission("w") then
                             redirected = false
                             fullRedirect = false
-                            self.last_error = PermissionError.New("Kernel.run_command","write")
+                            self.last_error = PermissionError.New("stdout.redirect","write")
                             continue
                         end if
                     end if
-                    for x in range(0,1)
-                        parts.pop()
-                    end for
-                else
-                    for x in range(0,1)
-                        parts.pop()
-                    end for
                 end if
+                for x in range(0,1)
+                    parts.pop()
+                end for
             end if
+            
+            /////////// END MAIN REDIRECTION LOGIC ///////////
 
             if __pipe_idx == 0 then
-                pd = self.piped
+                prev_piped_status = self.piped
                 if redirected then self.piped = true
                 
                 result = cmd_obj.call(self, parts[1:])
@@ -333,9 +333,13 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 end if
 
                 if redirected then 
-                    self.piped = pd
+                    self.piped = prev_piped_status
                     prev = ""
-                    if not fullRedirect then prev = redirectFile.get_content + char(10)
+                    if not fullRedirect then 
+                        cont = redirectFile.get_content
+                        if cont.len == 0 then prev = cont + char(10)
+                        remove(locals, "cont")
+                    end if
                     redirectFile.set_content(prev + unformat_string(self.stdout.join(char(10))))
                     redirected = false
                     fullRedirect = false
@@ -350,7 +354,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
             else
                 was_piped = self.piped
                 if __pipe_idx == command.len - 1 then self.piped = false
-                pd = self.piped
+                prev_piped_status = self.piped
                 self.old_stdout = self.stdout.values
                 self.stdout = []
                 for x in self.old_stdout
@@ -368,9 +372,13 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                     end if
                 end for
                 if redirected then
-                    self.piped = pd
+                    self.piped = prev_piped_status
                     prev = ""
-                    if not fullRedirect then prev = redirectFile.get_content + char(10)
+                    if not fullRedirect then 
+                        cont = redirectFile.get_content
+                        if cont.len != 0 then prev = cont + char(10)
+                        remove(locals, "cont")
+                    end if
                     redirectFile.set_content(prev + unformat_string(redirctbuff))
                     redirected = false
                     fullRedirect = false

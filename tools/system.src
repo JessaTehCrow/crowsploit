@@ -494,9 +494,9 @@ cd_func = function(a)
     a.kernel.session.file = file
 end function
 
-cd = mytool.standalone_command("cd", cd_args, @cd_func)
-cd.short_description = "Change directory"
-cd.long_description = "$P;Examples:
+cd_cmd = mytool.standalone_command("cd", cd_args, @cd_func)
+cd_cmd.short_description = "Change directory"
+cd_cmd.long_description = "$P;Examples:
 $S;cd $string;/etc
 $S;cd $string;/usr/bin
 $S;cd $string;/home/guest/Desktop"
