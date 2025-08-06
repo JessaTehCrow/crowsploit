@@ -291,12 +291,17 @@ File.in_group = function()//@returns {false|true}
 end function
 
 
-File.get_user_ex = function() //@returns {map<sUser,sInGroup>|string}
+File.get_user_ex = function() //@returns {map<sUser,sInGroup>|string} //Does not return error
     self.sanity_check
     root = File.New(self.root_path)
     file = root.find_permission("w",true,true)
-    if not file then return self.get_user
     retmap = {"sUser":"", "sInGroup":""}
+    if not file then
+        result = self.get_user
+        if is_error(result) then result = "unknown"
+        retmap.sUser = result
+        return retmap
+    end if
     eff = "o"
     prevp = file.permissions[1:]
     up = prevp[0:3]
@@ -442,7 +447,7 @@ File.get_effective_permissions = function(Force = true,raw = false, user = null)
 
     effperms = ""
     eff = null
-    if not user then user = self.get_user_ex
+    if not user then user = self.get_user_ex.sUser
     isown = user == self.owner
     ingrp = self.in_group
     if is_error(ingrp) and not Force then return ingrp.stack("File.get_effective_permissions")
@@ -471,7 +476,6 @@ File.get_effective_permissions = function(Force = true,raw = false, user = null)
     end if
 
     if StringPerms == "" then StringPerms = "none"
-    if user isa map then user = user.sUser
     if (user.lower == "unknown" or not user) then return StringPerms+":"+eff
     if user == self.owner then return StringPerms+":u"
     if ingrp == 1 then return StringPerms+":g"
