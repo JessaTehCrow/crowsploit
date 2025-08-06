@@ -555,7 +555,12 @@ Computer.wifi_networks = function(interface)
     return self.object.wifi_networks(interface)
 end function
 
-
+Computer.reboot = function(safeMode = false)
+    if not self.has("reboot") then return PartialObjectError.New("computer", "reboot")
+    if not safeMode isa number then return TypeError.New("Computer.reboot", "number", typeof(safeMode))
+    result = self.object.reboot(safeMode)
+    if result isa string then return Error.New("Computer.reboot",result)
+end function
 
 
 
@@ -624,7 +629,7 @@ Shell.launch = function(program, args)
     return result
 end function
 
-Shell.scp = function(file, target, remote)
+Shell.scp = function(file, target, remote, is_upload = false)
     // if not self.has("scp") then return PartialObjectError.New("shell", "scp")
     err = expect_all([file, target], string)
     if err != null then return TypeError.New("Shell.scp","string", typeof(err))
@@ -640,11 +645,8 @@ Shell.scp = function(file, target, remote)
 
     // result = self.object.scp(file, target, remote)
     result = null
-    if typeof(self.object) != "shell" then
-        result = self.object.put(file, target, remote.object)
-    else
-        result = scp(self.object, file, target, remote.object)
-    end if
+    result = scp(self.object, file, target, remote.object, is_upload)
+
 
     if result == null then return Error.New("shell.scp", "Failed to copy file")
     if result isa string then return Error.New("Shell.scp",result)

@@ -197,9 +197,10 @@ else if hasIndex(custom_obj, "kernel") then
         session.router = get_router
     end if
 
-    session.path = program_path 
-    session.file = session.file.get_folder(current_path)
-    destination = current_path
+    session.path = program_path
+    real_cur_path = session.path.split("/")[:-1].join("/")
+    session.file = session.file.get_folder(real_cur_path)
+    destination = real_cur_path
     
     if not params.indexOf("nolibs") != null then
         active.shell.scp(active.meta_dir, destination, session.shell)
@@ -215,7 +216,7 @@ else if hasIndex(custom_obj, "kernel") then
         else
             // Backward compatability
             for x in ["metaxploit.so", "crypto.so", "aptclient.so"] 
-                res = session.load_lib(destination +"/"+x)
+                res = session.load_lib(destination + "/" + x)
                 if res == null or res == false then continue
                 kernel.print("$S;Loaded " + x[:-3])
             end for

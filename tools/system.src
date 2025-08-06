@@ -466,12 +466,34 @@ $S;ls $bool;-l
 $S;ls $bool;-a
 $S;ls $bool;-la"
 
+// REBOOT //
+
+reboot_args = [
+    Kwarg.New("safe-mode", "bool").Alias("s").Default(false).Info("Restart computer in safe mode(only works on home)")
+]
+
+reboot_func = function(a)
+    if a.kernel.session.computer == null then return ObjectError.New("system.reboot", "computer")
+    if not a.kernel.session.computer.__isa.hasIndex("reboot") then
+        return Error.New("system.reboot", "Current interface does not support rebooting, please update your interface")
+    end if
+    result = a.kernel.session.computer.reboot(a["safe-mode"])
+    if is_error(result) then return result.stack("system.reboot")
+end function
+
+reboot_cmd = mytool.standalone_command("reboot", reboot_args, @reboot_func)
+reboot_cmd.short_description = "Reboot the computer"
+reboot_cmd.long_description = "$P;Usage:
+$S;reboot
+$S;reboot $bool;--safe-mode
+"
 
 
 // CD //
 
 cd_args = [
-    OptionalArg.New("path", "string").Info("Path to change into")
+    OptionalArg.New("path", "string").Info("Path to change into"),
+    Kwarg.New("builtin", "bool").Alias("b").Default(false).Info("If true, the function will also use the builtin cd function")
 ]
 
 cd_func = function(a)
@@ -490,7 +512,10 @@ cd_func = function(a)
 
     if is_error(file) then return file.stack("system.cd")
     if file.status then return OsError.New("system.cd", "Target folder is corrupt or deleted")
-
+    if a.builtin then 
+        result = cd(p.path)
+        if result isa string then return OsError.New("system.cd", result)
+    end if
     a.kernel.session.file = file
 end function
 

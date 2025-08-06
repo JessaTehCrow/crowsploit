@@ -164,7 +164,7 @@ reset_func = function(a)
     r = a.kernel.load_settings(a.kernel.session.homepath + "/.crowrc")
     if not is_error(r) then print("$S;Loaded settings")
 
-    session.file.get_folder(current_path)
+    // session.file.get_folder(current_path)
     a.kernel.use_session(session)
     
     list_sessions(a)
