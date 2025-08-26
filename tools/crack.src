@@ -110,6 +110,7 @@ wifi_func = function(a)
 
     // file crack
     file = comp.File(current_path + "/file.cap")
+    if is_error(file) then return OsError.New("crack.wifi", "File not found(Permission denied or crowsploit was launched with full path?)")
     password = crypto.aircrack(file.path)
     file.delete()
 
