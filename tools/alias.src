@@ -41,9 +41,9 @@ add_func = function(a)
     if not hasIndex(a.kernel.settings, "alias") then
         a.kernel.settings.alias = {}
     end if
-
     aliases = a.kernel.settings.alias
-    if hasIndex(aliases, a.name) then
+    already_exists = hasIndex(aliases, a.name)
+    if already_exists then
         print("$error;Alias already exists:")
         print("$P;" + a.name + " $T;: $T2;" + aliases[a.name])
         print(" ")
@@ -57,16 +57,21 @@ add_func = function(a)
 
     new_settings = []
     replaced = false
-
     for x in a.kernel.raw_settings.split(char(10))
+        if not already_exists then 
+            new_settings.push(x)
+            continue
+        end if
         if not replaced and x.split(" ")[:2] == ["alias", a.name] then 
-            new_settings.push([alias, a.name, "=", a.value].join(" "))
+            new_settings.push(["alias", a.name, "=", a.value].join(" "))
             replaced = true
-        else if not replaced then
+            continue
+        end if
+        if not (replaced and x.split(" ")[:2] == ["alias", a.name]) then 
             new_settings.push(x)
         end if
     end for
-
+    if not already_exists then new_settings.push(["alias", a.name, "=", a.value].join(" "))
     a.kernel.raw_settings = new_settings.join(char(10))
     res = a.kernel.save_settings()
 
