@@ -1037,6 +1037,7 @@ ps_func = function(a)
     ses_comp = a.kernel.session.computer
 
     procs = ses_comp.show_procs
+    if is_error(procs) then return procs.stack("system.ps")
     result = []
     for x in procs.split(char(10))[1:]
         data = x.split(" ")
