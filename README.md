@@ -1,6 +1,8 @@
 # crowsploit
 A hack tool for the game greyhack aimed to be the gmod of tools.
 
+# This project is officially discontinued
+
 ## Building crowsploit
 
 **Make sure you have the vscode greybel addon installed**
@@ -27,3 +29,5 @@ Additional tools can be imported into the same tool by just using `import_code(t
 Turn ON the allow import in greybel settings, before building the devtools
 
 ***MAKE SURE TO TURN IT RIGHT BACK OFF AFTERWARDS***
+
+# NOTE: This technically still a beta version. And thus, lots of bugs, weird structures and just general inconsistencies are expected.
