@@ -39,8 +39,11 @@ Session.New = function(obj=null, username=null)
     session.user = username
     if obj == null then return session
 
-    if username == null then session.user = obj.get_user()
-    
+    if username == null then 
+        user = obj.get_user()
+        if not is_error(user) then session.user = user
+    end if
+
     if obj.type == "shell" then
         session.shell = obj
         session.computer = obj.host_computer
