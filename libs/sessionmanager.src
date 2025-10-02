@@ -39,8 +39,11 @@ Session.New = function(obj=null, username=null)
     session.user = username
     if obj == null then return session
 
-    if username == null then session.user = obj.get_user()
-    
+    if username == null then 
+        user = obj.get_user()
+        if not is_error(user) then session.user = user
+    end if
+
     if obj.type == "shell" then
         session.shell = obj
         session.computer = obj.host_computer
@@ -57,9 +60,14 @@ Session.New = function(obj=null, username=null)
     end if
 
     if session.computer != null then
+
         session.comp_name = session.computer.get_name
-        session.lan = session.computer.local_ip
-        session.wan = session.computer.public_ip
+        loc_ip = session.computer.local_ip
+        if is_error(loc_ip) then loc_ip = "unknown"
+        pub_ip = session.computer.public_ip
+        if is_error(pub_ip) then pub_ip = "unknown"
+        session.lan = loc_ip
+        session.wan = pub_ip
     end if
 
     session.file.show_corrupt = true

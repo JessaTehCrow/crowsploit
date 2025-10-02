@@ -53,8 +53,8 @@ Kernel.use_session = function(session)
     self.env.COMP = function(); return session.comp_name; end function
 
     if session.computer != null then
-        self.env.WAN = function(); return session.computer.public_ip; end function
-        self.env.LAN = function(); return session.computer.local_ip; end function
+        self.env.WAN = function(); pub_ip = "unknown"; if not session.computer then return pub_ip; result = session.computer.public_ip; if not is_error(result) then pub_ip = result; return pub_ip; end function
+        self.env.LAN = function(); loc_ip = "unknown"; if not session.computer then return loc_ip; result = session.computer.local_ip; if not is_error(result) then loc_ip = result; return loc_ip; end function
     end if
     
     status = "Jumped"
@@ -557,7 +557,7 @@ Kernel.get_prompt = function()
 
         if key == "USER" then
             temp_env[key] = val
-            if val == "root" then  temp_env[key] = "$root;root"
+            if val == "root" then temp_env[key] = "$root;root"
 
         else if key == "STATUS" then
             temp_env[key] = "$status_" + lower(val) +";" + val
