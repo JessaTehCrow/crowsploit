@@ -60,7 +60,7 @@ settings.set("library", {
 })
 
 settings.set("update", {
-    "check" : "true"
+    "check" : "false"
 })
 
 settings.set("interface", {
