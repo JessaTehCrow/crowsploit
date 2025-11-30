@@ -81,7 +81,7 @@ apt_install_args = [
 apt_install_func = function(a)
     session = a.kernel.session
     if not session.apt then return ObjectError.New("aptget.install", "apt")
-    if not session.user == "root" then return PermissionError.New("aptget.install", "root")
+    //if not session.user == "root" then return PermissionError.New("aptget.install", "root")
 
     result = null
     if a.path != null then
