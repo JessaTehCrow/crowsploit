@@ -278,7 +278,16 @@ else
             "check":"false"
         }
     end if
-
+    if is_error(kernel.session.file.get_folder("/etc/crow")) then
+        kernel.print("$error;Kernel.init : /etc/crow not found")
+        if confirmation_prompt("Run setup?") then
+            kernel.session.shell.launch(program_path, "setup")
+            exit
+        else
+            kernel.print("$error;Unable to continue execution. Quiting...")
+            exit
+        end if
+    end if
     update_libs(kernel, session, kernel.settings.library.path)
     session.load_libs(kernel.settings.library.path)
 

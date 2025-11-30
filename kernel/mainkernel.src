@@ -262,6 +262,10 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
             else if self.tools.hasIndex(cmd) then
                 cmd_obj = self.tools[cmd]
 
+            else if cmd == "help" then
+                self.print("$P;You find yourself in a weird place where there isnt even a help command.\nGo fricking install the system module.")
+                good_result = false
+                break
             else
                 print("Command not found: " + cmd)
                 good_result = false
