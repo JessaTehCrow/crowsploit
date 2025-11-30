@@ -454,6 +454,16 @@ rainbowify = function(str)
 	return out
 end function
 
+is_absolute_path = function(path)
+    err = expect_all([path], string)
+    if err != null then return TypeError.New("Utils.is_absolute_path", "string", typeof(path))
+    if path.len == 0 then TypeError.New("Utils.is_absolute_path", "string", "empty string")
+    return path[0] == "/"
+end function
+
+
+
+
 is_valid_ip_range = function(ip, allow_lan = true)
 	if is_valid_ip(ip) == 0 or (is_lan_ip(ip) and allow_lan == 0) then return false
 

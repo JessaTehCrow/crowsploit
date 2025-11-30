@@ -1355,7 +1355,17 @@ run_func = function(a)
     if a.kernel.session.shell == null then return ObjectError.New("system.run", "shell")
     args = a.rest
     file = a.kernel.session.file.get_file(a.program)
-
+    if is_error(file) and not is_absolute_path(a.program) then
+        PATH = ["/bin","/usr/bin", a.kernel.session.homepath, "/home/guest"]
+        log("File not found in current dir trying with PATH " + PATH)
+        for path in PATH
+            file = a.kernel.session.file.get_file(path + "/" + a.program)
+            if not is_error(file) then 
+                log("Found " + a.program + " in " + path)
+                break
+            end if
+        end for
+    end if
     if is_error(file) then return file.stack("system.run")
     // if not file.has_permission("x") then return PermissionError.New("system.run", "execute")
 
