@@ -275,7 +275,7 @@ else
     end if
     if not kernel.settings.hasIndex("update") then
         kernel.settings.update = {
-            "check":"true"
+            "check":"false"
         }
     end if
 

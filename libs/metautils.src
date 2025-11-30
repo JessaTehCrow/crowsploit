@@ -684,7 +684,7 @@ full_scan = function(metax, library, router, silent=false, existing=null, skip_e
         for exploit in temp_exploits.exploits
             if existing != null and skip_existing != false then
                 res = existing.get_exploit(exploit)
-                if res != null and res.object != "Unkown" and res.objperms != "unknown" then continue
+                if res != null and res.object != "Unknown" and res.objperms != "unknown" then continue
             end if
             result = enum_exploit(exploit, library, target)
             if is_error(result) then return result.stack("full_scan")
@@ -692,11 +692,13 @@ full_scan = function(metax, library, router, silent=false, existing=null, skip_e
             exploit.objperms = result[1]
 
             if exploit.object == "Password" and not silent then
+
                 print("<#fff>Password reset detected.")
                 r = select_prompt("What elevation did it have?", ["root", "user", "guest"])
                 if r == "guest" then r = null
                 if r != null then exploit.objperms = r
             else if exploit.object == "Password" and silent then
+                exploit.object = "Unknown"
                 exploit.objperms = "unknown"
             end if
 
