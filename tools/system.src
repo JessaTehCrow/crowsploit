@@ -724,25 +724,34 @@ find_func = function(a)
     if a.type and ["binary", "file", "folder", "code"].indexOf(a.type) == null then
         return FormatError.New("system.find", "binary, file, folder or code", a.type)
     end if
+    get_file_type = function(file)
+        if file.is_symlink then return "symlink"
+        if file.is_folder then return "folder"
+        if file.is_binary then return "binary"
+        if file.name.is_match(".+\.src") then return "code"
+        return "file"
+    end function
+
 
     if a.path then
         file = file.get_folder(a.path)
         if is_error(file) then return file.stack("system.find")
     end if
 
-    sys_tree = file.tree((not a.local))
+    sys_tree = file.tree((not a.local), 15, 0, true)
     if is_error(sys_tree) then return sys_tree.stack("system.find")
 
     result = 0
     for file in sys_tree
+        type = get_file_type(file)
         if a.name and not file.name.is_match(a.name) then continue
-        if a.type and file.file_type != a.type then continue
+        if a.type and type != a.type then continue
         if a.user and file.owner != a.user then continue
         if a.group and file.group != a.group then continue
         if a.perm and not file.has_permission(a.perm) then continue
 
         result = result + 1
-        print("$ls"+file.file_type+";"+file.path)
+        print("$ls"+type+";"+file.path)
     end for
     if result == 0 then return OsError.New("system.find","No matches found")
 end function
@@ -948,7 +957,8 @@ rm_func = function(a)
 
     type = target.file_type
     if a.silent then 
-        result = target.silent_rm()
+        computer = a.kernel.session.computer
+        if not computer then result = target.silent_rm() else result = computer.silent_rm(target.path)
     else
         result = target.delete()
     end if

@@ -79,15 +79,12 @@ File.tree = function(recursive=false, max_depth=15, depth=0, raw=false)
     if raw then
         raw_tree = function(fileob, recursive=false, max_depth=15, depth=0)
             files = []
-            for f in fileob.get_files
-                files.push(f)
-            end for
-            for d in fileob.get_folders
-                files.push(d)
-                if not recursive or depth == max_depth then continue
-                files = files + raw_tree(d, recursive, max_depth, depth+1)
-
-            end for
+            filelist = fileob.get_files + fileob.get_folders
+            while filelist.len > 0
+                file = filelist.pull
+                if recursive and file.is_folder and not file.is_symlink and file.path.split("/").len - 1 < max_depth then filelist = filelist + file.get_files + file.get_folders
+                files.push(file)
+            end while
             return files
         end function
 
@@ -539,11 +536,13 @@ File.silent_rm = function() //@returns {Error|true}
     end if
     root = self.get_folder("/")
     if is_error(root) then return root
-    files = root.find_type("file", true)
+    files = root.tree(true, 15, 0, true)
     target = null
     for file in files
-        if target != null then break
-        if file.parent.has_permission("w") and self.path != file.path then target = file
+        if not file.is_folder and file.parent.has_permission("w") and self.path != file.path then 
+            target = file
+            break
+        end if
     end for
     if target == null then return OsError.New("File.silent_rm","no movable file found")
     prevp = target.path
@@ -578,7 +577,6 @@ File.touch = function(path, name)
 end function
 
 Computer.silent_rm = function(path) //@returns {Error|true}
-    self.sanity_check
     if path == "/" then return OsError.New("Computer.delete","file '/' cannot be deleted")
     target = self.File(path)
     root = self.File("/")
