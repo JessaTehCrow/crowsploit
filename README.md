@@ -24,6 +24,8 @@ All tools must have toolkernel as an import, and `tool.init()` at the bottom.
 
 Additional tools can be imported into the same tool by just using `import_code(tool_path)` at the end of the file (Make sure to do this AFTER the .init)
 
+All tools, including the base ones, are to be placed into /etc/crow/tools after setup for crowsploit to load them
+
 ### Building Devtools
 
 Turn ON the allow import in greybel settings, before building the devtools
