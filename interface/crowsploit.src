@@ -5,7 +5,7 @@ import_code("../constants/motd")
 
 if program_path == "/etc/crow/tools/crowsploit" then exit("<#f00>crowsploit detected running as a tool. Quitting loop")
 
-interface_version = "1.6.1"
+interface_version = "1.6.2"
 
 get_fact = function()
     fact = fun_facts[random(0,fun_facts.len-1)]
@@ -278,16 +278,31 @@ else
             "check":"false"
         }
     end if
+
+    if not kernel.settings.hasIndex("interface") then
+        kernel.settings.interface = {}
+    end if
+
+    if params.indexOf("-sm") != null then 
+        kernel.settings.interface.streamer_mode = "true"
+    end if
+
+    if params.indexOf("-b") != null then
+        kernel.settings.interface.use_built_in_history = "true"
+    end if
+
+
     if is_error(kernel.session.file.get_folder("/etc/crow")) then
         kernel.print("$error;Kernel.init : /etc/crow not found")
         if confirmation_prompt("Run setup?") then
-            kernel.session.shell.launch(program_path, "setup")
-            exit
+            e = kernel_setup()
+            if is_error(e) then exit
         else
             kernel.print("$error;Unable to continue execution. Quiting...")
             exit
         end if
     end if
+
     update_libs(kernel, session, kernel.settings.library.path)
     session.load_libs(kernel.settings.library.path)
 
@@ -315,13 +330,6 @@ else
         kernel.print("$error;WARNING:: You are not running as root. This could lead to crowsploit not working properly")
         kernel.print("$T;Unable to update metaxploit.so")
     end if
-    
-    if params.indexOf("-sm") != null then 
-        if not kernel.settings.hasIndex("interface") then
-            kernel.settings.interface = {}
-        end if
-        kernel.settings.interface.streamer_mode = "true"
-    end if
 
     while kernel.keep_session
         custom_obj.kernel = kernel
@@ -332,11 +340,11 @@ else
 end if
 
 while kernel.keep_session
-    inp = user_input(kernel.get_prompt + " ")
+    inp = user_input(kernel.get_prompt + " ", false, false, {"false": false, "true": true}[kernel.settings.interface.use_built_in_history])
 
     while inp.trim != "" and inp.trim()[-1] == "\"
         inp = inp.trim[:-1]
-        user_inp = user_input(kernel.color("$input;") + " ")
+        user_inp = user_input(kernel.color("$input;") + " ", false, false, {"false": false, "true": true}[kernel.settings.interface.use_built_in_history])
         inp = inp + " " + user_inp
     end while
 

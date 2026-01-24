@@ -472,8 +472,7 @@ is_valid_ip_range = function(ip, allow_lan = true)
 	if firstPart == 0 or firstPart == 10 or firstPart == 127 or firstPart > 224 then return false
 	ipToInt = function(ip)
 		parts = ip.split("\.")
-		firstPart = val(parts[0])
-		return firstPart * 256 ^ 3 + parts[1].to_int * 256 ^ 2 + parts[2].to_int * 256 + parts[3].to_int
+		return parts[0].to_int * 256 ^ 3 + parts[1].to_int * 256 ^ 2 + parts[2].to_int * 256 + parts[3].to_int
 	end function
 	
 	blacklisted_ranges = {
