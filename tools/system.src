@@ -1159,7 +1159,7 @@ chmod_func = function(a)
     target = ses_file.get_path(p.path)
     if is_error(target) then return target.stack("system.chmod")
     //if not target.has_permission("w") then return PermissionError.New("system.chmod", "write")
-    err = target.chmod(a.option, a.recursive, a.kernel.session.user)
+    err = target.chmod(a.option, a.recursive)
     if is_error(err) then return err.stack("system.chmod")
     print("$T;Set new permissions to $P;" + target.permissions)
     return true
