@@ -1,0 +1,81 @@
+import_code("../kernel/devtools")
+fhell = Tool.New("5hell", "1.0.0")
+
+fhell.short_description = "launch 5hell"
+fhell.long_description =  "launch 5hell"
+
+globals.shell_stuff = []
+globals.oldg = globals.indexes
+//globals.params = ["--debug"]
+prevPrint = @print
+globals["print"] = function(text, s)
+end function
+#include ../5hell/5hell
+globals["print"] = @prevPrint
+remove(globals, prevPrint)
+
+for item in globals.indexes
+    if oldg.indexOf(item) == null and item != "__item_idx" and item != "oldg" then
+        shell_stuff.push({"key": item, "value":@globals[item]})
+        globals.remove(item)
+    end if
+end for
+
+fhell_args = []
+fhell_func = function(a)
+    _exit = @exit
+    globals["exit"] = function(msg)
+        print("attempted to exit 5hell. use 'return' instead")
+    end function
+    if not globals.hasIndex("prevsesscount") then globals.prevsesscount = a.kernel.sessions[0].id
+    for f in shell_stuff
+        globals[f.key] = @f.value
+    end for
+    BUFFER[0] = get_shell
+    if a.kernel.sessions[-1].id > prevsesscount then
+        next = 1
+        while not a.kernel.sessions.hasIndex(prevsesscount)
+            next = 0
+            prevsesscount = prevsesscount - 1
+        end while
+        globals.prevsesscount = a.kernel.sessions[prevsesscount].id
+        for sess in a.kernel.sessions[prevsesscount - next:]
+            obj = sess.shell
+            if obj == null then obj = sess.computer
+            if obj == null then obj = sess.file
+            if obj then obj = obj.object
+            globals.BUFFER.push(obj)
+        end for
+    end if
+    globals.params = []
+    globals.prevcount = BUFFER.len
+    command.shell("")
+    if BUFFER.len > prevcount then
+        temp = []
+        for buf in BUFFER[prevcount:]
+            obj = null
+            if typeof(buf) == "shell" then obj = Shell.New(buf)
+            if typeof(buf) == "computer" then obj = Computer.New(buf)
+            if typeof(buf) == "file" then obj = File.New(buf)
+            if obj == null then
+                continue
+                temp.push(buf)
+            end if
+            a.kernel.new_session(Session.New(obj))
+        end for
+        BUFFER = temp
+    end if
+    for item in globals.indexes
+        if oldg.indexOf(item) == null and item != "__item_idx" and item != "oldg"  and item != "kernel" then
+            shell_stuff.push({"key": item, "value":@globals[item]})
+            globals.remove(item)
+        end if
+    end for
+    globals["exit"] = @_exit
+end function
+fhell_cmd = fhell.main_command(fhell_args, @fhell_func)
+fhell_cmd.short_description = "Brings 5hell into crowsploit. Read help"
+fhell_cmd.long_description = "$P;WOOOOOO 5hell baby
+$P;Note: use return to return to crowsploit do not use $string;exit$P; or any comamnd that exits the script"
+
+fhell.init()

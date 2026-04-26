@@ -122,8 +122,8 @@ kernel_setup = function()
     ses = Session.New(shell, active_user)
 
     e = comp.create_folder("/etc", "crow")
-    print("<#4fa>Created folder <#4af>/etc/crow")
     if is_error(e) then return e
+    print("<#4fa>Created folder <#4af>/etc/crow")
     
     e = comp.create_folder("/etc/crow", "tools")
     if is_error(e) then return e

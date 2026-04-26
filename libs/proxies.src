@@ -107,7 +107,7 @@ File.chmod = function(perms, recursive=false, anti_lockout_user = "")
     old_owner = ""
     if anti_lockout_user and not self.is_folder then
         old_owner = self.owner
-        self.set_owner(anti_lockout_user) //works really only for single files are it would add massive overhead to do this for all files in a dir
+        self.set_owner(anti_lockout_user, false) //works really only for single files are it would add massive overhead to do this for all files in a dir
     end if
     binary = function(n)
         b = []
@@ -178,13 +178,13 @@ File.chmod = function(perms, recursive=false, anti_lockout_user = "")
         had_owner_write = self_perms[3] == "w"
         had_group_write = self_perms[6] == "w"
         had_other_write = self_perms[9] == "w"
-        self.chmod("u+w")
-        self.chmod("g+w")
-        self.chmod("o+w")
+        self.object.chmod("u+w", false)
+        self.object.chmod("g+w", false)
+        self.object.chmod("o+w", false)
         self.set_owner(old_owner)
-        if not had_owner_write then self.chmod("u-w")
-        if not had_group_write then self.chmod("g-w")
-        if not had_other_write then self.chmod("o-w")
+        if not had_owner_write then self.object.chmod("u-w", false)
+        if not had_group_write then self.object.chmod("g-w", false)
+        if not had_other_write then self.object.chmod("o-w", false)
     end if
     return true
 end function
