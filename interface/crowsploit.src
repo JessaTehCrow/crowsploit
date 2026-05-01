@@ -296,7 +296,12 @@ else
         kernel.print("$error;Kernel.init : /etc/crow not found")
         if confirmation_prompt("Run setup?") then
             e = kernel_setup()
-            if is_error(e) then exit
+            if is_error(e) then
+                print(e.trace())
+            else
+                print("<#4fa>Setup complete")
+                print("<#999>Move the <#4af>system<#999> and <#4af>exploit<#999> tools into the <#4af>/etc/crow/tools<#999> folder and restart crowsploit as root")
+            end if
         else
             kernel.print("$error;Unable to continue execution. Quiting...")
             exit
