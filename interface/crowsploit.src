@@ -344,12 +344,16 @@ else
     end while
 end if
 
+true_false_map = {"false": false, "true": true}
+if not kernel.settings.interface.hasIndex("use_built_in_history") then
+    kernel.settings.interface.use_built_in_history = "false"
+end if
 while kernel.keep_session
-    inp = user_input(kernel.get_prompt + " ", false, false, {"false": false, "true": true}[kernel.settings.interface.use_built_in_history])
+    inp = user_input(kernel.get_prompt + " ", false, false, true_false_map[kernel.settings.interface.use_built_in_history])
 
     while inp.trim != "" and inp.trim()[-1] == "\"
         inp = inp.trim[:-1]
-        user_inp = user_input(kernel.color("$input;") + " ", false, false, {"false": false, "true": true}[kernel.settings.interface.use_built_in_history])
+        user_inp = user_input(kernel.color("$input;") + " ", false, false, true_false_map[kernel.settings.interface.use_built_in_history])
         inp = inp + " " + user_inp
     end while
 
