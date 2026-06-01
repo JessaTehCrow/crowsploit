@@ -99,12 +99,50 @@ end function
 
 
 Kernel.parse_command = function(text)
+    handle_env_vars = function(env_ref, env_val, temp_list_ref, current_idx)
+        if not env_ref.hasIndex(env_val) then return
+        result = @env_ref[env_val]
+        if typeof(@result) == "function" then
+            temp_list_ref[current_idx] = result() + ending
+        else if @result isa string and EvalType.New(result).type == "string" then
+            temp_list_ref[current_idx] = "'" + env_ref[env_val].replace("'", "\'") + "'"
+        else
+            temp_list_ref[current_idx] = env_ref[env_val] + ending
+        end if
+    end function
+    handle_redirection = function(kernel, temp_list_ref, current_idx, appendMode)
+        redirect_info = [null, appendMode] //file object, appendMode
+        temp_len = temp_list_ref.len - 1
+        if current_idx != temp_len - 1 then return false
+        file_name = temp_list_ref[temp_len]
+        sess_file = kernel.session.file
+        file = sess_file.get_file(file_name)
+        if not is_error(file) then
+            if file.is_binary then return OsError.New("stdout.redirect", "Invalid target: Binary")
+            permission_needed = "read"
+            has_read = file.has_permission("r")
+            if appendMode then
+                permission_needed = permission_needed + " & write"
+                if not has_read or not file.parent.has_permission("w") then return PermissionError.New("stdout.redirect", permission_needed)
+            end if
+            if not has_read then return PermissionError.New("stdout.redirect", permission_needed)
+            redirect_info[0] = file
+            return redirect_info
+        end if
+        sess_comp = kernel.session.computer
+        if not sess_comp then return ObjectError.New("stdout.redirect", "computer")
+        p = Path.New(sess_file.path)
+        err = p.change(file_name)
+        if is_error(err) then return err.stack("stdout.redirect")
+        err = sess_comp.touch(p.folder, p.name)
+        if is_error(err) then return err.stack("stdout.redirect")
+        redirect_info[0] = sess_comp.File(p.path)
+        return redirect_info
+    end function
+
+
     commands = []
     pipes = [[]]
-    
-    quote = null
-    last = null
-    backs = 0
 
     // Parse input, and keep quotes
     parsed = parse_input(text, false, true)
@@ -132,30 +170,32 @@ Kernel.parse_command = function(text)
     if pipes == [] then return null
 
     if pipes[0] != "" or pipes.len > 1 then commands.push(pipes)
-    
+
+    redirection_info = [] + commands
+    for item in redirection_info
+        redirection_info[__item_idx] = [false] * item.len
+    end for
+
     has_history = false
     for command in commands
         for pipe in command
             val = pipe.trim
             temp = val.split(" ")
-            
-            // Env variable parsing
+
+            // Env variable / redirection parsing
             for t in temp
+                ignore = false
+
                 if t[-1] == "'" or t[-1] == """" then ending = t[-1] else ending = ""
                 t = t.replace("'", "").replace("""", "")
+
                 if t.is_match("^\$\w+$") then
-                    env_val = t[1:]
-                    if not self.env.hasIndex(env_val) then continue
-                    result = @self.env[env_val]
-                    if typeof(@result) == "function" then
-                        temp[__t_idx] = result() + ending
-                    else if @result isa string and EvalType.New(result).type == "string" then
-                        temp[__t_idx] = "'"+self.env[env_val].replace("'", "\'") + "'"
-                    else
-                        temp[__t_idx] = self.env[env_val] + ending
-                    end if
-                    continue
+                    ignore = true
+                    handle_env_vars(self.env, t[1:], temp, __t_idx)
                 end if
+
+                if (t == ">>" or t == ">") then redirection_info[__command_idx][__pipe_idx] = handle_redirection(self, temp, __t_idx, t == ">>")
+                if ignore then continue
                 if t.len >= 2 and t[0] == "\" and t[1] == "$" then temp[__t_idx] = t[1:] + ending
             end for
             val = temp.join(" ")
@@ -198,7 +238,7 @@ Kernel.parse_command = function(text)
     result = {}
     result.parsed = commands
     result.string = joined
-
+    result.redirection = redirection_info
     if has_history then return self.parse_command(joined)
 
     return result
@@ -232,12 +272,9 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
         self.last_error = null
         self.quit_pipe = false
         had_success = false
-        redirected = false
-        redirctbuff = ""
-        fullRedirect = false
-        redirectFile = null
-
         for pipe in command
+            redirctbuff = ""
+            prev_piped_status = self.piped
             if self.quit_pipe then break
             parts = parse_input(pipe, true)
             if self.DEBUG then print(pipe)
@@ -273,61 +310,19 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
             end if
             
             /////////// START MAIN REDIRECTION LOGIC ///////////
-
-            if parts.len > 2 and (parts[-2].value == ">>" or parts[-2].value == ">") then
-                path = parts[-1].eval_value
-                if path != "" then 
-                    if parts[-2].value == ">" then fullRedirect = true
-                    redirected = true
-                    session_file = self.session.file
-                    temp = session_file.get_file(path)
-
-                    if not is_error(temp) and temp.is_binary then
-                        had_success = false
-                        self.last_error = OsError.New("stdout.redirect", "Invalid target: Binary")
-                        break
-                    end if
-        
-                    if path[0] != "/" then path = session_file.path + "/" + path
-                    comp = self.session.computer
-
-                    redirectFile = temp
-                    if comp and is_error(temp) then 
-                        temp = comp.touch(parent_path(path),path.split("/")[-1])
-                        redirectFile = session_file.get_file(path)
-                    end if
-
-                    if is_error(temp) or is_error(redirectFile) then
-                        had_success = false
-                        if is_error(temp) then self.last_error = temp else self.last_error = redirectFile
-                        break
-                    end if
-
-                    if not fullRedirect then
-                        if not redirectFile.has_permission("r") or not redirectFile.parent.has_permission("w") then
-                            redirected = false
-                            self.last_error = PermissionError.New("stdout.redirect","read & write")
-                            continue
-                        end if
-                    else 
-                        if not redirectFile.parent.has_permission("w") then
-                            redirected = false
-                            fullRedirect = false
-                            self.last_error = PermissionError.New("stdout.redirect","write")
-                            continue
-                        end if
-                    end if
+            redirection_info = commands.redirection[__command_idx][__pipe_idx]
+            if redirection_info then 
+                if is_error(redirection_info) then
+                    had_success = false
+                    self.last_error = redirection_info.stack("Kernel.run_command")
+                    continue
                 end if
-                for x in range(0,1)
-                    parts.pop()
-                end for
+                parts = parts[:-2]
             end if
-            
             /////////// END MAIN REDIRECTION LOGIC ///////////
 
             if __pipe_idx == 0 then
-                prev_piped_status = self.piped
-                if redirected then self.piped = true
+                if redirection_info then self.piped = true
                 
                 result = cmd_obj.call(self, parts[1:])
                 if result == false then
@@ -337,29 +332,12 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 else
                     self.last_error = result.stack("Kernel.run_command")
                 end if
-
-                if redirected then 
-                    self.piped = prev_piped_status
-                    prev = ""
-                    if not fullRedirect then 
-                        cont = redirectFile.get_content
-                        if cont.len == 0 then prev = cont else prev = cont + char(10)
-                        remove(locals, "cont")
-                    end if
-                    redirectFile.set_content(prev + unformat_string(self.stdout.join(char(10))))
-                    redirected = false
-                    fullRedirect = false
-                    self.old_stdout = self.stdout.values
-                    self.stdout = [""]
-                    self.raw_piped = true
-                end if
-
+                
                 if result isa string then
                     self.print(result)
                 end if
             else
-                was_piped = self.piped
-                if __pipe_idx == command.len - 1 then self.piped = false
+                if __pipe_idx == command.len - 1 and not redirection_info then self.piped = false
                 prev_piped_status = self.piped
                 self.old_stdout = self.stdout.values
                 self.stdout = []
@@ -367,9 +345,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                     parts_2 = parse_input(unformat_string(trim(x)), true)
 
                     result = cmd_obj.call(self, parts[1:] + parts_2)
-                    if redirected then
-                        if typeof(self.old_stdout) == "list" then redirctbuff = redirctbuff + self.old_stdout.join(char(10))
-                    end if
+                    if redirection_info and typeof(self.old_stdout) == "list" then redirctbuff = redirctbuff + self.old_stdout.join(char(10))
                     if not is_error(result) then 
                         had_success = true
                     else
@@ -377,17 +353,25 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                         print(self.last_error.trace())
                     end if
                 end for
-                if redirected then
-                    self.piped = prev_piped_status
-                    prev = ""
-                    if not fullRedirect then 
-                        cont = redirectFile.get_content
-                        if cont.len != 0 then prev = cont + char(10)
-                        remove(locals, "cont")
-                    end if
-                    redirectFile.set_content(prev + unformat_string(redirctbuff))
-                    redirected = false
-                    fullRedirect = false
+            end if
+
+            if redirection_info then 
+                self.piped = prev_piped_status
+                prev = ""
+                file = redirection_info[0]
+                append = redirection_info[1]
+                if append then 
+                    cont = file.get_content
+                    if cont.len != 0 then prev = cont + char(10)
+                end if
+
+                if __pipe_idx == 0 then
+                    file.set_content(prev + unformat_string(self.stdout.join(char(10))))
+                    self.old_stdout = self.stdout.values
+                    self.stdout = [""]
+                    self.raw_piped = true
+                else
+                    file.set_content(prev + unformat_string(redirctbuff))
                 end if
             end if
 
