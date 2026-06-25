@@ -110,7 +110,7 @@ interface use_built_in_history = true
 ////////////////////
 // Update checker //
 
-update check = true
+update check = false
 
 /////////////
 // Aliases //
