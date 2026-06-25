@@ -66,7 +66,7 @@ settings.set("update", {
 settings.set("interface", {
     "streamer_mode" : "false",
     "temp_path"     : "/etc/crow/tmp",
-    "use_built_in_history": "false"
+    "use_built_in_history": "true"
 })
 mytool.settings = settings
 

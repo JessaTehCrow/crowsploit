@@ -300,7 +300,7 @@ Kernel.run_command = function(text, add_to_history=true, silent=false)
                 cmd_obj = self.tools[cmd]
 
             else if cmd == "help" then
-                self.print("$P;You find yourself in a weird place where there isnt even a help command.\nGo fricking install the system module.")
+                self.print("$P;You find yourself in a strange place where there isnt even a help command.\nGo fricking install the system module.")
                 good_result = false
                 break
             else

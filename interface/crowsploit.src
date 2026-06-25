@@ -129,6 +129,18 @@ kernel_setup = function()
     if is_error(e) then return e
     print("<#4fa>Created folder <#4af>/etc/crow/tools")
     
+    system_file = comp.File("system")
+    if system_file then 
+        print("<#4fa>Detected system module; attempting to automove")
+        e = system_file.move("/etc/crow/tools", "system")
+        if is_error(e) then return e
+    end if
+    exploit_file = comp.File("exploit")
+    if exploit_file then 
+        print("<#4fa>Detected exploit module; attempting to automove")
+        e = exploit_file.move("/etc/crow/tools", "exploit")
+        if is_error(e) then return e
+    end if
     e = comp.create_folder("/etc/crow", "libs")
     if is_error(e) then return e
     print("<#4fa>Created folder <#4af>/etc/crow/libs")
@@ -301,6 +313,7 @@ else
             else
                 print("<#4fa>Setup complete")
                 print("<#999>Move the <#4af>system<#999> and <#4af>exploit<#999> tools into the <#4af>/etc/crow/tools<#999> folder and restart crowsploit as root")
+                wait(2)
             end if
         else
             kernel.print("$error;Unable to continue execution. Quiting...")
